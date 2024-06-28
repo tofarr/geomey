@@ -60,3 +60,10 @@ export function matchOrds(a: number, b: number, accuracy: number): boolean {
 export function matchCoords(x1: number, y1: number, x2: number, y2: number, accuracy: number) {
     return matchOrds(x1, x2, accuracy) && matchOrds(y1, y2, accuracy)
 }
+
+
+export function distanceSq(x1: number, y1: number, x2: number, y2: number): number {
+    const dx = x2 - x1
+    const dy = y2 - y1
+    return dx * dx + dy * dy
+}

@@ -6,8 +6,8 @@ export interface Geom {
 export interface GeomHandler<G extends Geom> {
     type: string
     copy: (geom: G) => G
-    isValid: (geom: G) => boolean
+    isValid: (geom: G, accuracy: number) => boolean
     getBounds: (geom: G) => Bounds | null
-    normalize: (geom: G) => G
-    generalize: (geom: G, accuracy: number) => G
+    normalize: (geom: G) => Geom
+    generalize: (geom: G, accuracy: number) => Geom
 }

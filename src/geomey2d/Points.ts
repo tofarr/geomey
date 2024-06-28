@@ -1,30 +1,30 @@
 import { Geom, GeomHandler } from "./Geom";
-import { Ords, getBounds, matchCoords } from "./Ords";
+import { comparePoints } from "./LineSegment";
+import { Ords, generalizeOrd, getBounds, matchCoords, matchOrds } from "./Ords";
+import { Point, POINT_TYPE } from "./Point";
 
-export const TYPE = "PointSet"
+export const TYPE = "Points"
 
 
-export interface PointSet extends Geom {
+export interface Points extends Geom {
     type: typeof TYPE
     ords: Ords
     bounds?: Bounds
 }
 
 
-export const PointSetHandler: GeomHandler<PointSet> = {
+export const PointsHandler: GeomHandler<Points> = {
     type: TYPE,
-    copy: function(geom: PointSet): PointSet {
+    copy: function(geom: Points): Points {
         return { type: TYPE, ords: geom.ords.slice() }
     },
-    isValid: function(geom: PointSet) {
+    isValid: function(geom: Points) {
         const { ords } = geom
-        const valid = (
-            (ords.length & 2) === 0 &&
-            !ords.find(n => Number.isNaN(n))
-        )
+        let valid = (ords.length & 2) === 0
+        valid &&= !ords.find(n => Number.isNaN(n))
         return valid
     },
-    getBounds: function(geom: PointSet): Bounds | null {
+    getBounds: function(geom: Points): Bounds | null {
         let { bounds } = geom
         if (!bounds) {
             bounds = getBounds(geom.ords)
@@ -32,27 +32,38 @@ export const PointSetHandler: GeomHandler<PointSet> = {
         }
         return bounds
     }, 
-    normalize: function(geom: PointSet): PointSet {
+    normalize: function(geom: Points): Points | Point {
         const { ords } = geom
+        if (ords.length == 1) {
+            return {
+                type: POINT_TYPE,
+                x: ords[0],
+                y: ords[1]
+            }
+        }
         const coords = []
         let i = 0
         while (i < ords.length) {
             coords.push([ords[i++], ords[i++]])
         }
         coords.sort((a, b) => {
-            let s = a[0] - b[0]
-            if (!s) {
-                s = a[1] - b[1]
-            }
-            return s
+            return comparePoints(a[0], a[1], b[0], b[1])
         })
-        const result: PointSet = {
+        const result: Points = {
             type: TYPE,
             ords: coords.flat() as number[]
         }
         return result
     },
-    generalize: function(geom: PointSet, accuracy: number): PointSet {
+    generalize: function(geom: Points, accuracy: number): Points | Point {
+        const { minX, minY, maxX, maxY } = this.getBounds(geom)
+        if (matchOrds(minX, maxX, accuracy) && matchOrds(minY, maxX, accuracy)) {
+            return {
+                type: POINT_TYPE,
+                x: generalizeOrd((maxX + minX) / 2, accuracy),
+                y: generalizeOrd((maxY + minY) / 2, accuracy)
+            }
+        }
         geom = this.normalize(geom)
         const { ords } = geom
         for (let i = 0; i < ords.length; i++) {
