@@ -62,23 +62,7 @@ export const LineStringHandler: GeomHandler<LineString> = {
         }
         const { ords } = geom
         const generalized = []
-        const last = ords.length - 4
-        let i = 0
-        while (i < ords.length) {
-            const x1 = ords[i++]
-            const y1 = ords[i++]
-            while (i < last) {
-                const x2 = ords[i+1]
-                const y2 = ords[i+2]
-                const x3 = ords[i+3]
-                const y3 = ords[i+4]
-                if(distanceToLineSegmentSq(x1, y1, x3, y3, x2, y2, accuracy) > accuracy) {
-                    break
-                }
-                i += 2
-            }
-            generalized.push(x1, y1)
-        }
+        douglasPeucker(ords, 0, ords.length-2, accuracy, generalized)
         generalized.push(ords[ords.length-2], ords[ords.length-1])
         if (generalized.length == 4) {
             return LineSegmentHandler.normalize({
@@ -94,4 +78,42 @@ export const LineStringHandler: GeomHandler<LineString> = {
             ords: generalized
         }
     }
+}
+
+
+function douglasPeucker(ords: number[], startIndex: number, endIndex: number, accuracy: number, result: number[]) {
+    if (endIndex - startIndex < 4) {
+        while(startIndex < endIndex){
+            result.push(ords[startIndex++], ords[startIndex++])
+        }
+        return
+    }
+    let maxIndex = startIndex
+    let maxDist = 0
+    const lineStartX = ords[startIndex++]
+    const lineStartY = ords[startIndex++]
+    const lineEndX = ords[endIndex]
+    const lineEndY = ords[endIndex+1]
+    while(startIndex < endIndex) {
+        const index = startIndex
+        const dist = getPerpendicularDistance(ords[startIndex++], ords[startIndex++], lineStartX, lineStartY, lineEndX, lineEndY)
+        if(dist > maxDist) {
+            maxDist = dist
+            maxIndex = index
+        }
+    }
+    result.push(lineStartX, lineStartY)
+    if (maxDist <= accuracy){
+        return
+    }
+    douglasPeucker(ords, startIndex, maxIndex, accuracy, result)
+    douglasPeucker(ords, maxIndex, endIndex, accuracy, result)
+}
+
+
+function getPerpendicularDistance(pointX: number, pointY: number, lineStartX: number, lineStartY: number, lineEndX: number, lineEndY: number): number {
+    const area = Math.abs(0.5 * (lineStartX * lineEndY + lineEndX * pointY + pointX * lineStartY - lineEndX * lineStartY - pointX * lineEndY - lineStartX * pointY));
+    const bottom = Math.hypot(lineStartX - lineEndX, lineStartY - lineEndY);
+    const height = area / bottom * 2;
+    return height;
 }
