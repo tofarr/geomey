@@ -12,23 +12,24 @@ import { Relation } from "./Relation";
 
 
 export abstract class AbstractMultiPoint extends AbstractGeometry implements Geometry {
-    readonly coordinates: CoordinateStore
+    readonly coordinates: ReadonlyArray<number>
 
-    protected constructor(coordinates: CoordinateStore) {
+    protected constructor(coordinates: ReadonlyArray<number>) {
         super()
         this.coordinates = coordinates
     }
 
     calculateCentroid(): Point {
         const { coordinates } = this
+        const { length } = coordinates
         let sumX = 0
         let sumY = 0
-        this.coordinates.forEach((x, y) => {
-            sumX += x
-            sumY += y
-        })
-        const numPoints = coordinates.size()
-        return Point.unsafeValueOf(sumX / numPoints, sumY / numPoints)
+        let index = 0
+        while(index < length){
+            sumX += coordinates[index++]
+            sumY += coordinates[index++]
+        }
+        return Point.unsafeValueOf(sumX / length, sumY / length)
     }
 
     calculateBounds(): Rectangle {
