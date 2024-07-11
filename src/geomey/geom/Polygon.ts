@@ -2,6 +2,7 @@ import { NumberFormatter } from "../path/NumberFormatter";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
+import { LineString } from "./LineString";
 import { MultiGeometry } from "./MultiGeometry";
 import { Point } from "./Point";
 import { PointBuilder } from "./PointBuilder";
@@ -17,11 +18,11 @@ export class Polygon extends AbstractGeometry {
         this.ordinates = ordinates
     }
 
-    static valueOf() : Polygon {
+    static valueOf(outerRing: LineString, holes?: ReadonlyArray<LineString>) : Polygon {
         throw new Error("Method not implemented.");
     }
     
-    static unsafeValueOf() : Polygon {
+    static unsafeValueOf(outerRing: LineString, holes?: ReadonlyArray<LineString>) : Polygon {
         throw new Error("Method not implemented.");
     }
 

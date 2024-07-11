@@ -15,7 +15,7 @@ export function match(a: number, b: number, accuracy: number): boolean {
 }
 
 
-export function compareForSort(ax: number, ay: number, bx: number, by: number) {
+export function comparePointsForSort(ax: number, ay: number, bx: number, by: number) {
     return (ax - bx) || (ay - by)
 }
 
@@ -38,7 +38,7 @@ function partition(ordinates: number[], low: number, high: number): number {
     while (j < high) {
         const jx = ordinates[j++]
         const jy = ordinates[j++]
-        if (compareForSort(jx, jy, pivotX, pivotY) < 0) {
+        if (comparePointsForSort(jx, jy, pivotX, pivotY) < 0) {
             i+=2;
             swap(ordinates, i, j);
         }

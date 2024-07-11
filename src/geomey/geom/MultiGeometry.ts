@@ -1,4 +1,4 @@
-import { LineString } from "../LineString";
+import { LineString } from "./LineString";
 import { NumberFormatter } from "../path/NumberFormatter";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";

@@ -19,7 +19,7 @@ export interface Geometry {
     intersection(other: Geometry, accuracy: number): Geometry | null
     less(other: Geometry, accuracy: number): Geometry | null
     walkPath(pathWalker: PathWalker)
-    toWkt(numberFormatter: NumberFormatter): string
+    toWkt(numberFormatter?: NumberFormatter): string
     toGeoJson(): any
     toMultiGeometry(): MultiGeometry
 }
