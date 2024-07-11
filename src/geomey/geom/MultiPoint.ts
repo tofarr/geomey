@@ -1,6 +1,7 @@
 import { CoordinateStore } from "../coordinate/CoordinateStore";
 import { isNaNOrInfinite, sortOrdinates } from "../ordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../path/NumberFormatter";
+import { newWritableStore } from "../store/WritableCoordinateStore";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractMultiPoint } from "./AbstractMultiPoint";
 import { Geometry } from "./Geometry";
@@ -14,13 +15,13 @@ import { A_OUTSIDE_B, B_OUTSIDE_A, DISJOINT, Relation, TOUCH, flipAB } from "./R
 
 
 export class MultiPoint extends AbstractMultiPoint {
-    private unique?: MultiPoint
+    private unique?: Promise<MultiPoint>
 
     protected constructor(coordinates: CoordinateStore) {
         super(coordinates)
     }
 
-    static valueOf(ordinates: ReadonlyArray<number>) : MultiPoint {
+    static async valueOf(coordinates: CoordinateStore) : Promise<MultiPoint> {
         const newOrdinates = ordinates.slice()
         sortOrdinates(newOrdinates)
         const result = new MultiPoint(newOrdinates)
@@ -30,15 +31,15 @@ export class MultiPoint extends AbstractMultiPoint {
         return result
     }
 
-    static unsafeValueOf(ordinates: ReadonlyArray<number>) : MultiPoint {
-        return new MultiPoint(ordinates)
+    static async unsafeValueOf(coordinates: CoordinateStore) : Promise<MultiPoint> {
+        return new MultiPoint(coordinates)
     }
 
-    calculateGeneralized(accuracy: number): MultiPoint {
-        const { minX, minY, maxX, maxY } = this.getBounds()
+    async calculateGeneralized(accuracy: number): Promise<MultiPoint> {
+        const { minX, maxX } = await this.getBounds()
         const clusters = new Set<number>()
         const columns = Math.ceil((maxX - minX) / accuracy)
-        this.forEach((x, y) => {
+        await this.coordinates.forEach((x, y) => {
             x = Math.round(x / accuracy)
             y = Math.round(y / accuracy)
             const cell = x + (y * columns)
@@ -52,13 +53,13 @@ export class MultiPoint extends AbstractMultiPoint {
             const y = cell * accuracy / columns
             clusteredPoints.push(x, y)
         }
-        if (clusteredPoints.length == this.ordinates.length) {
+        if (clusteredPoints.length == await this.coordinates.size()) {
             return this
         }
         return new MultiPoint(clusteredPoints)
     }
 
-    getUnique(): MultiPoint {
+    getUnique(): Promise<MultiPoint> {
         let { unique } = this
         if (!unique){
             unique = this.unique = this.calculateUnique()
@@ -66,29 +67,30 @@ export class MultiPoint extends AbstractMultiPoint {
         return unique
     }
 
-    calculateUnique(): MultiPoint {
-        const ordinates = []
+    async calculateUnique(): Promise<MultiPoint> {
+        const { coordinates } = this
+        const newCoordinates = await newWritableStore(await coordinates.size())
         let prevX = undefined
         let prevY = undefined
-        this.forEach((x, y) => {
+        await coordinates.forEachObject((point) => {
+            const { x, y } = point
             if((x != prevX) || (y != prevY)){
-                ordinates.push(x, y)
+                await newCoordinates.append(point)
                 prevX = x
                 prevY = y
             }
         })
-        return new MultiPoint(ordinates)
+        return new MultiPoint(newCoordinates)
     }
 
-    transform(transformer: Transformer): MultiPoint {
-        const ordinates = []
-        const cursor = this.getCursor()
-        const point = { x: undefined, y: undefined }
-        while(cursor.next(point)){
+    async transform(transformer: Transformer): Promise<MultiPoint> {
+        const { coordinates } = this
+        const newCoordinates = await newWritableStore(await coordinates.size())
+        await this.coordinates.forEachObject(point => {
             transformer(point)
-            ordinates.push(point.x, point.y)
-        }
-        return MultiPoint.valueOf(ordinates)
+            await newCoordinates.append(point)
+        })
+        return MultiPoint.valueOf(newCoordinates)
     }
 
     relatePoint(point: PointBuilder, accuracy: number): Relation {

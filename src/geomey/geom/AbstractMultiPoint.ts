@@ -1,5 +1,5 @@
-import { CoordinateStore } from "../coordinate/CoordinateStore";
 import { NumberFormatter } from "../path/NumberFormatter";
+import { CoordinateStore } from "../store/CoordinateStore";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
@@ -19,37 +19,37 @@ export abstract class AbstractMultiPoint extends AbstractGeometry implements Geo
         this.coordinates = coordinates
     }
 
-    calculateCentroid(): Point {
+    async calculateCentroid(): Promise<Point> {
         const { coordinates } = this
         let sumX = 0
         let sumY = 0
-        this.coordinates.forEach((x, y) => {
+        await this.coordinates.forEach((x, y) => {
             sumX += x
             sumY += y
         })
-        const numPoints = coordinates.size()
+        const numPoints = await coordinates.size()
         return Point.unsafeValueOf(sumX / numPoints, sumY / numPoints)
     }
 
-    calculateBounds(): Rectangle {
+    async calculateBounds(): Promise<Rectangle> {
         const builder = new RectangleBuilder()
-        this.coordinates.forEach((x, y) => { builder.union(x, y) })
+        await this.coordinates.forEach((x, y) => { builder.union(x, y) })
         return builder.build()
     }
 
-    calculateArea(): number {
+    async calculateArea(): Promise<number> {
         return 0
     }
 
-    abstract calculateGeneralized(accuracy: number): Geometry
-    abstract transform(transformer: Transformer): Geometry
-    abstract relatePoint(point: PointBuilder, accuracy: number): Relation
-    abstract relate(other: Geometry, accuracy: number): Relation
-    abstract union(other: Geometry, accuracy: number): Geometry
-    abstract intersection(other: Geometry, accuracy: number): Geometry | null
-    abstract less(other: Geometry, accuracy: number): Geometry | null
-    abstract walkPath(pathWalker: PathWalker): void
-    abstract toWkt(numberFormatter?: NumberFormatter): string
-    abstract toGeoJson(): any
-    abstract toMultiGeometry(): MultiGeometry
+    abstract calculateGeneralized(accuracy: number): Promise<Geometry>
+    abstract transform(transformer: Transformer): Promise<Geometry>
+    abstract relatePoint(point: Point, accuracy: number): Promise<Relation>
+    abstract relate(other: Geometry, accuracy: number): Promise<Relation>
+    abstract union(other: Geometry, accuracy: number): Promise<Geometry>
+    abstract intersection(other: Geometry, accuracy: number): Promise<Geometry | null>
+    abstract less(other: Geometry, accuracy: number): Promise<Geometry | null>
+    abstract walkPath(pathWalker: PathWalker): Promise<PathWalker>
+    abstract toWkt(numberFormat?: NumberFormatter): Promise<string>
+    abstract toGeoJson(): Promise<any>
+    abstract toMultiGeometry(): Promise<MultiGeometry>
 }

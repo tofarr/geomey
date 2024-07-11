@@ -10,12 +10,12 @@ export class WritableArrayCoordinateStore extends ArrayCoordinateStore implement
         super(coordinates)
     }
 
-    append(coordinate: PointBuilder): WritableCoordinateStore {
+    async append(coordinate: PointBuilder): Promise<WritableCoordinateStore> {
         this.coordinates.push(coordinate.x, coordinate.y)
         return this
     }
 
-    set(index: number, coordinate: PointBuilder): WritableCoordinateStore {
+    async set(index: number, coordinate: PointBuilder): Promise<WritableCoordinateStore> {
         const { coordinates } = this
         index << 1
         coordinates[index++] = coordinate.x
@@ -23,7 +23,7 @@ export class WritableArrayCoordinateStore extends ArrayCoordinateStore implement
         return this
     }
 
-    appendAll(store: CoordinateStore): WritableCoordinateStore {
+    async appendAll(store: CoordinateStore): Promise<WritableCoordinateStore> {
         store.forEach((x, y) => { this.coordinates.push(x, y) })
         return this
     }

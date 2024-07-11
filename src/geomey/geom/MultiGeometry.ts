@@ -35,59 +35,59 @@ export class MultiGeometry extends AbstractGeometry {
         throw new Error("Method not implemented.");
     }
     
-    calculateCentroid(): Point {
+    async calculateCentroid(): Promise<Point> {
         throw new Error("Method not implemented.");
     }
 
-    calculateBounds(): Rectangle {
+    async calculateBounds(): Promise<Rectangle> {
         throw new Error("Method not implemented.");
     }
 
-    calculateArea(): number {
+    async calculateArea(): Promise<number> {
         throw new Error("Method not implemented.");
     }
 
-    calculateGeneralized(accuracy: number): Geometry {
+    async calculateGeneralized(accuracy: number): Promise<Geometry> {
         throw new Error("Method not implemented.");
     }
 
-    transform(transformer: Transformer): Geometry {
+    async transform(transformer: Transformer): Promise<Geometry> {
         throw new Error("Method not implemented.");
     }
 
-    relatePoint(point: PointBuilder, accuracy: number): Relation {
+    async relatePoint(point: PointBuilder, accuracy: number): Promise<Relation> {
         throw new Error("Method not implemented.");
     }
 
-    relate(other: Geometry, accuracy: number): Relation {
+    async relate(other: Geometry, accuracy: number): Promise<Relation> {
         throw new Error("Method not implemented.");
     }
 
-    union(other: Geometry, accuracy: number): Geometry {
+    async union(other: Geometry, accuracy: number): Promise<Geometry> {
         throw new Error("Method not implemented.");
     }
 
-    intersection(other: Geometry, accuracy: number): Geometry | null {
+    async intersection(other: Geometry, accuracy: number): Promise<Geometry | null> {
         throw new Error("Method not implemented.");
     }
 
-    less(other: Geometry, accuracy: number): Geometry | null {
+    async less(other: Geometry, accuracy: number): Promise<Geometry | null> {
         throw new Error("Method not implemented.");
     }
 
-    walkPath(pathWalker: PathWalker) {
+    async walkPath(pathWalker: PathWalker): Promise<PathWalker> {
         throw new Error("Method not implemented.");
     }
 
-    toWkt(numberFormat?: NumberFormatter): string {
+    async toWkt(numberFormat?: NumberFormatter): Promise<string> {
         throw new Error("Method not implemented.");
     }
 
-    toGeoJson(): any {
+    async toGeoJson(): Promise<any> {
         throw new Error("Method not implemented.");
     }
 
-    toMultiGeometry(): MultiGeometry {
+    async toMultiGeometry(): Promise<MultiGeometry> {
         throw new Error("Method not implemented.");
     }
 }

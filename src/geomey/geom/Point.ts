@@ -1,5 +1,6 @@
 import { isNaNOrInfinite, match } from "../ordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../path/NumberFormatter";
+import { newWritableStore } from "../store/WritableCoordinateStore";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
@@ -32,11 +33,11 @@ export class Point implements Geometry {
         return new Point(x, y)
     }
 
-    getCentroid(): Point {
+    async getCentroid(): Promise<Point> {
         return this
     }
 
-    getBounds(): Rectangle {
+    async getBounds(): Promise<Rectangle> {
         let { bounds } = this
         if (!bounds){
             const { x, y } = this
@@ -45,71 +46,79 @@ export class Point implements Geometry {
         return bounds
     }
 
-    getArea(): number {
+    async getArea(): Promise<number> {
         return 0
     }
 
-    generalize(accuracy: number): Point {
+    async generalize(): Promise<Point> {
         return this
     }
 
-    transform(transformer: Transformer): Point {
+    async transform(transformer: Transformer): Promise<Point> {
         const { x, y } = this
         const builder = { x, y }
         transformer(builder)
         return Point.valueOf(builder.x, builder.y)
     }
 
-    relatePoint(point: PointBuilder, accuracy: number): Relation {
+    async relatePoint(point: PointBuilder, accuracy: number): Promise<Relation> {
         return isPointsTouching(this.x, this.y, point.x, point.y, accuracy) ? TOUCH : DISJOINT
     }
 
-    relate(other: Geometry, accuracy: number): Relation {
-        return flipAB(other.relatePoint(this, accuracy))
+    async relate(other: Geometry, accuracy: number): Promise<Relation> {
+        return flipAB(await other.relatePoint(this, accuracy))
     }
 
-    union(other: Geometry, accuracy: number): Geometry {
-        if (!(other.relatePoint(this, accuracy) & B_OUTSIDE_A)) {
+    async union(other: Geometry, accuracy: number): Promise<Geometry> {
+        if (!(await other.relatePoint(this, accuracy) & B_OUTSIDE_A)) {
             return other
         }
-        const { points, lineStrings, polygons } = other.toMultiGeometry()
-        const ordinates = points ? points.ordinates.slice() : []
-        ordinates.push(this.x, this.y)
+        const { points, lineStrings, polygons } = await other.toMultiGeometry()
+        let newCoordinates
+        if (points) {
+            const coordinates = points.coordinates
+            newCoordinates = await newWritableStore(1 + await coordinates.size())
+            newCoordinates.appendAll(coordinates)
+        } else {
+            newCoordinates = await newWritableStore(1)
+        }
+        await newCoordinates.append(this)
         const result = MultiGeometry.valueOf(
-            MultiPoint.valueOf(ordinates), lineStrings, polygons
+            await MultiPoint.valueOf(newCoordinates), lineStrings, polygons
         )
         return result
     }
 
-    intersection(other: Geometry, accuracy: number): Geometry {
-        if (!(other.relatePoint(this, accuracy) & B_OUTSIDE_A)) {
+    async intersection(other: Geometry, accuracy: number): Promise<Geometry> {
+        if (!(await other.relatePoint(this, accuracy) & B_OUTSIDE_A)) {
             return other
         }
         return null
     }
 
-    less(other: Geometry, accuracy: number): Geometry {
+    less(other: Geometry, accuracy: number): Promise<Geometry> {
         return this.intersection(other, accuracy)
     }
 
-    walkPath(pathWalker: PathWalker) {
+    async walkPath(pathWalker: PathWalker): Promise<PathWalker> {
         const { x, y } = this
         pathWalker.moveTo(x, y)
         pathWalker.lineTo(x, y)
+        return pathWalker
     }
 
-    toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
+    async toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): Promise<string> {
         return `POINT (${numberFormatter(this.x)} ${numberFormatter(this.y)})`
     }
 
-    toGeoJson() {
+    async toGeoJson(): Promise<any> {
         return {
             type: "Point",
             coordinates: [this.x, this.y]
         }
     }
 
-    toMultiGeometry() {
+    async toMultiGeometry(): Promise<MultiGeometry> {
         return MultiGeometry.unsafeValueOf(
             MultiPoint.unsafeValueOf([this.x, this.y])
         )

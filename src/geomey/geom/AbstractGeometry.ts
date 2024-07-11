@@ -8,11 +8,11 @@ import { Relation } from "./Relation";
 
 
 export abstract class AbstractGeometry implements Geometry {
-    private centroid?: Point
-    private bounds?: Rectangle
-    private area?: number
+    private centroid?: Promise<Point>
+    private bounds?: Promise<Rectangle>
+    private area?: Promise<number>
 
-    getCentroid(): Point {
+    getCentroid(): Promise<Point> {
         let { centroid } = this
         if (!centroid){
             centroid = this.centroid = this.calculateCentroid()
@@ -20,9 +20,9 @@ export abstract class AbstractGeometry implements Geometry {
         return centroid
     }
 
-    abstract calculateCentroid(): Point
+    abstract calculateCentroid(): Promise<Point>
 
-    getBounds(): Rectangle {
+    getBounds(): Promise<Rectangle> {
         let { bounds } = this
         if (!bounds){
             bounds = this.bounds = this.calculateBounds()
@@ -30,9 +30,9 @@ export abstract class AbstractGeometry implements Geometry {
         return bounds
     }
 
-    abstract calculateBounds(): Rectangle
+    abstract calculateBounds(): Promise<Rectangle>
 
-    getArea(): number {
+    getArea(): Promise<number> {
         let { area } = this
         if (!area){
             area = this.area = this.calculateArea()
@@ -40,25 +40,25 @@ export abstract class AbstractGeometry implements Geometry {
         return area
     }
 
-    abstract calculateArea(): number
+    abstract calculateArea(): Promise<number>
 
-    generalize(accuracy: number): Geometry {
-        if (this.getBounds().isCollapsible(accuracy)){
+    async generalize(accuracy: number): Promise<Geometry> {
+        const bounds = await this.getBounds()
+        if (bounds.isCollapsible(accuracy)){
             return this.getCentroid()
         }
         return this.calculateGeneralized(accuracy)
     }
 
-    abstract calculateGeneralized(accuracy: number): Geometry
-
-    abstract transform(transformer: Transformer): Geometry
-    abstract relatePoint(point: Point, accuracy: number): Relation
-    abstract relate(other: Geometry, accuracy: number): Relation
-    abstract union(other: Geometry, accuracy: number): Geometry
-    abstract intersection(other: Geometry, accuracy: number): Geometry | null
-    abstract less(other: Geometry, accuracy: number): Geometry | null    
-    abstract walkPath(pathWalker: PathWalker)
-    abstract toWkt(numberFormat?: NumberFormatter): string
-    abstract toGeoJson(): any
-    abstract toMultiGeometry(): MultiGeometry
+    abstract calculateGeneralized(accuracy: number): Promise<Geometry>
+    abstract transform(transformer: Transformer): Promise<Geometry>
+    abstract relatePoint(point: Point, accuracy: number): Promise<Relation>
+    abstract relate(other: Geometry, accuracy: number): Promise<Relation>
+    abstract union(other: Geometry, accuracy: number): Promise<Geometry>
+    abstract intersection(other: Geometry, accuracy: number): Promise<Geometry | null>
+    abstract less(other: Geometry, accuracy: number): Promise<Geometry | null>
+    abstract walkPath(pathWalker: PathWalker): Promise<PathWalker>
+    abstract toWkt(numberFormat?: NumberFormatter): Promise<string>
+    abstract toGeoJson(): Promise<any>
+    abstract toMultiGeometry(): Promise<MultiGeometry>
 }

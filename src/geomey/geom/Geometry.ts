@@ -8,18 +8,18 @@ import { Relation } from "./Relation"
 
 
 export interface Geometry {
-    getCentroid(): Point
-    getBounds(): Rectangle
-    getArea(): number
-    generalize(accuracy: number): Geometry
-    transform(transformer: Transformer): Geometry
-    relatePoint(point: PointBuilder, accuracy: number): Relation
-    relate(other: Geometry, accuracy: number): Relation
-    union(other: Geometry, accuracy: number): Geometry
-    intersection(other: Geometry, accuracy: number): Geometry | null
-    less(other: Geometry, accuracy: number): Geometry | null
-    walkPath(pathWalker: PathWalker)
-    toWkt(numberFormatter?: NumberFormatter): string
-    toGeoJson(): any
-    toMultiGeometry(): MultiGeometry
+    getCentroid(): Promise<Point>
+    getBounds(): Promise<Rectangle>
+    getArea(): Promise<number>
+    generalize(accuracy: number): Promise<Geometry>
+    transform(transformer: Transformer): Promise<Geometry>
+    relatePoint(point: PointBuilder, accuracy: number): Promise<Relation>
+    relate(other: Geometry, accuracy: number): Promise<Relation>
+    union(other: Geometry, accuracy: number): Promise<Geometry>
+    intersection(other: Geometry, accuracy: number): Promise<Geometry | null>
+    less(other: Geometry, accuracy: number): Promise<Geometry | null>
+    walkPath(pathWalker: PathWalker): Promise<PathWalker>
+    toWkt(numberFormatter?: NumberFormatter): Promise<string>
+    toGeoJson(): Promise<any>
+    toMultiGeometry(): Promise<MultiGeometry>
 }

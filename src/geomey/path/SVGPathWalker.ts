@@ -1,23 +1,23 @@
-import { NUMBER_FORMAT } from "./NumberFormatter"
+import { NUMBER_FORMATTER } from "./NumberFormatter"
 
 
-class SVGPathWalker implements PathWalker {
+export class SVGPathWalker implements PathWalker {
     private path: string[]
-    private numberFormat: (n: number) => string
+    private numberFormatter: (n: number) => string
 
-    constructor(numberFormat?: (n: number) => string) {
+    constructor(numberFormatter?: (n: number) => string) {
         this.path = []
-        this.numberFormat = numberFormat || NUMBER_FORMAT
+        this.numberFormatter = numberFormatter || NUMBER_FORMATTER
     }
 
     moveTo(x: number, y: number): void {
-        const { numberFormat } = this
-        this.path.push("M", numberFormat(x), " ", numberFormat(y))
+        const { numberFormatter } = this
+        this.path.push("M", numberFormatter(x), " ", numberFormatter(y))
     }
 
     lineTo(x: number, y: number): void {
-        const { numberFormat } = this
-        this.path.push("L", numberFormat(x), " ", numberFormat(y))
+        const { numberFormatter } = this
+        this.path.push("L", numberFormatter(x), " ", numberFormatter(y))
     }
 
     bezierCurveTo(
@@ -28,20 +28,20 @@ class SVGPathWalker implements PathWalker {
         x: number,
         y: number
     ): void {
-        const { numberFormat } = this
+        const { numberFormatter } = this
         this.path.push(
             "C", 
-            numberFormat(controlPoint1X),
+            numberFormatter(controlPoint1X),
             " ",
-            numberFormat(controlPoint1Y),
+            numberFormatter(controlPoint1Y),
             ", ",
-            numberFormat(controlPoint2X),
+            numberFormatter(controlPoint2X),
             " ",
-            numberFormat(controlPoint2Y),
+            numberFormatter(controlPoint2Y),
             ", ",
-            numberFormat(x),
+            numberFormatter(x),
             " ",
-            numberFormat(y)
+            numberFormatter(y)
         )
     }
 
