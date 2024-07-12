@@ -1,15 +1,12 @@
-import { ArrayLineSegmentCursor } from "../cursor/ArrayLineSegmentCursor";
-import { CoordinateCursor } from "../coordinate/CoordinateCursor";
 import { NUMBER_FORMATTER, NumberFormatter } from "../path/NumberFormatter";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractMultiPoint } from "./AbstractMultiPoint";
 import { Geometry } from "./Geometry";
 import { MultiGeometry } from "./MultiGeometry";
-import { MultiPoint } from "./MultiPoint";
-import { Point } from "./Point";
 import { PointBuilder } from "./PointBuilder";
-import { Rectangle } from "./Rectangle";
 import { Relation } from "./Relation";
+import { LineSegmentBuilder, copyToLineSegment } from "./LineSegmentBuilder";
+import { getPerpendicularDistance } from "./LineSegment";
 
 
 export abstract class AbstractLineString extends AbstractMultiPoint {
@@ -18,30 +15,39 @@ export abstract class AbstractLineString extends AbstractMultiPoint {
         super(ordinates)
     }
 
-    getLineSegmentCursor() {
-        return new ArrayLineSegmentCursor(this.ordinates)
-    }
-
-    forEachSegment(visitor: (ax: number, ay: number, bx: number, by: number, index: number) => void | boolean, fromIndexInclusive?: number, toIndexExclusive?: number): number | undefined {
-        const { ordinates } = this
-        let i = (fromIndexInclusive || 0) * 2
-        toIndexExclusive = toIndexExclusive ? (toIndexExclusive * 2) : ordinates.length
-        while(i < toIndexExclusive) {
-            const result = visitor(ordinates[i++], ordinates[i++], fromIndexInclusive)
-            if (result) {
-                return fromIndexInclusive
+    forEachSegmentCoordinates(consumer: (ax: number, ay: number, bx: number, by: number) => void | boolean, fromIndexInclusive?: number, toIndexExclusive?: number): number {
+        const { coordinates } = this
+        let index = (fromIndexInclusive || 0) * 2
+        toIndexExclusive = toIndexExclusive ? (toIndexExclusive * 2) :(coordinates.length - 2)
+        while(index < toIndexExclusive) {
+            const result = consumer(coordinates[index], coordinates[index+1], coordinates[index+2], coordinates[index+3])
+            if (result === false) {
+                return index
             }
-            fromIndexInclusive++
+            fromIndexInclusive += 2
         }
+        return index
     }
 
-    forEachLineSegment(visitor: (lineSegment: LineSegmentBuilder, index: number) => void | boolean, fromIndexInclusive?: number, toIndexExclusive?: number) {
-        const point = { x: undefined, y: undefined }
-        return this.forEach((x, y, index) => {
-            point.x = x
-            point.y = y
-            return visitor(point, index)
-        })
+    forEachLineSegment(consumer: (lineSegment: LineSegmentBuilder, index: number) => void | boolean, fromIndexInclusive?: number, toIndexExclusive?: number) {
+        const lineSegment = { ax: undefined, ay: undefined, bx: undefined, by: undefined}
+        fromIndexInclusive ||= 0
+        this.forEachSegmentCoordinates((ax, ay, bx, by) => {
+            copyToLineSegment(ax, ay, bx, by, lineSegment)
+            return consumer(lineSegment, fromIndexInclusive++)
+        }, fromIndexInclusive, toIndexExclusive)
+    }
+
+    reverseCoordinates(): number[] {
+        const { coordinates } = this
+        const reversed = new Array(coordinates.length)
+        let i = coordinates.length
+        while(i) {
+            const y = coordinates[--i]
+            const x = coordinates[--i]
+            reversed.push(x, y)
+        }
+        return reversed
     }
 
     isSelfIntersecting() {
@@ -50,7 +56,7 @@ export abstract class AbstractLineString extends AbstractMultiPoint {
 
     toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
         const result = ["LINESTRING ("]
-        this.forEach((x, y) => {
+        this.forEachCoordinate((x, y) => {
             result.push(
                 numberFormatter(x),
                 " ",
@@ -65,7 +71,7 @@ export abstract class AbstractLineString extends AbstractMultiPoint {
 
     toGeoJson(): any {
         const coordinates = []
-        this.forEach((x, y) => { coordinates.push(x, y) })
+        this.forEachCoordinate((x, y) => { coordinates.push(x, y) })
         return {
             type: "LineString",
             coordinates
@@ -73,40 +79,48 @@ export abstract class AbstractLineString extends AbstractMultiPoint {
     }
 
     abstract transform(transformer: Transformer): Geometry
-    abstract calculateGeneralized(accuracy: number): Geometry
-    abstract relatePoint(point: PointBuilder, accuracy: number): Relation
-    abstract relate(other: Geometry, accuracy: number): Relation
-    abstract union(other: Geometry, accuracy: number): Geometry
-    abstract intersection(other: Geometry, accuracy: number): Geometry | null
-    abstract less(other: Geometry, accuracy: number): Geometry | null
+    abstract calculateGeneralized(tolerance: number): Geometry
+    abstract relatePoint(point: PointBuilder, tolerance: number): Relation
+    abstract relate(other: Geometry, tolerance: number): Relation
+    abstract union(other: Geometry, tolerance: number): Geometry
+    abstract intersection(other: Geometry, tolerance: number): Geometry | null
+    abstract less(other: Geometry, tolerance: number): Geometry | null
     abstract walkPath(pathWalker: PathWalker)
     abstract toMultiGeometry(): MultiGeometry
 }
 
-export function douglasPeucker(cursor: CoordinateCursor, point: PointBuilder, startIndex: number, endIndex: number, accuracy: number, target: number[]) {
-    if (endIndex - startIndex < 2) {
-        while(startIndex < endIndex){
-            cursor.get(startIndex++, point)
-            target.push(point.x, point.y)
-        }
+
+function partition(coordinates: number[], startIndex: number, endIndex: number, tolerance: number, target: number[]) {
+    const ax = coordinates[startIndex]
+    const ay = coordinates[startIndex+1]
+    if (endIndex - startIndex < 4) {
+        target.push(ax, ay)
         return
     }
     let maxDist = 0
     let maxIndex = startIndex
-    const { x: ax, y: ay } = cursor.get(startIndex, point)
-    const { x: bx, y: by } = cursor.get(endIndex, point)
-    need store rather than cursor - something with a get and put
-    pointList.eachPoint((x, y, index) => {
-        const dist = getPerpendicularDistance(x, y, ax, ay, bx, by)
+    const bx = coordinates[endIndex]
+    const by = coordinates[endIndex+1]
+    let index = startIndex+2
+    while(index < endIndex){
+        const dist = getPerpendicularDistance(coordinates[index++], coordinates[index++], ax, ay, bx, by)
         if (dist > maxDist) {
             maxDist = dist
             maxIndex = index
         }
-    })
-    if (maxDist <= accuracy){
+    }
+    if (maxDist <= tolerance){
         target.push(ax, ay)
         return
     }
-    douglasPeucker(pointList, startIndex, maxIndex, accuracy, target)
-    douglasPeucker(pointList, maxIndex, endIndex, accuracy, target)
+    partition(coordinates, startIndex, maxIndex, tolerance, target)
+    partition(coordinates, maxIndex, endIndex, tolerance, target)
+}
+
+
+export function douglasPeucker(coordinates: number[], tolerance: number){
+    const target = []
+    partition(coordinates, 0, coordinates.length - 2, tolerance, target)
+    target.push(coordinates[coordinates.length-2], coordinates[coordinates.length-1])
+    return target
 }

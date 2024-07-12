@@ -57,10 +57,10 @@ export class LineString {
         })
     }
 
-    isValid(accuracy: number) {
-        const accuracySquared = accuracy ** 2
+    isValid(tolerance: number) {
+        const toleranceSquared = tolerance ** 2
         const invalidSegmentIndex = this.indexOfSegment((ax, ay, bx, by) => {
-            return distanceSquared(ax, ay, bx, by) < accuracySquared
+            return distanceSquared(ax, ay, bx, by) < toleranceSquared
         })
         return invalidSegmentIndex == null
     }
@@ -77,13 +77,13 @@ export class LineString {
         return this
     }
 
-    generalize(accuracy: number): LineString | LineSegment | Point {
+    generalize(tolerance: number): LineString | LineSegment | Point {
         const bounds = this.getBounds()
-        if (bounds.getWidth() <= accuracy && bounds.getHeight() <= accuracy) {
+        if (bounds.getWidth() <= tolerance && bounds.getHeight() <= tolerance) {
             return bounds.getCentroid()
         }
         const generalized = []
-        douglasPeucker(this.pointList, 0, this.getNumSegments(), accuracy, generalized)
+        douglasPeucker(this.pointList, 0, this.getNumSegments(), tolerance, generalized)
         const points = this.pointList.points
         generalized.push(points[points.length-2], points[points.length-1])
         if (generalized.length == points.length){
@@ -97,7 +97,7 @@ export class LineString {
 }
 
 
-export function douglasPeucker(pointList: MultiPoint, startIndex: number, endIndex: number, accuracy: number, target: number[]) {
+export function douglasPeucker(pointList: MultiPoint, startIndex: number, endIndex: number, tolerance: number, target: number[]) {
     if (endIndex - startIndex < 2) {
         pointList.eachPoint(target.push, startIndex, endIndex)
         return
@@ -116,12 +116,12 @@ export function douglasPeucker(pointList: MultiPoint, startIndex: number, endInd
             maxIndex = index
         }
     })
-    if (maxDist <= accuracy){
+    if (maxDist <= tolerance){
         target.push(ax, ay)
         return
     }
-    douglasPeucker(pointList, startIndex, maxIndex, accuracy, target)
-    douglasPeucker(pointList, maxIndex, endIndex, accuracy, target)
+    douglasPeucker(pointList, startIndex, maxIndex, tolerance, target)
+    douglasPeucker(pointList, maxIndex, endIndex, tolerance, target)
 }
 
 

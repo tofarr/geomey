@@ -1,6 +1,4 @@
-import { ArrayCursor } from "../cursor/ArrayCoordinateCursor"
-import { CoordinateCursor } from "../coordinate/CoordinateCursor"
-import { isNaNOrInfinite, match } from "../ordinate"
+import { isNaNOrInfinite, match } from "../coordinate"
 import { NumberFormatter } from "../path/NumberFormatter"
 import { Transformer } from "../transformer/Transformer"
 import { Geometry } from "./Geometry"
@@ -8,11 +6,10 @@ import { InvalidGeometryError } from "./InvalidGeometryError"
 import { LineString } from "./LineString"
 import { MultiGeometry } from "./MultiGeometry"
 import { Point } from "./Point"
-import { PointBuilder } from "./PointBuilder"
+import { PointBuilder, copyToPoint } from "./PointBuilder"
 import { Polygon } from "./Polygon"
 import { RectangleBuilder } from "./RectangleBuilder"
-import { A_INSIDE_B, B_INSIDE_A, B_OUTSIDE_A, DISJOINT, OUTSIDE_TOUCH, OVERLAP, Relation, TOUCH, flipAB } from "./Relation"
-import { ArrayCoordinateStore } from "../coordinate/ArrayCoordinateStore"
+import { A_INSIDE_B, B_INSIDE_A, DISJOINT, OUTSIDE_TOUCH, OVERLAP, Relation, TOUCH, flipAB } from "./Relation"
 
 
 export class Rectangle implements Geometry {
@@ -79,43 +76,47 @@ export class Rectangle implements Geometry {
         return this.getWidth() * this.getHeight()
     }
 
-    isCollapsible(accuracy: number): boolean {
-        return this.getWidth() <= accuracy && this.getHeight() <= accuracy
+    isCollapsible(tolerance: number): boolean {
+        return this.getWidth() <= tolerance && this.getHeight() <= tolerance
     }
 
-    generalize(accuracy: number): Point | Rectangle {
-        if(this.isCollapsible(accuracy)){
+    generalize(tolerance: number): Point | Rectangle {
+        if(this.isCollapsible(tolerance)){
             return this.getCentroid()
         }
         return this
     }
 
-    getCoordinateStore() {
+    getCoordinates() {
         const { minX, minY, maxX, maxY } = this
-        return new ArrayCoordinateStore([
+        return [
             minX, minY,
             maxX, minY,
             maxX, maxY,
             minX, maxY,
             minX, minY
-        ])
+        ]
     }
 
     transform(transformer: Transformer): Rectangle {
         const builder = new RectangleBuilder()
-        this.getCoordinateStore().forEachObject((point) => {
+        let index = 0;
+        let coordinates = this.getCoordinates()
+        const point = { x: undefined, y: undefined }
+        while(index < coordinates.length){
+            copyToPoint(coordinates[index++], coordinates[index++], point)
             transformer(point)
             builder.unionPoint(point)
-        })
+        }
         return builder.build()
     }
 
-    relatePoint(point: PointBuilder, accuracy: number): Relation {
-        const xRelation = relateValueToRange(this.minX, this.maxX, point.x, accuracy)
+    relatePoint(point: PointBuilder, tolerance: number): Relation {
+        const xRelation = relateValueToRange(this.minX, this.maxX, point.x, tolerance)
         if (xRelation === DISJOINT) {
             return DISJOINT
         }
-        const yRelation = relateValueToRange(this.minY, this.maxY, point.y, accuracy)
+        const yRelation = relateValueToRange(this.minY, this.maxY, point.y, tolerance)
         if (yRelation === DISJOINT) {
             return DISJOINT
         }
@@ -125,12 +126,12 @@ export class Rectangle implements Geometry {
         return B_INSIDE_A
     }
 
-    relateRectangle(other: Rectangle, accuracy: number): Relation {
-        const xRelation = relateRanges(this.minX, this.maxX, other.minX, other.maxX, accuracy)
+    relateRectangle(other: Rectangle, tolerance: number): Relation {
+        const xRelation = relateRanges(this.minX, this.maxX, other.minX, other.maxX, tolerance)
         if (xRelation === DISJOINT) {
             return DISJOINT
         }
-        const yRelation = relateRanges(this.minY, this.maxY, other.minY, other.maxY, accuracy)
+        const yRelation = relateRanges(this.minY, this.maxY, other.minY, other.maxY, tolerance)
         if (yRelation === DISJOINT) {
             return DISJOINT
         }
@@ -139,11 +140,11 @@ export class Rectangle implements Geometry {
         return (overlap | outsideTouch) as Relation
     }
 
-    relate(other: Geometry, accuracy: number): Relation {
-        return this.relateRectangle(other.getBounds(), accuracy)
+    relate(other: Geometry, tolerance: number): Relation {
+        return this.relateRectangle(other.getBounds(), tolerance)
     }
 
-    union(other: Geometry, accuracy: number): Rectangle {
+    union(other: Geometry, tolerance: number): Rectangle {
         const b = other.getBounds()
         return new Rectangle(
             Math.min(this.minX, b.minX),
@@ -153,9 +154,9 @@ export class Rectangle implements Geometry {
         )        
     }
 
-    intersection(other: Geometry, accuracy: number): Rectangle | null {
+    intersection(other: Geometry, tolerance: number): Rectangle | null {
         const b = other.getBounds()
-        if (this.relateRectangle(b, accuracy) === DISJOINT) {
+        if (this.relateRectangle(b, tolerance) === DISJOINT) {
             return null
         }
         return Rectangle.valueOf(
@@ -166,8 +167,8 @@ export class Rectangle implements Geometry {
         )
     }
 
-    less(other: Geometry, accuracy: number): Geometry | null {
-        return this.toPolygon().less(other, accuracy)
+    less(other: Geometry, tolerance: number): Geometry | null {
+        return this.toPolygon().less(other, tolerance)
     }
 
     walkPath(pathWalker: PathWalker) {
@@ -186,7 +187,7 @@ export class Rectangle implements Geometry {
         let { polygon } = this
         if (!polygon) {
             const { minX, minY, maxX, maxY } = this
-            const outerRing = LineString.unsafeValueOf(this.getCoordinateStore())
+            const outerRing = LineString.unsafeValueOf(this.getCoordinates())
             polygon = this.polygon = Polygon.unsafeValueOf(outerRing)
         }
         return polygon
@@ -203,30 +204,30 @@ export class Rectangle implements Geometry {
 
 
 /** Determine if a value is touching, inside, or disjoint from a range */
-function relateValueToRange(min: number, max: number, value: number, accuracy: number): Relation {
-    if ((min - accuracy) > value || (max + accuracy) < value) {
+function relateValueToRange(min: number, max: number, value: number, tolerance: number): Relation {
+    if ((min - tolerance) > value || (max + tolerance) < value) {
         return DISJOINT
     }
-    if (match(min, value, accuracy) || match(max, value, accuracy)){
+    if (match(min, value, tolerance) || match(max, value, tolerance)){
         return TOUCH
     }
     return B_INSIDE_A
 }
 
 /** Determine if ranges overlap */
-function relateRanges(minA: number, maxA: number, minB: number, maxB: number, accuracy: number) : Relation {
+function relateRanges(minA: number, maxA: number, minB: number, maxB: number, tolerance: number) : Relation {
     let result = (
-        relateValueToRange(minA, maxA, minB, accuracy) |
-        relateValueToRange(minA, maxA, maxB, accuracy) |
-        flipAB(relateValueToRange(minB, maxB, minA, accuracy)) |
-        flipAB(relateValueToRange(minB, maxB, maxA, accuracy))
+        relateValueToRange(minA, maxA, minB, tolerance) |
+        relateValueToRange(minA, maxA, maxB, tolerance) |
+        flipAB(relateValueToRange(minB, maxB, minA, tolerance)) |
+        flipAB(relateValueToRange(minB, maxB, maxA, tolerance))
     ) as Relation
     // If both minA and maxA are inside B and not touching, then B is also inside A!
-    if ((result & A_INSIDE_B) && !(result & B_INSIDE_A) && !match(minB, maxB, accuracy)) {
+    if ((result & A_INSIDE_B) && !(result & B_INSIDE_A) && !match(minB, maxB, tolerance)) {
         result |= B_INSIDE_A
     }
     // If both minB and maxB are inside A and not touching, then A is also inside B!
-    if ((result & B_INSIDE_A) && !(result & A_INSIDE_B) && !match(minA, maxA, accuracy)) {
+    if ((result & B_INSIDE_A) && !(result & A_INSIDE_B) && !match(minA, maxA, tolerance)) {
         result |= A_INSIDE_B
     }
     return result

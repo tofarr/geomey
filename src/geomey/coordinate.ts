@@ -10,8 +10,8 @@ export function isNaNOrInfinite(...ordinates: ReadonlyArray<number>) {
 }
 
 
-export function match(a: number, b: number, accuracy: number): boolean {
-    return Math.abs(a - b) <= accuracy
+export function match(a: number, b: number, tolerance: number): boolean {
+    return Math.abs(a - b) <= tolerance
 }
 
 
@@ -57,6 +57,6 @@ function quicksort(ordinates: number[], fromIndex: number, toIndex: number) {
 }
 
 
-export function sortOrdinates(ordinates: number[]) {
+export function sortCoordinates(ordinates: number[]) {
     quicksort(ordinates, 0, ordinates.length - 2);
 }

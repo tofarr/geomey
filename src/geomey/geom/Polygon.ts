@@ -38,7 +38,7 @@ export class Polygon extends AbstractGeometry {
         throw new Error("Method not implemented.");
     }
 
-    calculateGeneralized(accuracy: number): Geometry {
+    calculateGeneralized(tolerance: number): Geometry {
         throw new Error("Method not implemented.");
     }
 
@@ -46,23 +46,23 @@ export class Polygon extends AbstractGeometry {
         throw new Error("Method not implemented.");
     }
 
-    relatePoint(point: PointBuilder, accuracy: number): Relation {
+    relatePoint(point: PointBuilder, tolerance: number): Relation {
         throw new Error("Method not implemented.");
     }
 
-    relate(other: Geometry, accuracy: number): Relation {
+    relate(other: Geometry, tolerance: number): Relation {
         throw new Error("Method not implemented.");
     }
 
-    union(other: Geometry, accuracy: number): Geometry {
+    union(other: Geometry, tolerance: number): Geometry {
         throw new Error("Method not implemented.");
     }
 
-    intersection(other: Geometry, accuracy: number): Geometry | null {
+    intersection(other: Geometry, tolerance: number): Geometry | null {
         throw new Error("Method not implemented.");
     }
 
-    less(other: Geometry, accuracy: number): Geometry | null {
+    less(other: Geometry, tolerance: number): Geometry | null {
         throw new Error("Method not implemented.");
     }
 

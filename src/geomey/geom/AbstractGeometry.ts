@@ -42,21 +42,21 @@ export abstract class AbstractGeometry implements Geometry {
 
     abstract calculateArea(): number
 
-    generalize(accuracy: number): Geometry {
-        if (this.getBounds().isCollapsible(accuracy)){
+    generalize(tolerance: number): Geometry {
+        if (this.getBounds().isCollapsible(tolerance)){
             return this.getCentroid()
         }
-        return this.calculateGeneralized(accuracy)
+        return this.calculateGeneralized(tolerance)
     }
 
-    abstract calculateGeneralized(accuracy: number): Geometry
+    abstract calculateGeneralized(tolerance: number): Geometry
 
     abstract transform(transformer: Transformer): Geometry
-    abstract relatePoint(point: Point, accuracy: number): Relation
-    abstract relate(other: Geometry, accuracy: number): Relation
-    abstract union(other: Geometry, accuracy: number): Geometry
-    abstract intersection(other: Geometry, accuracy: number): Geometry | null
-    abstract less(other: Geometry, accuracy: number): Geometry | null    
+    abstract relatePoint(point: Point, tolerance: number): Relation
+    abstract relate(other: Geometry, tolerance: number): Relation
+    abstract union(other: Geometry, tolerance: number): Geometry
+    abstract intersection(other: Geometry, tolerance: number): Geometry | null
+    abstract less(other: Geometry, tolerance: number): Geometry | null    
     abstract walkPath(pathWalker: PathWalker)
     abstract toWkt(numberFormat?: NumberFormatter): string
     abstract toGeoJson(): any

@@ -11,13 +11,13 @@ export interface Geometry {
     getCentroid(): Point
     getBounds(): Rectangle
     getArea(): number
-    generalize(accuracy: number): Geometry
+    generalize(tolerance: number): Geometry
     transform(transformer: Transformer): Geometry
-    relatePoint(point: PointBuilder, accuracy: number): Relation
-    relate(other: Geometry, accuracy: number): Relation
-    union(other: Geometry, accuracy: number): Geometry
-    intersection(other: Geometry, accuracy: number): Geometry | null
-    less(other: Geometry, accuracy: number): Geometry | null
+    relatePoint(point: PointBuilder, tolerance: number): Relation
+    relate(other: Geometry, tolerance: number): Relation
+    union(other: Geometry, tolerance: number): Geometry
+    intersection(other: Geometry, tolerance: number): Geometry | null
+    less(other: Geometry, tolerance: number): Geometry | null
     walkPath(pathWalker: PathWalker)
     toWkt(numberFormatter?: NumberFormatter): string
     toGeoJson(): any

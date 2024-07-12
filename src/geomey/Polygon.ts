@@ -43,8 +43,8 @@ export class Polygon {
         return area
     }
 
-    generalize(accuracy: number): Polygon | Point {
-        const outerRing = this.outerRing.generalize(accuracy)
+    generalize(tolerance: number): Polygon | Point {
+        const outerRing = this.outerRing.generalize(tolerance)
         if (outerRing instanceof Point) {
             return outerRing
         }
@@ -52,7 +52,7 @@ export class Polygon {
         if (this.holes && this.holes.length) {
             holes = []
             for(const hole of this.holes) {
-                const generalized = hole.generalize(accuracy)
+                const generalized = hole.generalize(tolerance)
                 if (hole instanceof Polygon){
                     holes.push(hole)
                 }

@@ -24,28 +24,6 @@ export class LineString extends AbstractMultiPoint {
         throw new Error("Method not implemented.");
     }
 
-    forEachSegment(visitor: (ax: number, ay: number, bx: number, by: number, index: number) => void | boolean, fromIndexInclusive?: number, toIndexExclusive?: number): number | undefined {
-        const { ordinates } = this
-        let i = (fromIndexInclusive || 0) * 2
-        toIndexExclusive = toIndexExclusive ? (toIndexExclusive * 2) : ordinates.length
-        while(i < toIndexExclusive) {
-            const result = visitor(ordinates[i++], ordinates[i++], fromIndexInclusive)
-            if (result) {
-                return fromIndexInclusive
-            }
-            fromIndexInclusive++
-        }
-    }
-
-    forEachLineSegment(visitor: (lineSegment: LineSegmentBuilder, index: number) => void | boolean, fromIndexInclusive?: number, toIndexExclusive?: number) {
-        const point = { x: undefined, y: undefined }
-        return this.forEach((x, y, index) => {
-            point.x = x
-            point.y = y
-            return visitor(point, index)
-        })
-    }
-
     reverse(){
         const { ordinates } = this
         const reversed = new Array(ordinates.length)
@@ -75,7 +53,7 @@ export class LineString extends AbstractMultiPoint {
         throw new Error("Method not implemented.");
     }
 
-    calculateGeneralized(accuracy: number): Geometry {
+    calculateGeneralized(tolerance: number): Geometry {
         throw new Error("Method not implemented.");
     }
 
@@ -83,23 +61,23 @@ export class LineString extends AbstractMultiPoint {
         throw new Error("Method not implemented.");
     }
 
-    relatePoint(point: PointBuilder, accuracy: number): Relation {
+    relatePoint(point: PointBuilder, tolerance: number): Relation {
         throw new Error("Method not implemented.");
     }
 
-    relate(other: Geometry, accuracy: number): Relation {
+    relate(other: Geometry, tolerance: number): Relation {
         throw new Error("Method not implemented.");
     }
 
-    union(other: Geometry, accuracy: number): Geometry {
+    union(other: Geometry, tolerance: number): Geometry {
         throw new Error("Method not implemented.");
     }
 
-    intersection(other: Geometry, accuracy: number): Geometry | null {
+    intersection(other: Geometry, tolerance: number): Geometry | null {
         throw new Error("Method not implemented.");
     }
 
-    less(other: Geometry, accuracy: number): Geometry | null {
+    less(other: Geometry, tolerance: number): Geometry | null {
         throw new Error("Method not implemented.");
     }
 

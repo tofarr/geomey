@@ -1,4 +1,4 @@
-import { isNaNOrInfinite, match } from "../ordinate";
+import { isNaNOrInfinite, match } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../path/NumberFormatter";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
@@ -49,7 +49,7 @@ export class Point implements Geometry {
         return 0
     }
 
-    generalize(accuracy: number): Point {
+    generalize(tolerance: number): Point {
         return this
     }
 
@@ -60,20 +60,20 @@ export class Point implements Geometry {
         return Point.valueOf(builder.x, builder.y)
     }
 
-    relatePoint(point: PointBuilder, accuracy: number): Relation {
-        return isPointsTouching(this.x, this.y, point.x, point.y, accuracy) ? TOUCH : DISJOINT
+    relatePoint(point: PointBuilder, tolerance: number): Relation {
+        return pointsMatch(this.x, this.y, point.x, point.y, tolerance) ? TOUCH : DISJOINT
     }
 
-    relate(other: Geometry, accuracy: number): Relation {
-        return flipAB(other.relatePoint(this, accuracy))
+    relate(other: Geometry, tolerance: number): Relation {
+        return flipAB(other.relatePoint(this, tolerance))
     }
 
-    union(other: Geometry, accuracy: number): Geometry {
-        if (!(other.relatePoint(this, accuracy) & B_OUTSIDE_A)) {
+    union(other: Geometry, tolerance: number): Geometry {
+        if (!(other.relatePoint(this, tolerance) & B_OUTSIDE_A)) {
             return other
         }
         const { points, lineStrings, polygons } = other.toMultiGeometry()
-        const ordinates = points ? points.ordinates.slice() : []
+        const ordinates = points ? points.coordinates.slice() : []
         ordinates.push(this.x, this.y)
         const result = MultiGeometry.valueOf(
             MultiPoint.valueOf(ordinates), lineStrings, polygons
@@ -81,15 +81,15 @@ export class Point implements Geometry {
         return result
     }
 
-    intersection(other: Geometry, accuracy: number): Geometry {
-        if (!(other.relatePoint(this, accuracy) & B_OUTSIDE_A)) {
+    intersection(other: Geometry, tolerance: number): Geometry {
+        if (!(other.relatePoint(this, tolerance) & B_OUTSIDE_A)) {
             return other
         }
         return null
     }
 
-    less(other: Geometry, accuracy: number): Geometry {
-        return this.intersection(other, accuracy)
+    less(other: Geometry, tolerance: number): Geometry {
+        return this.intersection(other, tolerance)
     }
 
     walkPath(pathWalker: PathWalker) {
@@ -120,6 +120,6 @@ export class Point implements Geometry {
 export const ORIGIN = Point.unsafeValueOf(0, 0)
 
 
-export function isPointsTouching(ax: number, ay: number, bx: number, by: number, accuracy: number): boolean {
-    return match(ax, bx, accuracy) && match(ay, by, accuracy)
+export function pointsMatch(ax: number, ay: number, bx: number, by: number, tolerance: number): boolean {
+    return match(ax, bx, tolerance) && match(ay, by, tolerance)
 }

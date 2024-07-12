@@ -1,14 +1,16 @@
-import { comparePointsForSort, isNaNOrInfinite } from "../ordinate"
+import { comparePointsForSort, isNaNOrInfinite } from "../coordinate"
 import { NUMBER_FORMATTER, NumberFormatter } from "../path/NumberFormatter"
+import { normalizeValue } from "../tolerance"
 import { Transformer } from "../transformer/Transformer"
 import { Geometry } from "./Geometry"
 import { InvalidGeometryError } from "./InvalidGeometryError"
+import { LineSegmentBuilder } from "./LineSegmentBuilder"
 import { LineString } from "./LineString"
 import { MultiGeometry } from "./MultiGeometry"
-import { Point, isPointsTouching } from "./Point"
-import { PointBuilder } from "./PointBuilder"
+import { Point, pointsMatch } from "./Point"
+import { PointBuilder, copyToPoint } from "./PointBuilder"
 import { Rectangle } from "./Rectangle"
-import { A_OUTSIDE_B, B_OUTSIDE_A, Relation, TOUCH } from "./Relation"
+import { A_OUTSIDE_B, B_OUTSIDE_A, Relation, TOUCH, flipAB } from "./Relation"
 
 
 
@@ -64,8 +66,8 @@ export class LineSegment implements Geometry {
         return this
     }
 
-    generalize(accuracy: number): Geometry {
-        if(this.getDx() <= accuracy && this.getDy() <= accuracy){
+    generalize(tolerance: number): Geometry {
+        if(this.getDx() <= tolerance && this.getDy() <= tolerance){
             return this.getCentroid()
         }
         return this
@@ -82,33 +84,46 @@ export class LineSegment implements Geometry {
         return LineSegment.valueOf(ax, ay, point.x, point.y)
     }
 
-    relatePoint(point: PointBuilder, accuracy: number): Relation {
+    relatePoint(point: PointBuilder, tolerance: number): Relation {
         const { ax, ay, bx, by } = this
         const { x, y } = point
         const dist = getPerpendicularDistance(x, y, ax, ay, bx, by)
-        if (dist > accuracy){
+        if (dist > tolerance){
             return (A_OUTSIDE_B | B_OUTSIDE_A) as Relation
         }
         let result = TOUCH
-        if (!isPointsTouching(ax, ay, x, y, accuracy) || !isPointsTouching(bx, by, x, y, accuracy)) {
+        if (!pointsMatch(ax, ay, x, y, tolerance) || !pointsMatch(bx, by, x, y, tolerance)) {
             result |= A_OUTSIDE_B
         }
         return result
     }
 
-    relate(other: Geometry, accuracy: number): Relation {
+    relate(other: Geometry, tolerance: number): Relation {
+        // If the length of this line segment is less than tolerance, test as a point.
+        if(((this.getDx() ** 2) + (this.getDy() ** 2)) < (tolerance ** 2)) {
+            return flipAB(other.relatePoint(this.getCentroid(), tolerance))
+        }
+
+        const multiGeometry = other.toMultiGeometry() // Convert to multi geometry
+        // Test against points for touch
+        // Test against linestrings 
+        // Test against polygons for comntainment 
         throw new Error("Method not implemented.");
     }
 
-    union(other: Geometry, accuracy: number): Geometry {
+    union(other: Geometry, tolerance: number): Geometry {
         throw new Error("Method not implemented.");
     }
 
-    intersection(other: Geometry, accuracy: number): Geometry | null {
+    intersectionLine(other: LineSegment, tolerance: number, segment: boolean = true): Point | null {
+        return intersectionLine(this, other, segment, tolerance)
+    }
+
+    intersection(other: Geometry, tolerance: number): Geometry | null {
         throw new Error("Method not implemented.");
     }
 
-    less(other: Geometry, accuracy: number): Geometry | null {
+    less(other: Geometry, tolerance: number): Geometry | null {
         throw new Error("Method not implemented.");
     }
     
@@ -145,4 +160,46 @@ export function getPerpendicularDistance(pointX: number, pointY: number, lineSta
     const bottom = Math.hypot(lineStartX - lineEndX, lineStartY - lineEndY);
     const height = area / bottom * 2;
     return height;
+}
+
+
+function getDenom(
+    iax: number, iay: number, ibx: number, iby: number,
+    jax: number, jay: number, jbx: number, jby: number,
+): number {
+    return (jby - jay) * (ibx - iax) - (jbx - jax) * (iby - iay);
+}
+
+
+export function intersectionLine(i: LineSegmentBuilder, j: LineSegmentBuilder, segment: boolean, tolerance: number): Point | null {
+    let { ax: iax, ay: iay, bx: ibx, by: iby, } = i
+    let { ax: jax, ay: jay, bx: jbx, by: jby, } = j
+
+    const denom = getDenom(iax, iay, ibx, iby, jax, jay, jbx, jby)
+    if (denom == 0.0) { // Lines are parallel.
+        return null;
+    }
+    const ui = ((jbx - jax) * (iay - jay) - (jby - jay) * (iax - jax)) / denom; // projected distance along i and j
+    const uj = ((ibx - iax) * (iay - jay) - (iby - iay) * (iax - jax)) / denom;
+    if(segment && (ui < 0 || ui > 1 || uj < 0 || uj > 1)) {
+        return null
+    }
+    let x, y;
+    
+    if (iax == ibx) {
+        x = iax;
+    } else if (jax == jbx) {
+        x = jax;
+    } else {
+        x = (ui * (ibx - iax)) + iax;
+    }
+    if (iay == iby) {
+        y = iay;
+    } else if (jay == jby) {
+        y = jay;
+    } else {
+        y = (ui * (iby - iay)) + iay;
+    }
+
+    return Point.valueOf(normalizeValue(x, tolerance), normalizeValue(y, tolerance))
 }
