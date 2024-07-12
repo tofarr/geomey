@@ -1,7 +1,8 @@
+import { match } from "./tolerance"
 
 
-export function isNaNOrInfinite(...ordinates: ReadonlyArray<number>) {
-    for(const n of ordinates) {
+export function isNaNOrInfinite(...coordinates: ReadonlyArray<number>) {
+    for(const n of coordinates) {
         if(Number.isNaN(n) || !Number.isFinite(n)) {
             return true
         }
@@ -10,53 +11,78 @@ export function isNaNOrInfinite(...ordinates: ReadonlyArray<number>) {
 }
 
 
-export function match(a: number, b: number, tolerance: number): boolean {
-    return Math.abs(a - b) <= tolerance
-}
-
-
 export function comparePointsForSort(ax: number, ay: number, bx: number, by: number) {
     return (ax - bx) || (ay - by)
 }
 
 
-function swap(ordinates: number[], i: number, j: number) {
+export type Comparator = (ax: number, ay: number, bx: number, by: number) => number
+
+
+function swap(coordinates: number[], i: number, j: number) {
     for (let n = 0; n < 1; n++) {
-        let tmp = ordinates[i]
-        ordinates[i] = ordinates[j]
-        ordinates[j] = tmp
+        let tmp = coordinates[i]
+        coordinates[i] = coordinates[j]
+        coordinates[j] = tmp
         i++
         j++
     }
 }
 
-function partition(ordinates: number[], low: number, high: number): number {
-    const pivotX = ordinates[high];
-    let pivotY = ordinates[high+1]
+function partition(coordinates: number[], low: number, high: number, comparator: Comparator): number {
+    const pivotX = coordinates[high];
+    let pivotY = coordinates[high+1]
     let i = low - 2;
     let j = low
     while (j < high) {
-        const jx = ordinates[j++]
-        const jy = ordinates[j++]
-        if (comparePointsForSort(jx, jy, pivotX, pivotY) < 0) {
+        const jx = coordinates[j++]
+        const jy = coordinates[j++]
+        if (comparator(jx, jy, pivotX, pivotY) < 0) {
             i+=2;
-            swap(ordinates, i, j);
+            swap(coordinates, i, j);
         }
     }
-    swap(ordinates, i + 2, high);
+    swap(coordinates, i + 2, high);
     return i + 1;
 }
 
 
-function quicksort(ordinates: number[], fromIndex: number, toIndex: number) {
+function quicksort(coordinates: number[], fromIndex: number, toIndex: number, comparator: Comparator) {
     if (fromIndex < toIndex) {
-        const partitionIndex = partition(ordinates, fromIndex, toIndex);
-        quicksort(ordinates, fromIndex, partitionIndex - 2);
-        quicksort(ordinates, partitionIndex + 2, toIndex);
+        const partitionIndex = partition(coordinates, fromIndex, toIndex, comparator);
+        quicksort(coordinates, fromIndex, partitionIndex - 2, comparator);
+        quicksort(coordinates, partitionIndex + 2, toIndex, comparator);
     }
 }
 
 
-export function sortCoordinates(ordinates: number[]) {
-    quicksort(ordinates, 0, ordinates.length - 2);
+export function sortCoordinates(coordinates: number[], comparator?: Comparator) {
+    comparator ||= comparePointsForSort
+    quicksort(coordinates, 0, coordinates.length - 2, comparator);
+}
+
+
+export function appendChanged(x: number, y: number, tolerance: number, coordinates: number[]) {
+    if(!coordinates.length){
+        coordinates.push(x, y)
+        return
+    }
+    const { length } = coordinates
+    if(match(x, coordinates[length-2], tolerance) && match(y, coordinates[length-1], tolerance)) {
+        coordinates.push(x, y)
+    }
+}
+
+
+export function coordinatesEqual(i: ReadonlyArray<number>, j: ReadonlyArray<number>) {
+    if(i.length !== j.length){
+        return false
+    }
+    let n = i.length
+    while(--n){
+        if (i[n] != j[n]){
+            return false
+        }
+    }
+    return true
 }

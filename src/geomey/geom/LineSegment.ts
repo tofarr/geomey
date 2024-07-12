@@ -1,6 +1,6 @@
 import { comparePointsForSort, isNaNOrInfinite } from "../coordinate"
 import { NUMBER_FORMATTER, NumberFormatter } from "../path/NumberFormatter"
-import { normalizeValue } from "../tolerance"
+import { normalize } from "../tolerance"
 import { Transformer } from "../transformer/Transformer"
 import { Geometry } from "./Geometry"
 import { InvalidGeometryError } from "./InvalidGeometryError"
@@ -11,7 +11,6 @@ import { Point, pointsMatch } from "./Point"
 import { PointBuilder, copyToPoint } from "./PointBuilder"
 import { Rectangle } from "./Rectangle"
 import { A_OUTSIDE_B, B_OUTSIDE_A, Relation, TOUCH, flipAB } from "./Relation"
-
 
 
 export class LineSegment implements Geometry {
@@ -57,6 +56,10 @@ export class LineSegment implements Geometry {
 
     getDy() {
         return this.by - this.ay
+    }
+
+    getSlope() {
+        return this.getDy() / this.getDx()
     }
 
     normalize(){
@@ -155,9 +158,9 @@ export class LineSegment implements Geometry {
 }
 
 
-export function getPerpendicularDistance(pointX: number, pointY: number, lineStartX: number, lineStartY: number, lineEndX: number, lineEndY: number): number {
-    const area = Math.abs(0.5 * (lineStartX * lineEndY + lineEndX * pointY + pointX * lineStartY - lineEndX * lineStartY - pointX * lineEndY - lineStartX * pointY));
-    const bottom = Math.hypot(lineStartX - lineEndX, lineStartY - lineEndY);
+export function getPerpendicularDistance(x: number, y: number, ax: number, ay: number, bx: number, by: number): number {
+    const area = 0.5 * (ax * by + bx * y + x * ay - bx * ay - x * by - ax * y);
+    const bottom = Math.hypot(ax - bx, ay - by);
     const height = area / bottom * 2;
     return height;
 }
@@ -201,5 +204,18 @@ export function intersectionLine(i: LineSegmentBuilder, j: LineSegmentBuilder, s
         y = (ui * (iby - iay)) + iay;
     }
 
-    return Point.valueOf(normalizeValue(x, tolerance), normalizeValue(y, tolerance))
+    if (pointsMatch(x, y, iax, iay, tolerance)) {
+        [x, y] = [iax, iay]
+    } else if (pointsMatch(x, y, ibx, iby, tolerance)) {
+        [x, y] = [ibx, iby]
+    } else if (pointsMatch(x, y, jax, jay, tolerance)) {
+        [x, y] = [jax, jay]
+    } else if (pointsMatch(x, y, jbx, jby, tolerance)) {
+        [x, y] = [jbx, jby]
+    } else {
+        x = normalize(x, tolerance)
+        y = normalize(y, tolerance)
+    }
+
+    return Point.valueOf(x, y)
 }

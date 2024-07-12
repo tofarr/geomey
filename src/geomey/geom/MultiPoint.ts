@@ -4,11 +4,9 @@ import { Transformer } from "../transformer/Transformer";
 import { AbstractMultiPoint } from "./AbstractMultiPoint";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
-import { LineString } from "./LineString";
 import { MultiGeometry } from "./MultiGeometry";
 import { Point, pointsMatch } from "./Point";
 import { PointBuilder } from "./PointBuilder";
-import { Polygon } from "./Polygon";
 import { A_OUTSIDE_B, B_OUTSIDE_A, DISJOINT, Relation, TOUCH, flipAB } from "./Relation";
 
 

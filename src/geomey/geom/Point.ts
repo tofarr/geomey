@@ -1,5 +1,6 @@
-import { isNaNOrInfinite, match } from "../coordinate";
+import { isNaNOrInfinite } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../path/NumberFormatter";
+import { match } from "../tolerance";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
@@ -122,4 +123,9 @@ export const ORIGIN = Point.unsafeValueOf(0, 0)
 
 export function pointsMatch(ax: number, ay: number, bx: number, by: number, tolerance: number): boolean {
     return match(ax, bx, tolerance) && match(ay, by, tolerance)
+}
+
+
+export function distSq(ax: number, ay: number, bx: number, by: number): number{
+    return (bx - ax) ** 2 + (by - ay) ** 2
 }

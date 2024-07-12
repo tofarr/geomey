@@ -1,67 +1,64 @@
+import { coordinatesEqual } from "../coordinate";
 import { NumberFormatter } from "../path/NumberFormatter";
 import { Transformer } from "../transformer/Transformer";
-import { AbstractMultiPoint } from "./AbstractMultiPoint";
+import { AbstractLineString, douglasPeucker } from "./AbstractLineString";
 import { Geometry } from "./Geometry";
+import { intersectionLine } from "./LineSegment";
 import { MultiGeometry } from "./MultiGeometry";
-import { MultiPoint } from "./MultiPoint";
-import { Point } from "./Point";
 import { PointBuilder } from "./PointBuilder";
-import { Rectangle } from "./Rectangle";
 import { Relation } from "./Relation";
 
 
-export class LineString extends AbstractMultiPoint {
+export class LineString extends AbstractLineString {
 
-    private constructor(ordinates: ReadonlyArray<number>) {
+    private selfIntersectionTolerance: number
+
+    private constructor(ordinates: ReadonlyArray<number>, selfIntersectionTolerance: number) {
         super(ordinates)
+        this.selfIntersectionTolerance = selfIntersectionTolerance
     }
 
-    static valueOf(ordinates: ReadonlyArray<number>) : LineString {
+    static valueOf(coordinates: ReadonlyArray<number>) : LineString {
         throw new Error("Method not implemented.");
     }
 
-    static unsafeValueOf(ordinates: ReadonlyArray<number>) : LineString {
+    static unsafeValueOf(coordinates: ReadonlyArray<number>) : LineString {
         throw new Error("Method not implemented.");
     }
 
     reverse(){
-        const { ordinates } = this
-        const reversed = new Array(ordinates.length)
-        let i = ordinates.length
-        while(i) {
-            const y = ordinates[--i]
-            const x = ordinates[--i]
-            reversed.push(x, y)
+        return new LineString(this.reverseCoordinates(), this.selfIntersectionTolerance)
+    }
+
+    getExplicitSelfIntersections(tolerance: number) {
+        // One of the first things any operation does is to get the linestring with
+        // explicit points of self intersection. So we make this as fast as possible
+        if (this.selfIntersectionTolerance >= tolerance){
+            return this
         }
-        return new LineString(reversed)
-    }
-
-    normalize(){
-        // make any points of self intersection explicit.
-        // if ring
-            // rotate so first is min
-        // else
-            // reverse so first is min
-        throw new Error("Method not implemented.");
-    }
-
-    isRing() {
-        throw new Error("Method not implemented.");
-    }
-
-    isSelfIntersecting() {
-        throw new Error("Method not implemented.");
+        const newCoordinates = this.getCoordinatesWithSelfIntersection(tolerance)
+        if(coordinatesEqual(this.coordinates, newCoordinates)){
+            this.selfIntersectionTolerance = tolerance
+            return this
+        }
+        return new LineString(newCoordinates, tolerance)
     }
 
     calculateGeneralized(tolerance: number): Geometry {
-        throw new Error("Method not implemented.");
+        return new LineString(douglasPeucker(this.coordinates, tolerance), 0)
     }
 
-    transform(transformer: Transformer): Geometry {
-        throw new Error("Method not implemented.");
+    transform(transformer: Transformer): LineString {
+        const coordinates = []
+        this.forEachPoint((point) => {
+            transformer(point)
+            coordinates.push(point.x, point.y)
+        })
+        return LineString.valueOf(coordinates)
     }
 
     relatePoint(point: PointBuilder, tolerance: number): Relation {
+        // We need an "Is point on line tolerance method
         throw new Error("Method not implemented.");
     }
 
@@ -82,15 +79,9 @@ export class LineString extends AbstractMultiPoint {
     }
 
     walkPath(pathWalker: PathWalker) {
-        throw new Error("Method not implemented.");
-    }
-
-    toWkt(numberFormat?: NumberFormatter): string {
-        throw new Error("Method not implemented.");
-    }
-
-    toGeoJson(): any {
-        throw new Error("Method not implemented.");
+        const { coordinates } = this
+        pathWalker.moveTo(coordinates[0], coordinates[1])
+        this.forEachCoordinate(pathWalker.lineTo, 1)
     }
 
     toMultiGeometry(): MultiGeometry {

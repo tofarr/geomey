@@ -6,7 +6,9 @@ import { MultiGeometry } from "./MultiGeometry";
 import { PointBuilder } from "./PointBuilder";
 import { Relation } from "./Relation";
 import { LineSegmentBuilder, copyToLineSegment } from "./LineSegmentBuilder";
-import { getPerpendicularDistance } from "./LineSegment";
+import { getPerpendicularDistance, intersectionLine } from "./LineSegment";
+import { appendChanged, sortCoordinates } from "../coordinate";
+import { distSq } from "./Point";
 
 
 export abstract class AbstractLineString extends AbstractMultiPoint {
@@ -50,8 +52,43 @@ export abstract class AbstractLineString extends AbstractMultiPoint {
         return reversed
     }
 
-    isSelfIntersecting() {
-        throw new Error("Method not implemented.");
+    isSelfIntersecting(tolerance: number) {
+        let result = false
+        this.forEachLineSegment((i, index) => {
+            return this.forEachLineSegment((j) => {
+                const intersection = intersectionLine(i, j, true, tolerance)
+                result = !!intersection
+                return !intersection
+            })
+        })
+        return result
+    }
+
+    getCoordinatesWithSelfIntersection(tolerance: number){
+        let coordinates = []
+        let intersections = []
+        this.forEachLineSegment((i, index) => {
+            intersections.length = 0
+            this.forEachLineSegment((j) => {
+                const intersection = intersectionLine(i, j, true, tolerance)
+                if (intersection) {
+                    appendChanged(intersection.x, intersection.y, tolerance, intersections)
+                }
+            })
+            const { length } = intersections
+            if (length > 2) {
+                const { ax: iax, ay: iay } = i
+                sortCoordinates(intersections, (ax, ay, bx, by) => {
+                    return distSq(iax, iay, ax, ay) - distSq(iax, iay, bx, by)
+                })
+            }
+            index = 0
+            
+            while(index < length){
+                appendChanged(intersections[index++], intersections[index++], tolerance, coordinates)
+            }
+        })
+        return coordinates
     }
 
     toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
@@ -90,7 +127,7 @@ export abstract class AbstractLineString extends AbstractMultiPoint {
 }
 
 
-function partition(coordinates: number[], startIndex: number, endIndex: number, tolerance: number, target: number[]) {
+function partition(coordinates: ReadonlyArray<number>, startIndex: number, endIndex: number, tolerance: number, target: number[]) {
     const ax = coordinates[startIndex]
     const ay = coordinates[startIndex+1]
     if (endIndex - startIndex < 4) {
@@ -103,7 +140,7 @@ function partition(coordinates: number[], startIndex: number, endIndex: number, 
     const by = coordinates[endIndex+1]
     let index = startIndex+2
     while(index < endIndex){
-        const dist = getPerpendicularDistance(coordinates[index++], coordinates[index++], ax, ay, bx, by)
+        const dist = Math.abs(getPerpendicularDistance(coordinates[index++], coordinates[index++], ax, ay, bx, by))
         if (dist > maxDist) {
             maxDist = dist
             maxIndex = index
@@ -118,7 +155,7 @@ function partition(coordinates: number[], startIndex: number, endIndex: number, 
 }
 
 
-export function douglasPeucker(coordinates: number[], tolerance: number){
+export function douglasPeucker(coordinates: ReadonlyArray<number>, tolerance: number): number[]{
     const target = []
     partition(coordinates, 0, coordinates.length - 2, tolerance, target)
     target.push(coordinates[coordinates.length-2], coordinates[coordinates.length-1])
