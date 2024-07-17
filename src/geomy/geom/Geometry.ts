@@ -1,11 +1,4 @@
-import { LineSegmentConsumer, LineStringConsumer, LinearRingConsumer, PointConsumer } from "../consumer"
-import { Transformer } from "../transformer/Transformer"
-import { LineSegmentBuilder } from "./LineSegmentBuilder"
-import { Point } from "./Point"
-import { PointBuilder } from "./PointBuilder"
-import { Rectangle } from "./Rectangle"
-import { Relation } from "./Relation"
-
+import { LineSegmentConsumer, LineStringConsumer, LinearRingConsumer, PointConsumer } from "../coordinate"
 
 export interface Geometry {
     getCentroid(): Point

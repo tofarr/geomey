@@ -1,9 +1,7 @@
 import { coordinatesEqual } from "../coordinate";
-import { NumberFormatter } from "../path/NumberFormatter";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractLineString, douglasPeucker } from "./AbstractLineString";
 import { Geometry } from "./Geometry";
-import { intersectionLine } from "./LineSegment";
 import { MultiGeometry } from "./MultiGeometry";
 import { PointBuilder } from "./PointBuilder";
 import { Relation } from "./Relation";
@@ -58,7 +56,7 @@ export class LineString extends AbstractLineString {
     }
 
     relatePoint(point: PointBuilder, tolerance: number): Relation {
-        // We need an "Is point on line tolerance method
+        We need an "Is point on line tolerance method
         throw new Error("Method not implemented.");
     }
 

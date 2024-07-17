@@ -1,8 +1,10 @@
 import { NumberFormatter } from "../path/NumberFormatter";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
+import { LineSegmentBuilder } from "./LineSegmentBuilder";
 import { MultiGeometry } from "./MultiGeometry";
 import { Point } from "./Point";
+import { PointBuilder } from "./PointBuilder";
 import { Rectangle } from "./Rectangle";
 import { Relation } from "./Relation";
 
@@ -52,7 +54,8 @@ export abstract class AbstractGeometry implements Geometry {
     abstract calculateGeneralized(tolerance: number): Geometry
 
     abstract transform(transformer: Transformer): Geometry
-    abstract relatePoint(point: Point, tolerance: number): Relation
+    abstract relatePoint(point: PointBuilder, tolerance: number): Relation
+    abstract relateLineSegment(lineSegment: LineSegmentBuilder, tolerance: number): Relation
     abstract relate(other: Geometry, tolerance: number): Relation
     abstract union(other: Geometry, tolerance: number): Geometry
     abstract intersection(other: Geometry, tolerance: number): Geometry | null

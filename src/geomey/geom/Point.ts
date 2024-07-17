@@ -4,6 +4,8 @@ import { match } from "../tolerance";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
+import { relateLineSegmentToPoint } from "./LineSegment";
+import { LineSegmentBuilder } from "./LineSegmentBuilder";
 import { MultiGeometry } from "./MultiGeometry";
 import { MultiPoint } from "./MultiPoint";
 import { PointBuilder } from "./PointBuilder";
@@ -63,6 +65,10 @@ export class Point implements Geometry {
 
     relatePoint(point: PointBuilder, tolerance: number): Relation {
         return pointsMatch(this.x, this.y, point.x, point.y, tolerance) ? TOUCH : DISJOINT
+    }
+
+    relateLineSegment(lineSegment: LineSegmentBuilder, tolerance: number): Relation {
+        return relateLineSegmentToPoint(lineSegment, this.x, this.y, tolerance)
     }
 
     relate(other: Geometry, tolerance: number): Relation {

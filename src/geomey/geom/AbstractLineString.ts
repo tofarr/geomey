@@ -6,7 +6,7 @@ import { MultiGeometry } from "./MultiGeometry";
 import { PointBuilder } from "./PointBuilder";
 import { Relation } from "./Relation";
 import { LineSegmentBuilder, copyToLineSegment } from "./LineSegmentBuilder";
-import { getPerpendicularDistance, intersectionLine } from "./LineSegment";
+import { intersectionLine } from "./LineSegment";
 import { appendChanged, sortCoordinates } from "../coordinate";
 import { distSq } from "./Point";
 

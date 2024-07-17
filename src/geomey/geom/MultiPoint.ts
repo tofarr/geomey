@@ -4,6 +4,8 @@ import { Transformer } from "../transformer/Transformer";
 import { AbstractMultiPoint } from "./AbstractMultiPoint";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
+import { relateLineSegmentToPoint } from "./LineSegment";
+import { LineSegmentBuilder } from "./LineSegmentBuilder";
 import { MultiGeometry } from "./MultiGeometry";
 import { Point, pointsMatch } from "./Point";
 import { PointBuilder } from "./PointBuilder";
@@ -104,6 +106,18 @@ export class MultiPoint extends AbstractMultiPoint {
             result = DISJOINT
         }
         return result
+    }
+
+    relateLineSegment(lineSegment: LineSegmentBuilder, tolerance: number): Relation {
+        let touch = 0
+        let bOutsideA = 0
+        this.forEachCoordinate((x, y) => {
+            const relation = relateLineSegmentToPoint(lineSegment, x, y, tolerance)
+            touch ||= (relation & TOUCH)
+            bOutsideA ||= (relation & A_OUTSIDE_B)
+            return !(touch || bOutsideA)
+        })
+        return (touch | bOutsideA) as Relation
     }
 
     relate(other: Geometry, tolerance: number): Relation {
