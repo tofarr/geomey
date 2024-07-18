@@ -7,9 +7,10 @@ export interface PointBuilder{
 }
 
 
-export function copyToPoint(x: number, y: number, target: PointBuilder) {
+export function copyToPoint(x: number, y: number, target: PointBuilder): PointBuilder {
     target.x = x
     target.y = y
+    return target
 }
 
 

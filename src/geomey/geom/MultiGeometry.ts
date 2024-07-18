@@ -47,7 +47,7 @@ export class MultiGeometry extends AbstractGeometry {
         throw new Error("Method not implemented.");
     }
 
-    calculateGeneralized(tolerance: number): Geometry {
+    calculateGeneralized(tolerance: Tolerance): Geometry {
         throw new Error("Method not implemented.");
     }
 
@@ -55,27 +55,27 @@ export class MultiGeometry extends AbstractGeometry {
         throw new Error("Method not implemented.");
     }
 
-    relatePoint(point: PointBuilder, tolerance: number): Relation {
+    relatePoint(point: PointBuilder, tolerance: Tolerance): Relation {
         throw new Error("Method not implemented.");
     }
 
-    relate(other: Geometry, tolerance: number): Relation {
+    relate(other: Geometry, tolerance: Tolerance): Relation {
         throw new Error("Method not implemented.");
     }
 
-    union(other: Geometry, tolerance: number): Geometry {
+    union(other: Geometry, tolerance: Tolerance): Geometry {
         throw new Error("Method not implemented.");
     }
 
-    intersection(other: Geometry, tolerance: number): Geometry | null {
+    intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
         throw new Error("Method not implemented.");
     }
 
-    less(other: Geometry, tolerance: number): Geometry | null {
+    less(other: Geometry, tolerance: Tolerance): Geometry | null {
         throw new Error("Method not implemented.");
     }
 
-    walkPath(pathWalker: PathWalker) {
+    walkPath(pathWalker: PathWalker): void {
         throw new Error("Method not implemented.");
     }
 

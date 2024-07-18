@@ -33,7 +33,7 @@ export class MultiPoint extends AbstractMultiPoint {
         return new MultiPoint(ordinates)
     }
 
-    calculateGeneralized(tolerance: number): MultiPoint {
+    calculateGeneralized(tolerance: Tolerance): MultiPoint {
         const { minX, minY, maxX, maxY } = this.getBounds()
         const clusters = new Set<number>()
         const columns = Math.ceil((maxX - minX) / tolerance)
@@ -88,7 +88,7 @@ export class MultiPoint extends AbstractMultiPoint {
         return MultiPoint.valueOf(coordinates)
     }
 
-    relatePoint(point: PointBuilder, tolerance: number): Relation {
+    relatePoint(point: PointBuilder, tolerance: Tolerance): Relation {
         const { x, y } = point
         let result: Relation = 0
         this.forEachCoordinate((ax, ay) => {
@@ -108,7 +108,7 @@ export class MultiPoint extends AbstractMultiPoint {
         return result
     }
 
-    relateLineSegment(lineSegment: LineSegmentBuilder, tolerance: number): Relation {
+    relateLineSegment(lineSegment: LineSegmentBuilder, tolerance: Tolerance): Relation {
         let touch = 0
         let bOutsideA = 0
         this.forEachCoordinate((x, y) => {
@@ -120,7 +120,7 @@ export class MultiPoint extends AbstractMultiPoint {
         return (touch | bOutsideA) as Relation
     }
 
-    relate(other: Geometry, tolerance: number): Relation {
+    relate(other: Geometry, tolerance: Tolerance): Relation {
         let result: Relation = 0
         this.forEachPoint((point) => {
             result |= other.relatePoint(point, tolerance)
@@ -133,7 +133,7 @@ export class MultiPoint extends AbstractMultiPoint {
         return flipAB(result as Relation)
     }
 
-    union(other: Geometry, tolerance: number): Geometry {
+    union(other: Geometry, tolerance: Tolerance): Geometry {
         const coordinates = []
         this.getUnique().forEachPoint((point) => {
             if (other.relatePoint(point, tolerance) === DISJOINT) {
@@ -156,7 +156,7 @@ export class MultiPoint extends AbstractMultiPoint {
         ).normalize()
     }
     
-    intersection(other: Geometry, tolerance: number): Geometry | null {
+    intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
         const coordinates = []
         this.forEachPoint((point) => {
             if (other.relatePoint(point, tolerance) != (A_OUTSIDE_B | B_OUTSIDE_A)) {
@@ -172,11 +172,11 @@ export class MultiPoint extends AbstractMultiPoint {
         return new MultiPoint(coordinates)
     }
 
-    less(other: Geometry, tolerance: number): Geometry | null {
+    less(other: Geometry, tolerance: Tolerance): Geometry | null {
         return this.intersection(other, tolerance)
     }
 
-    walkPath(pathWalker: PathWalker) {
+    walkPath(pathWalker: PathWalker): void {
         this.forEachCoordinate((x, y) => {
             pathWalker.moveTo(x, y)
             pathWalker.lineTo(x, y)

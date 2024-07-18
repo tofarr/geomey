@@ -52,7 +52,7 @@ export abstract class AbstractLineString extends AbstractMultiPoint {
         return reversed
     }
 
-    isSelfIntersecting(tolerance: number) {
+    isSelfIntersecting(tolerance: Tolerance) {
         let result = false
         this.forEachLineSegment((i, index) => {
             return this.forEachLineSegment((j) => {
@@ -64,7 +64,7 @@ export abstract class AbstractLineString extends AbstractMultiPoint {
         return result
     }
 
-    getCoordinatesWithSelfIntersection(tolerance: number){
+    getCoordinatesWithSelfIntersection(tolerance: Tolerance){
         let coordinates = []
         let intersections = []
         this.forEachLineSegment((i, index) => {
@@ -116,18 +116,18 @@ export abstract class AbstractLineString extends AbstractMultiPoint {
     }
 
     abstract transform(transformer: Transformer): Geometry
-    abstract calculateGeneralized(tolerance: number): Geometry
-    abstract relatePoint(point: PointBuilder, tolerance: number): Relation
-    abstract relate(other: Geometry, tolerance: number): Relation
-    abstract union(other: Geometry, tolerance: number): Geometry
-    abstract intersection(other: Geometry, tolerance: number): Geometry | null
-    abstract less(other: Geometry, tolerance: number): Geometry | null
+    abstract calculateGeneralized(tolerance: Tolerance): Geometry
+    abstract relatePoint(point: PointBuilder, tolerance: Tolerance): Relation
+    abstract relate(other: Geometry, tolerance: Tolerance): Relation
+    abstract union(other: Geometry, tolerance: Tolerance): Geometry
+    abstract intersection(other: Geometry, tolerance: Tolerance): Geometry | null
+    abstract less(other: Geometry, tolerance: Tolerance): Geometry | null
     abstract walkPath(pathWalker: PathWalker)
     abstract toMultiGeometry(): MultiGeometry
 }
 
 
-function partition(coordinates: ReadonlyArray<number>, startIndex: number, endIndex: number, tolerance: number, target: number[]) {
+function partition(coordinates: ReadonlyArray<number>, startIndex: number, endIndex: number, tolerance: Tolerance, target: number[]) {
     const ax = coordinates[startIndex]
     const ay = coordinates[startIndex+1]
     if (endIndex - startIndex < 4) {
@@ -155,7 +155,7 @@ function partition(coordinates: ReadonlyArray<number>, startIndex: number, endIn
 }
 
 
-export function douglasPeucker(coordinates: ReadonlyArray<number>, tolerance: number): number[]{
+export function douglasPeucker(coordinates: ReadonlyArray<number>, tolerance: Tolerance): number[]{
     const target = []
     partition(coordinates, 0, coordinates.length - 2, tolerance, target)
     target.push(coordinates[coordinates.length-2], coordinates[coordinates.length-1])

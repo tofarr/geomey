@@ -1,8 +1,30 @@
+import { isNaNOrInfinite } from "./coordinate"
 
-export function match(a: number, b: number, tolerance: number): boolean {
-    return Math.abs(a - b) <= tolerance
+
+/**
+ *  A lot of spatial operations require a tolerance for inaccuracy. One reason for this is to
+ * compensate for rounding errors. (For example, when determining of a point lies "on" a line)
+ */
+export class Tolerance {
+    readonly tolerance: number
+
+    constructor(tolerance: number){
+        if (isNaNOrInfinite(tolerance) || tolerance <= 0) {
+            throw new Error(`Invalid Tolerance: ${tolerance}`)
+        }
+        this.tolerance = tolerance
+    }
+
+    match(a: number, b: number): boolean {
+        const { tolerance } = this
+        return Math.abs(a - b) <= tolerance
+    }
+    
+    normalize(value: number): number{
+        const { tolerance } = this
+        return Math.round(value / tolerance) * tolerance
+    }
 }
 
-export function normalize(value: number, tolerance: number): number{
-    return Math.round(value / tolerance) * tolerance
-}
+/** Most of the time Zero tolerance is not that useful */
+export const ZERO = new Tolerance(0)

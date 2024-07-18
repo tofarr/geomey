@@ -52,7 +52,7 @@ export class Point implements Geometry {
         return 0
     }
 
-    generalize(tolerance: number): Point {
+    generalize(tolerance: Tolerance): Point {
         return this
     }
 
@@ -63,19 +63,19 @@ export class Point implements Geometry {
         return Point.valueOf(builder.x, builder.y)
     }
 
-    relatePoint(point: PointBuilder, tolerance: number): Relation {
+    relatePoint(point: PointBuilder, tolerance: Tolerance): Relation {
         return pointsMatch(this.x, this.y, point.x, point.y, tolerance) ? TOUCH : DISJOINT
     }
 
-    relateLineSegment(lineSegment: LineSegmentBuilder, tolerance: number): Relation {
+    relateLineSegment(lineSegment: LineSegmentBuilder, tolerance: Tolerance): Relation {
         return relateLineSegmentToPoint(lineSegment, this.x, this.y, tolerance)
     }
 
-    relate(other: Geometry, tolerance: number): Relation {
+    relate(other: Geometry, tolerance: Tolerance): Relation {
         return flipAB(other.relatePoint(this, tolerance))
     }
 
-    union(other: Geometry, tolerance: number): Geometry {
+    union(other: Geometry, tolerance: Tolerance): Geometry {
         if (!(other.relatePoint(this, tolerance) & B_OUTSIDE_A)) {
             return other
         }
@@ -88,18 +88,18 @@ export class Point implements Geometry {
         return result
     }
 
-    intersection(other: Geometry, tolerance: number): Geometry {
+    intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
         if (!(other.relatePoint(this, tolerance) & B_OUTSIDE_A)) {
             return other
         }
         return null
     }
 
-    less(other: Geometry, tolerance: number): Geometry {
+    less(other: Geometry, tolerance: Tolerance): Geometry | null {
         return this.intersection(other, tolerance)
     }
 
-    walkPath(pathWalker: PathWalker) {
+    walkPath(pathWalker: PathWalker): void {
         const { x, y } = this
         pathWalker.moveTo(x, y)
         pathWalker.lineTo(x, y)
@@ -127,7 +127,7 @@ export class Point implements Geometry {
 export const ORIGIN = Point.unsafeValueOf(0, 0)
 
 
-export function pointsMatch(ax: number, ay: number, bx: number, by: number, tolerance: number): boolean {
+export function pointsMatch(ax: number, ay: number, bx: number, by: number, tolerance: Tolerance): boolean {
     return match(ax, bx, tolerance) && match(ay, by, tolerance)
 }
 

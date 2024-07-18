@@ -76,11 +76,11 @@ export class Rectangle implements Geometry {
         return this.getWidth() * this.getHeight()
     }
 
-    isCollapsible(tolerance: number): boolean {
+    isCollapsible(tolerance: Tolerance): boolean {
         return this.getWidth() <= tolerance && this.getHeight() <= tolerance
     }
 
-    generalize(tolerance: number): Point | Rectangle {
+    generalize(tolerance: Tolerance): Point | Rectangle {
         if(this.isCollapsible(tolerance)){
             return this.getCentroid()
         }
@@ -111,7 +111,7 @@ export class Rectangle implements Geometry {
         return builder.build()
     }
 
-    relatePoint(point: PointBuilder, tolerance: number): Relation {
+    relatePoint(point: PointBuilder, tolerance: Tolerance): Relation {
         const xRelation = relateValueToRange(this.minX, this.maxX, point.x, tolerance)
         if (xRelation === DISJOINT) {
             return DISJOINT
@@ -126,7 +126,7 @@ export class Rectangle implements Geometry {
         return B_INSIDE_A
     }
 
-    relateRectangle(other: Rectangle, tolerance: number): Relation {
+    relateRectangle(other: Rectangle, tolerance: Tolerance): Relation {
         const xRelation = relateRanges(this.minX, this.maxX, other.minX, other.maxX, tolerance)
         if (xRelation === DISJOINT) {
             return DISJOINT
@@ -140,11 +140,11 @@ export class Rectangle implements Geometry {
         return (overlap | outsideTouch) as Relation
     }
 
-    relate(other: Geometry, tolerance: number): Relation {
+    relate(other: Geometry, tolerance: Tolerance): Relation {
         return this.relateRectangle(other.getBounds(), tolerance)
     }
 
-    union(other: Geometry, tolerance: number): Rectangle {
+    union(other: Geometry, tolerance: Tolerance): Rectangle {
         const b = other.getBounds()
         return new Rectangle(
             Math.min(this.minX, b.minX),
@@ -154,7 +154,7 @@ export class Rectangle implements Geometry {
         )        
     }
 
-    intersection(other: Geometry, tolerance: number): Rectangle | null {
+    intersection(other: Geometry, tolerance: Tolerance): Rectangle | null {
         const b = other.getBounds()
         if (this.relateRectangle(b, tolerance) === DISJOINT) {
             return null
@@ -167,11 +167,11 @@ export class Rectangle implements Geometry {
         )
     }
 
-    less(other: Geometry, tolerance: number): Geometry | null {
+    less(other: Geometry, tolerance: Tolerance): Geometry | null {
         return this.toPolygon().less(other, tolerance)
     }
 
-    walkPath(pathWalker: PathWalker) {
+    walkPath(pathWalker: PathWalker): void {
         const { minX, minY, maxX, maxY } = this
         pathWalker.moveTo(minX, minY)
         pathWalker.lineTo(maxX, minY)
@@ -204,7 +204,7 @@ export class Rectangle implements Geometry {
 
 
 /** Determine if a value is touching, inside, or disjoint from a range */
-function relateValueToRange(min: number, max: number, value: number, tolerance: number): Relation {
+function relateValueToRange(min: number, max: number, value: number, tolerance: Tolerance): Relation {
     if ((min - tolerance) > value || (max + tolerance) < value) {
         return DISJOINT
     }
@@ -215,7 +215,7 @@ function relateValueToRange(min: number, max: number, value: number, tolerance: 
 }
 
 /** Determine if ranges overlap */
-function relateRanges(minA: number, maxA: number, minB: number, maxB: number, tolerance: number) : Relation {
+function relateRanges(minA: number, maxA: number, minB: number, maxB: number, tolerance: Tolerance) : Relation {
     let result = (
         relateValueToRange(minA, maxA, minB, tolerance) |
         relateValueToRange(minA, maxA, maxB, tolerance) |

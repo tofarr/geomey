@@ -43,7 +43,7 @@ export class Polygon {
         return area
     }
 
-    generalize(tolerance: number): Polygon | Point {
+    generalize(tolerance: Tolerance): Polygon | Point {
         const outerRing = this.outerRing.generalize(tolerance)
         if (outerRing instanceof Point) {
             return outerRing

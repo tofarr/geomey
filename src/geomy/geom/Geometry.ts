@@ -1,19 +1,29 @@
-import { LineSegmentConsumer, LineStringConsumer, LinearRingConsumer, PointConsumer } from "../coordinate"
 
+import { Relation } from "../Relation"
+import { Tolerance } from "../Tolerance"
+import { NumberFormatter } from "../formatter"
+import { Transformer } from "../transformer/Transformer"
+import { MultiGeometry } from "./MultiGeometry"
+import { Point } from "./Point"
+import { Rectangle } from "./Rectangle"
+
+
+/**
+ * Interface describing a geometry. Geometries are typically immutable
+ */
 export interface Geometry {
     getCentroid(): Point
     getBounds(): Rectangle
-    getArea(): number
-    generalize(tolerance: number): Geometry
+    
+    walkPath(pathWalker: PathWalker): void
+    toWkt(numberFormatter?: NumberFormatter): string
+    toGeoJson(): any
+    
+    toMultiGeometry(tolerance: Tolerance): MultiGeometry
     transform(transformer: Transformer): Geometry
-    relatePoint(point: PointBuilder, tolerance: number): Relation
-    relateLineSegment(lineSegment: LineSegmentBuilder, tolerance: number): Relation
-    relate(other: Geometry, tolerance: number): Relation
-    union(other: Geometry, tolerance: number): Geometry
-    intersection(other: Geometry, tolerance: number): Geometry | null
-    less(other: Geometry, tolerance: number): Geometry | null
-    forEachPoint(consumer: PointConsumer): boolean
-    forEachLineSegment(consumer: LineSegmentConsumer): boolean
-    forEachLineString(consumer: LineStringConsumer): boolean
-    forEachLinearRing(consumer: LinearRingConsumer): boolean
+    generalize(tolerance: Tolerance): Geometry
+    relate(other: Geometry, tolerance: Tolerance): Relation
+    union(other: Geometry, tolerance: Tolerance): Geometry
+    intersection(other: Geometry, tolerance: Tolerance): Geometry | null
+    less(other: Geometry, tolerance: Tolerance): Geometry | null
 }

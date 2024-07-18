@@ -51,14 +51,14 @@ export abstract class AbstractMultiPoint extends AbstractGeometry implements Geo
         return 0
     }
 
-    abstract calculateGeneralized(tolerance: number): Geometry
+    abstract calculateGeneralized(tolerance: Tolerance): Geometry
     abstract transform(transformer: Transformer): Geometry
-    abstract relatePoint(point: PointBuilder, tolerance: number): Relation
-    abstract relateLineSegment(lineSegment: LineSegment, tolerance: number): Relation
-    abstract relate(other: Geometry, tolerance: number): Relation
-    abstract union(other: Geometry, tolerance: number): Geometry
-    abstract intersection(other: Geometry, tolerance: number): Geometry | null
-    abstract less(other: Geometry, tolerance: number): Geometry | null
+    abstract relatePoint(point: PointBuilder, tolerance: Tolerance): Relation
+    abstract relateLineSegment(lineSegment: LineSegment, tolerance: Tolerance): Relation
+    abstract relate(other: Geometry, tolerance: Tolerance): Relation
+    abstract union(other: Geometry, tolerance: Tolerance): Geometry
+    abstract intersection(other: Geometry, tolerance: Tolerance): Geometry | null
+    abstract less(other: Geometry, tolerance: Tolerance): Geometry | null
     abstract walkPath(pathWalker: PathWalker): void
     abstract toWkt(numberFormatter?: NumberFormatter): string
     abstract toGeoJson(): any

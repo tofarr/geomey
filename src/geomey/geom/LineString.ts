@@ -9,9 +9,9 @@ import { Relation } from "./Relation";
 
 export class LineString extends AbstractLineString {
 
-    private selfIntersectionTolerance: number
+    private selfIntersectiontolerance: Tolerance
 
-    private constructor(ordinates: ReadonlyArray<number>, selfIntersectionTolerance: number) {
+    private constructor(ordinates: ReadonlyArray<number>, selfIntersectiontolerance: Tolerance) {
         super(ordinates)
         this.selfIntersectionTolerance = selfIntersectionTolerance
     }
@@ -28,7 +28,7 @@ export class LineString extends AbstractLineString {
         return new LineString(this.reverseCoordinates(), this.selfIntersectionTolerance)
     }
 
-    getExplicitSelfIntersections(tolerance: number) {
+    getExplicitSelfIntersections(tolerance: Tolerance) {
         // One of the first things any operation does is to get the linestring with
         // explicit points of self intersection. So we make this as fast as possible
         if (this.selfIntersectionTolerance >= tolerance){
@@ -42,7 +42,7 @@ export class LineString extends AbstractLineString {
         return new LineString(newCoordinates, tolerance)
     }
 
-    calculateGeneralized(tolerance: number): Geometry {
+    calculateGeneralized(tolerance: Tolerance): Geometry {
         return new LineString(douglasPeucker(this.coordinates, tolerance), 0)
     }
 
@@ -55,28 +55,28 @@ export class LineString extends AbstractLineString {
         return LineString.valueOf(coordinates)
     }
 
-    relatePoint(point: PointBuilder, tolerance: number): Relation {
+    relatePoint(point: PointBuilder, tolerance: Tolerance): Relation {
         We need an "Is point on line tolerance method
         throw new Error("Method not implemented.");
     }
 
-    relate(other: Geometry, tolerance: number): Relation {
+    relate(other: Geometry, tolerance: Tolerance): Relation {
         throw new Error("Method not implemented.");
     }
 
-    union(other: Geometry, tolerance: number): Geometry {
+    union(other: Geometry, tolerance: Tolerance): Geometry {
         throw new Error("Method not implemented.");
     }
 
-    intersection(other: Geometry, tolerance: number): Geometry | null {
+    intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
         throw new Error("Method not implemented.");
     }
 
-    less(other: Geometry, tolerance: number): Geometry | null {
+    less(other: Geometry, tolerance: Tolerance): Geometry | null {
         throw new Error("Method not implemented.");
     }
 
-    walkPath(pathWalker: PathWalker) {
+    walkPath(pathWalker: PathWalker): void {
         const { coordinates } = this
         pathWalker.moveTo(coordinates[0], coordinates[1])
         this.forEachCoordinate(pathWalker.lineTo, 1)

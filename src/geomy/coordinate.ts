@@ -1,16 +1,16 @@
-import { match } from "./tolerance"
+import { Tolerance } from "./Tolerance"
 
 
-export type PointCoordinatesConsumer = (x: number, y: number) => boolean | undefined
+export type PointCoordinatesConsumer = (x: number, y: number) => boolean | void
 
 
-export type LineSegmentCoordinatesConsumer = (ax: number, ay: number, bx: number, by: number) => boolean | undefined
+export type LineSegmentCoordinatesConsumer = (ax: number, ay: number, bx: number, by: number) => boolean | void
 
 
-export type LineStringCoordinatesConsumer = (coordinates: ReadonlyArray<number>) => boolean | undefined
+export type LineStringCoordinatesConsumer = (coordinates: ReadonlyArray<number>) => boolean | void
 
 
-export type LinearRingCoordinatesConsumer = (coordinates: ReadonlyArray<number>) => boolean | undefined
+export type LinearRingCoordinatesConsumer = (coordinates: ReadonlyArray<number>) => boolean | void
 
 
 export function forEachPointCoordinate(coordinates: ReadonlyArray<number>, consumer: PointCoordinatesConsumer, startIndexInclusive?: number, numberOfPoints?: number) {
@@ -116,30 +116,30 @@ export function sortCoordinates(coordinates: number[], comparator?: Comparator) 
 }
 
 
-export function appendChanged(x: number, y: number, tolerance: number, coordinates: number[]) {
+export function appendChanged(x: number, y: number, tolerance: Tolerance, coordinates: number[]) {
     if(!coordinates.length){
         coordinates.push(x, y)
         return
     }
     const { length } = coordinates
-    if(match(x, coordinates[length-2], tolerance) && match(y, coordinates[length-1], tolerance)) {
+    if(tolerance.match(x, coordinates[length-2]) && tolerance.match(y, coordinates[length-1])) {
         coordinates.push(x, y)
     }
 }
 
 
-export function coordinateMatch(ax: number, ay: number, bx: number, by: number, tolerance: number) {
-    return match(ax, bx, tolerance) && match(ay, by, tolerance)
+export function coordinateMatch(ax: number, ay: number, bx: number, by: number, tolerance: Tolerance) {
+    return tolerance.match(ax, bx) && tolerance.match(ay, by)
 }
 
 
-export function coordinatesMatch(i: ReadonlyArray<number>, j: ReadonlyArray<number>, tolerance: number) {
+export function coordinatesMatch(i: ReadonlyArray<number>, j: ReadonlyArray<number>, tolerance: Tolerance) {
     if(i.length !== j.length){
         return false
     }
     let n = i.length
     while(--n){
-        if (!match(i[n], j[n], tolerance)){
+        if (!tolerance.match(i[n], j[n])){
             return false
         }
     }

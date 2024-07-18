@@ -54,3 +54,11 @@ export class RectangleBuilder {
 export function rectanglesDisjoint(a: RectangleBuilder, b: RectangleBuilder): boolean {
     return (a.minX > b.maxX) || (a.maxX < b.minY) || (a.minY > b.maxY) || (a.maxY < b.minY)
 }
+
+
+export function copyToRectangle(minX: number, minY: number, maxX: number, maxY: number, target: RectangleBuilder) {
+    target.minX = minX
+    target.minY = minY
+    target.maxX = maxX
+    target.maxY = maxY
+}

@@ -68,7 +68,7 @@ export class LineSegment implements Geometry {
         return this
     }
 
-    generalize(tolerance: number): Geometry {
+    generalize(tolerance: Tolerance): Geometry {
         if(this.getDx() <= tolerance && this.getDy() <= tolerance){
             return this.getCentroid()
         }
@@ -86,11 +86,11 @@ export class LineSegment implements Geometry {
         return LineSegment.valueOf(ax, ay, point.x, point.y)
     }
 
-    relatePoint(point: PointBuilder, tolerance: number): Relation {
+    relatePoint(point: PointBuilder, tolerance: Tolerance): Relation {
         return relateLineSegmentToPoint(this, point.x, point.y, tolerance)
     }
 
-    relateLineSegment(other: LineSegmentBuilder, tolerance: number): Relation {
+    relateLineSegment(other: LineSegmentBuilder, tolerance: Tolerance): Relation {
         const { ax: iax, ay: iay, bx: ibx, by: iby } = this
         const { ax: jax, ay: jay, bx: jbx, by: jby } = other
         
@@ -108,7 +108,7 @@ export class LineSegment implements Geometry {
         return result
     }
 
-    relate(other: Geometry, tolerance: number): Relation {
+    relate(other: Geometry, tolerance: Tolerance): Relation {
         // If the length of this line segment is less than tolerance, test as a point.
         if(((this.getDx() ** 2) + (this.getDy() ** 2)) < (tolerance ** 2)) {
             return flipAB(other.relatePoint(this.getCentroid(), tolerance))
@@ -119,26 +119,26 @@ export class LineSegment implements Geometry {
         return flipAB(other.relateLineSegment(this, tolerance))
     }
 
-    union(other: Geometry, tolerance: number): Geometry {
+    union(other: Geometry, tolerance: Tolerance): Geometry {
         throw new Error("Method not implemented.");
     }
 
-    intersectionLine(other: LineSegment, tolerance: number, segment: boolean = true): Point | null {
+    intersectionLine(other: LineSegment, tolerance: Tolerance, segment: boolean = true): Point | null {
         return intersectionLine(this, other, segment, tolerance)
     }
 
-    intersection(other: Geometry, tolerance: number): Geometry | null {
+    intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
         throw new Error("Method not implemented.");
     }
 
-    less(other: Geometry, tolerance: number): Geometry | null {
+    less(other: Geometry, tolerance: Tolerance): Geometry | null {
         // Get points of intersection
         // Test mindpoints and other
         GET POINTS OF INTERSECTION
         throw new Error("Method not implemented.");
     }
     
-    walkPath(pathWalker: PathWalker) {
+    walkPath(pathWalker: PathWalker): void {
         pathWalker.moveTo(this.ax, this.ay)
         pathWalker.lineTo(this.bx, this.by)
     }
@@ -205,7 +205,7 @@ export function projectPointOntoLine(x: number, y: number, ax: number, ay: numbe
 }
 
 
-export function projectPointOntoLineSegment(x: number, y: number, ax: number, ay: number, bx: number, by: number, tolerance: number, target: PointBuilder): boolean {
+export function projectPointOntoLineSegment(x: number, y: number, ax: number, ay: number, bx: number, by: number, tolerance: Tolerance, target: PointBuilder): boolean {
     // Calculate the vector from A to B
     const abx = bx - ax;
     const aby = by - ay;
@@ -235,7 +235,7 @@ export function projectPointOntoLineSegment(x: number, y: number, ax: number, ay
 }
 
 
-export function intersectionLine(i: LineSegmentBuilder, j: LineSegmentBuilder, segment: boolean, tolerance: number): Point | null {
+export function intersectionLine(i: LineSegmentBuilder, j: LineSegmentBuilder, segment: boolean, tolerance: Tolerance): Point | null {
     let { ax: iax, ay: iay, bx: ibx, by: iby, } = i
     let { ax: jax, ay: jay, bx: jbx, by: jby, } = j
 
@@ -283,7 +283,7 @@ export function intersectionLine(i: LineSegmentBuilder, j: LineSegmentBuilder, s
 }
 
 
-export function relateLineSegmentToPoint(lineSegment: LineSegmentBuilder, x: number, y: number, tolerance: number): Relation{
+export function relateLineSegmentToPoint(lineSegment: LineSegmentBuilder, x: number, y: number, tolerance: Tolerance): Relation{
     const { ax, ay, bx, by } = lineSegment
     if (perpendicularDistance(x, y, ax, ay, bx, by) > tolerance){
         return DISJOINT
@@ -300,7 +300,7 @@ export function relateLineSegmentToPoint(lineSegment: LineSegmentBuilder, x: num
 }
 
 
-export function relateLineSegments(i: LineSegmentBuilder, j: LineSegmentBuilder, tolerance: number): Relation {
+export function relateLineSegments(i: LineSegmentBuilder, j: LineSegmentBuilder, tolerance: Tolerance): Relation {
     const { ax: iax, ay: iay, bx: ibx, by: iby } = i
     const { ax: jax, ay: jay, bx: jbx, by: jby } = j
     
