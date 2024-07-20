@@ -1,5 +1,3 @@
-import { forEachLineSegmentCoordinates } from "../coordinate"
-
 
 export interface LineSegmentBuilder {
     ax: number

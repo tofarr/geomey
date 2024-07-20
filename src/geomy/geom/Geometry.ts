@@ -20,10 +20,11 @@ export interface Geometry {
     toGeoJson(): any
     
     toMultiGeometry(tolerance: Tolerance): MultiGeometry
-    transform(transformer: Transformer): Geometry
+    transform(transformer: Transformer, tolerance: Tolerance): Geometry
     generalize(tolerance: Tolerance): Geometry
     relate(other: Geometry, tolerance: Tolerance): Relation
     union(other: Geometry, tolerance: Tolerance): Geometry
     intersection(other: Geometry, tolerance: Tolerance): Geometry | null
     less(other: Geometry, tolerance: Tolerance): Geometry | null
+    xor(other: Geometry, tolerance: Tolerance): Geometry | null
 }

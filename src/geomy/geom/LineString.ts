@@ -1,22 +1,26 @@
-import { Relation } from "../Relation";
-import { Tolerance } from "../Tolerance";
-import { forEachCoordinate, forEachLineSegmentCoordinates, isNaNOrInfinite } from "../coordinate";
-import { NumberFormatter } from "../formatter";
+import { A_OUTSIDE_B, B_OUTSIDE_A, DISJOINT, Relation, TOUCH, UNKNOWN } from "../Relation";
+import { Tolerance, ZERO } from "../Tolerance";
+import { appendChanged, CoordinateConsumer, coordinateMatch, coordinatesMatch, forEachCoordinate, forEachLineSegmentCoordinates, isNaNOrInfinite, LineSegmentCoordinatesConsumer, sortCoordinates } from "../coordinate";
+import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { Transformer } from "../transformer/Transformer";
+import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
-import { perpendicularDistance } from "./LineSegment";
+import { getLength, intersectionLineSegment, LineSegment, perpendicularDistance, pointTouchesLineSegment, relateLineSegments } from "./LineSegment";
 import { MultiGeometry } from "./MultiGeometry";
 import { Point } from "./Point";
 import { Rectangle } from "./Rectangle";
 
-
-export class LineString implements Geometry {
+/**
+ * A line string describes a series of line segments which may or may not self intersect.
+ */
+export class LineString extends AbstractGeometry {
     readonly coordinates: ReadonlyArray<number>
-    private bounds?: Rectangle
-    private centroid?: Point
+    private withExplicitSelfIntersections?: LineString
+    private withExplicitSelfIntersectionsTolerance?: Tolerance
 
-    constructor(coordinates: ReadonlyArray<number>) {
+    private constructor(coordinates: ReadonlyArray<number>) {
+        super()
         this.coordinates = coordinates
     }
     static valueOf(coordinates: ReadonlyArray<number>): LineString {
@@ -34,41 +38,31 @@ export class LineString implements Geometry {
     static unsafeValueOf(coordinates: ReadonlyArray<number>): LineString {
         return new LineString(coordinates)
     }
-    getCentroid(): Point {
-        let { centroid } = this
-        if (!centroid) {
-            this.centroid = centroid = getCentroid(this.coordinates)
-        }
-        return centroid
+    forEachCoordinate(consumer: CoordinateConsumer): number {
+        return forEachCoordinate(this.coordinates, consumer)
     }
-    getBounds(): Rectangle {
-        let { bounds } = this
-        if (!bounds) {
-            this.bounds = bounds = Rectangle.valueOf(this.coordinates)
-        }
-        return bounds
+    forEachLineSegmentCoordinates(consumer: LineSegmentCoordinatesConsumer) {
+        forEachLineSegmentCoordinates(this.coordinates, consumer)
+    }
+    protected calculateCentroid(): Point {
+        return getCentroid(this.coordinates)
+    }
+    protected calculateBounds(): Rectangle {
+        return Rectangle.valueOf(this.coordinates)
+    }
+    getLength() {
+        let length = 0
+        forEachLineSegmentCoordinates(this.coordinates, (ax, ay, bx, by) => {
+            length += getLength(ax, ay, bx, by)
+        })
+        return length
     }
     walkPath(pathWalker: PathWalker): void {
-        const { coordinates } = this
-        const { length } = coordinates
-        pathWalker.moveTo(coordinates[0], coordinates[1])
-        let index = 2
-        while(index < length){
-            pathWalker.lineTo(coordinates[index++], coordinates[index++])
-        }
+        walkPath(this.coordinates, pathWalker)
     }
-    toWkt(numberFormatter?: NumberFormatter): string {
-        const result = ["LINESTRING ("]
-        forEachCoordinate(this.coordinates, (x, y) => {
-            result.push(
-                numberFormatter(x),
-                " ",
-                numberFormatter(y),
-                ", "
-            )
-        })
-        result.pop()
-        result.push(")")
+    toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
+        const result = ["LINESTRING "]
+        coordinatesToWkt(this.coordinates, numberFormatter, result)
         return result.join("")
     }
     toGeoJson() {
@@ -79,10 +73,7 @@ export class LineString implements Geometry {
             coordinates
         }
     }
-    toMultiGeometry(tolerance: Tolerance): MultiGeometry {
-        if (this.getBounds().isCollapsible(tolerance)){
-            return this.getCentroid().toMultiGeometry()
-        }
+    protected calculateMultiGeometry(): MultiGeometry {
         return MultiGeometry.unsafeValueOf(undefined, [this])
     }
     transform(transformer: Transformer): Geometry {
@@ -99,17 +90,46 @@ export class LineString implements Geometry {
         }
         return new LineString(generalized)
     }
-    relate(other: Geometry, tolerance: Tolerance): Relation {
-        throw new Error("Method not implemented.");
+    /**
+     * A first step to a lot of operations on a line string is to make any self intersections explicit
+     * rather than implicit.
+     */
+    getWithExplicitSelfIntersections(tolerance: Tolerance) {
+        let { withExplicitSelfIntersections, withExplicitSelfIntersectionsTolerance } = this
+        if (withExplicitSelfIntersections && withExplicitSelfIntersectionsTolerance.tolerance == tolerance.tolerance) {
+            return withExplicitSelfIntersections
+        }
+        const { coordinates } = this
+        const newCoordinates = getCoordinatesWithSelfIntersections(coordinates, tolerance)
+        this.withExplicitSelfIntersectionsTolerance = tolerance
+        if (coordinatesMatch(coordinates, newCoordinates, ZERO)){
+            this.withExplicitSelfIntersections = this
+            return this
+        }
+        const result = new LineString(newCoordinates)
+        result.withExplicitSelfIntersections = result
+        result.withExplicitSelfIntersectionsTolerance = tolerance
+        this.withExplicitSelfIntersections = result
+        return result
+    }
+    relateGeometry(other: Geometry, tolerance: Tolerance): Relation {
+        if (other instanceof Point){
+            return relatePointToLineString(other.x, other.y, this.coordinates, tolerance)
+        } else if (other instanceof LineSegment) {
+            return relateLineStringToLineSegment(this.coordinates, other.ax, other.ay, other.bx, other.by, tolerance)
+        } else if (other instanceof LineString) {
+            return relateLineStringToLineString(this.coordinates, other.coordinates, tolerance)
+        }
+        return this.toMultiGeometry(tolerance).relate(other, tolerance)
     }
     union(other: Geometry, tolerance: Tolerance): Geometry {
-        throw new Error("Method not implemented.");
+        return this.toMultiGeometry(tolerance).union(other, tolerance)
     }
-    intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
-        throw new Error("Method not implemented.");
+    protected intersectionGeometry(other: Geometry, tolerance: Tolerance): Geometry {
+        return this.toMultiGeometry(tolerance).intersection(other, tolerance)
     }
-    less(other: Geometry, tolerance: Tolerance): Geometry | null {
-        throw new Error("Method not implemented.");
+    protected lessGeometry(other: Geometry, tolerance: Tolerance): Geometry {
+        return this.toMultiGeometry(tolerance).less(other, tolerance)
     }
 }
 
@@ -164,3 +184,143 @@ export function douglasPeucker(coordinates: ReadonlyArray<number>, tolerance: nu
     return target
 }
 
+
+export function getCoordinatesWithSelfIntersections(coordinates: ReadonlyArray<number>, tolerance: Tolerance): number[] {
+    let numberOfLineSegments = coordinates.length >> 1
+    let startIndexInclusive = 2
+    const newCoordinates = [coordinates[0], coordinates[1]]
+    const intersections = []
+    forEachLineSegmentCoordinates(coordinates, (iax, iay, ibx, iby) => {
+        intersections.length = 0
+        forEachLineSegmentCoordinates(coordinates, (jax, jay, jbx, jby) => {
+            const intersection = intersectionLineSegment(
+                iax, iay, ibx, iby,
+                jax, jay, jbx, jby,
+                tolerance
+            )
+            if (intersection) {
+                intersections.push(intersection.x, intersection.y)
+            }
+        }, startIndexInclusive += 2, --numberOfLineSegments)
+        if ((intersections.length || 0) > 2) {
+            sortCoordinates(intersections, (px, py, qx, qy) => {
+                const distP = (px - iax) ** 2 + (py - iay) ** 2
+                const distQ = (qx - iax) ** 2 + (qy - iay) ** 2
+                return distP - distQ
+            })
+            forEachCoordinate(intersections, (ix, iy) => {
+                appendChanged(ix, iy, tolerance, newCoordinates)
+            })
+        }
+        appendChanged(ibx, iby, tolerance, newCoordinates)
+    })
+    return newCoordinates
+}
+
+
+export function getCoordinatesWithIntersectionsAgainst(
+    coordinates: ReadonlyArray<number>, 
+    otherCoordinates: ReadonlyArray<number>, 
+    tolerance: Tolerance,
+    numLineSegments?: number,
+    otherNumLineSegments?: number
+): ReadonlyArray<number> {
+    const newCoordinates = [coordinates[0], coordinates[1]]
+    const intersections = []
+    let hasIntersections = false
+    forEachLineSegmentCoordinates(coordinates, (iax, iay, ibx, iby) => {
+        intersections.length = 0
+        forEachLineSegmentCoordinates(otherCoordinates, (jax, jay, jbx, jby) => {
+            const intersection = intersectionLineSegment(
+                iax, iay, ibx, iby,
+                jax, jay, jbx, jby,
+                tolerance
+            )
+            if (intersection) {
+                intersections.push(intersection.x, intersection.y)
+            }
+        }, 0, otherNumLineSegments)
+        if ((intersections.length || 0) > 2) {
+            sortCoordinates(intersections, (px, py, qx, qy) => {
+                const distP = (px - iax) ** 2 + (py - iay) ** 2
+                const distQ = (qx - iax) ** 2 + (qy - iay) ** 2
+                return distP - distQ
+            })
+        }
+        hasIntersections ||= !!intersections.length
+        forEachCoordinate(intersections, (ix, iy) => {
+            appendChanged(ix, iy, tolerance, newCoordinates)
+        })
+        appendChanged(ibx, iby, tolerance, newCoordinates)
+    }, 0, numLineSegments)
+    return hasIntersections ? newCoordinates : coordinates
+}
+
+
+export function relatePointToLineString(x: number, y: number, coordinates: ReadonlyArray<number>, tolerance: Tolerance): Relation {
+    let result = UNKNOWN
+    forEachLineSegmentCoordinates(this.coordinates, (ax, ay, bx, by) => {
+        if(pointTouchesLineSegment(x, y, ax, ay, bx, by, tolerance)){
+            result |= TOUCH
+        }
+        if(!(coordinateMatch(ax, ay, x, y, tolerance) && coordinateMatch(bx, by, x, y, tolerance))){
+            result |= A_OUTSIDE_B
+        }
+        return result !== (TOUCH | A_OUTSIDE_B)
+    })
+    return result
+}
+
+
+export function relateLineStringToLineSegment(
+    coordinates: ReadonlyArray<number>,
+    ax: number, ay: number, bx: number, by: number,
+    tolerance: Tolerance
+): Relation {
+    let result = UNKNOWN
+    forEachLineSegmentCoordinates(coordinates, (jax, jay, jbx, jby) => {
+        result |= relateLineSegments(ax, ay, bx, by, jax, jay, jbx, jby, tolerance)
+        return result !== (TOUCH | A_OUTSIDE_B | B_OUTSIDE_A)
+    })
+    return result
+}
+
+
+export function relateLineStringToLineString(
+    coordinates: ReadonlyArray<number>,
+    againstCoordinates: ReadonlyArray<number>, tolerance: Tolerance
+): Relation {
+    let result = UNKNOWN
+    forEachLineSegmentCoordinates(coordinates, (iax, iay, ibx, iby) => {
+        forEachLineSegmentCoordinates(againstCoordinates, (jax, jay, jbx, jby) => {
+            result |= relateLineSegments(iax, iay, ibx, iby, jax, jay, jbx, jby, tolerance)
+            return result !== (TOUCH | A_OUTSIDE_B | B_OUTSIDE_A)
+        })
+        return result !== (TOUCH | A_OUTSIDE_B | B_OUTSIDE_A)
+    })
+    return result
+}
+
+
+export function walkPath(coordinates: ReadonlyArray<number>, pathWalker: PathWalker){
+    const { length } = coordinates
+    pathWalker.moveTo(coordinates[0], coordinates[1])
+    let index = 2
+    while(index < length){
+        pathWalker.lineTo(coordinates[index++], coordinates[index++])
+    }
+}
+
+export function coordinatesToWkt(coordinates: ReadonlyArray<number>, numberFormatter: NumberFormatter, result: string[]) {
+    result.push("(")
+    forEachCoordinate(this.coordinates, (x, y) => {
+        result.push(
+            numberFormatter(x),
+            " ",
+            numberFormatter(y),
+            ", "
+        )
+    })
+    result.pop()
+    result.push(")")
+}

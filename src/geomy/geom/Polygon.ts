@@ -1,57 +1,112 @@
 
 import { Relation } from "../Relation";
 import { Tolerance } from "../Tolerance";
-import { NumberFormatter } from "../formatter";
+import { CoordinateConsumer, forEachCoordinate, forEachLineSegmentCoordinates, LineSegmentCoordinatesConsumer } from "../coordinate";
+import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { Transformer } from "../transformer/Transformer";
+import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
+import { coordinatesToWkt, walkPath } from "./LineString";
 import { MultiGeometry } from "./MultiGeometry";
 import { Point } from "./Point";
 import { Rectangle } from "./Rectangle";
 
 
-export class Polygon implements Geometry {
+/**
+ * A polygon is a non self intersecting linear ring of coordinates. Unlike WKT, the first coordinate is not
+ * repeated at the end of the coordinate array. The shell of a valid polygon will not self intersect.
+ *
+ * A polygon may contain child polygons which serve as holes. These must be fully contained inside and not touch
+ * the outer shell, and must not touch or overlap with each other.
+ */
+export class Polygon extends AbstractGeometry {
+    readonly shell: ReadonlyArray<number>
+    readonly children?: ReadonlyArray<Polygon>
+    static valueOf(rings: ReadonlyArray<number>[], tolerance: Tolerance): Polygon[] {
+        throw new Error("Method not implemented.");
+    }
     static unsafeValueOf(linearRing: ReadonlyArray<number>, children?: ReadonlyArray<Polygon>): Polygon {
         throw new Error("Method not implemented.");
     }
-    getCentroid(): Point {
-        throw new Error("Method not implemented.");
+    protected calculateCentroid(): Point {
+        return calculateCentroid(this.shell)
     }
-    getBounds(): Rectangle {
-        throw new Error("Method not implemented.");
+    protected calculateBounds(): Rectangle {
+        return Rectangle.valueOf(this.shell)
     }
     walkPath(pathWalker: PathWalker): void {
-        throw new Error("Method not implemented.");
+        walkPath(this.shell, pathWalker)
+        pathWalker.closePath()
     }
-    toWkt(numberFormatter?: NumberFormatter): string {
-        throw new Error("Method not implemented.");
+    protected ringsToWkt(numberFormatter: NumberFormatter, reverse: boolean, result: string[]){
+        ringToWkt(this.shell, numberFormatter, reverse, result)
+        const { children } = this
+        if (children) {
+            for(const child of children){
+                result.push(", ")
+                child.ringsToWkt(numberFormatter, !reverse, result)
+            }
+        }
+    }
+    toWkt(numberFormatter: NumberFormatter =  NUMBER_FORMATTER): string {
+        const result = ["POLYGON("]
+        this.ringsToWkt(numberFormatter, false, result)
+        result.push(")")
+        return result.join("")
+    }
+    protected ringsToGeoJson(reverse: boolean, result: number[][]){
+        const shell = []
+        forEachRingCoordinate(this.shell, (x, y) => { shell.push([x, y]) }, reverse)
+        result.push(shell)
+        const { children } = this
+        if (children) {
+            for(const child of children){
+                child.ringsToGeoJson(!reverse, result)
+            }
+        }
     }
     toGeoJson() {
-        throw new Error("Method not implemented.");
+        const coordinates = []
+        this.ringsToGeoJson(false, coordinates)
+        return {
+            type: "Polygon",
+            coordinates
+        }
     }
-    toMultiGeometry(tolerance: Tolerance): MultiGeometry {
-        throw new Error("Method not implemented.");
+    protected calculateMultiGeometry(): MultiGeometry {
+        return MultiGeometry.unsafeValueOf(undefined, undefined, [this])
     }
-    transform(transformer: Transformer): Geometry {
-        throw new Error("Method not implemented.");
+    protected transformRings(transformer: Transformer, result: ReadonlyArray<number>[]) {
+        result.push(transformer.transformAll(this.shell))
+        const { children } = this
+        if (children) {
+            for(const child of children){
+                child.transformRings(transformer, result)
+            }
+        }
+    }
+    transform(transformer: Transformer, tolerance: Tolerance): Polygon | MultiGeometry {
+        const rings = []
+        this.transformRings(transformer, rings)
+        const polygons = Polygon.valueOf(rings, tolerance)
+        if (polygons.length === 1) {
+            return polygons[0]
+        }
+        return MultiGeometry.unsafeValueOf(undefined, undefined, polygons)
     }
     generalize(tolerance: Tolerance): Geometry {
         throw new Error("Method not implemented.");
     }
-    relate(other: Geometry, tolerance: Tolerance): Relation {
+    protected relateGeometry(other: Geometry, tolerance: Tolerance): Relation {
         throw new Error("Method not implemented.");
     }
     union(other: Geometry, tolerance: Tolerance): Geometry {
         throw new Error("Method not implemented.");
     }
-    intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
+    protected intersectionGeometry(other: Geometry, tolerance: Tolerance): Geometry {
         throw new Error("Method not implemented.");
     }
-    less(other: Geometry, tolerance: Tolerance): Geometry | null {
+    protected lessGeometry(other: Geometry, tolerance: Tolerance): Geometry {
         throw new Error("Method not implemented.");
     }
-    
-    
 }
-
-
-export type LinearRingConsumer = (polygon: Polygon) => boolean | void

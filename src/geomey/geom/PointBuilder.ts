@@ -14,9 +14,6 @@ export function copyToPoint(x: number, y: number, target: PointBuilder): PointBu
 }
 
 
-export type PointConsumer = (point: PointBuilder, index: number) => boolean | void
-
-
 export function forEachPoint(coordinates: ReadonlyArray<number>, consumer: PointConsumer, fromIndexInclusive?: number, toIndexExclusive?: number){
     const point = { x: undefined, y: undefined }
     fromIndexInclusive ||= 0

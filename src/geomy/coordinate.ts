@@ -32,7 +32,7 @@ export function forEachPointCoordinate(coordinates: ReadonlyArray<number>, consu
 }
 
 
-export function forEachLineSegmentCoordinates(coordinates: ReadonlyArray<number>, consumer: LineSegmentCoordinatesConsumer, startIndexInclusive?: number, numberOfLineSegments?: number) {
+export function forEachLineSegmentCoordinates(coordinates: ReadonlyArray<number>, consumer: LineSegmentCoordinatesConsumer, startIndexInclusive?: number, numberOfLineSegments?: number): boolean | void {
     if (startIndexInclusive == null) {
         startIndexInclusive = 0
     }
@@ -49,7 +49,7 @@ export function forEachLineSegmentCoordinates(coordinates: ReadonlyArray<number>
         const bx = coordinates[startIndexInclusive]
         const by = coordinates[startIndexInclusive+1]
         if (consumer(ax, ay, bx, by) === false) {
-            return
+            return false
         }
     }
 }

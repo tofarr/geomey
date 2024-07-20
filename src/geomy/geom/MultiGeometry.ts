@@ -5,12 +5,16 @@ import { NumberFormatter } from "../formatter";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { LineString } from "./LineString";
+import { LinearRing } from "./LinearRing";
 import { Point } from "./Point";
 import { Polygon } from "./Polygon";
 import { Rectangle } from "./Rectangle";
 
 
 export class MultiGeometry implements Geometry {
+    static valueOf(points?: ReadonlyArray<number>, lineStrings?: ReadonlyArray<LineString>, rings?: ReadonlyArray<LinearRing>): MultiGeometry {
+        throw new Error("Method not implemented.");
+    }
     static unsafeValueOf(points?: ReadonlyArray<number>, lineStrings?: ReadonlyArray<LineString>, polygons?: ReadonlyArray<Polygon>): MultiGeometry {
         throw new Error("Method not implemented.");
     }
@@ -32,7 +36,7 @@ export class MultiGeometry implements Geometry {
     toMultiGeometry(tolerance: Tolerance): MultiGeometry {
         throw new Error("Method not implemented.");
     }
-    transform(transformer: Transformer): Geometry {
+    transform(transformer: Transformer, tolerance: Tolerance): Geometry {
         throw new Error("Method not implemented.");
     }
     generalize(tolerance: Tolerance): Geometry {
@@ -48,6 +52,9 @@ export class MultiGeometry implements Geometry {
         throw new Error("Method not implemented.");
     }
     less(other: Geometry, tolerance: Tolerance): Geometry | null {
+        throw new Error("Method not implemented.");
+    }
+    xor(other: Geometry, tolerance: Tolerance): Geometry | null {
         throw new Error("Method not implemented.");
     }
 }

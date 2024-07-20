@@ -1,9 +1,10 @@
 import { DISJOINT, Relation, TOUCH, flipAB } from "../Relation";
 import { Tolerance } from "../Tolerance";
-import { coordinateMatch, isNaNOrInfinite } from "../coordinate";
+import { coordinateMatch, isNaNOrInfinite, sortCoordinates } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
+import { GeometryBuilder } from "./GeometryBuilder";
 import { InvalidGeometryError } from "./InvalidGeometryError";
 import { MultiGeometry } from "./MultiGeometry";
 import { Rectangle } from "./Rectangle";
@@ -73,8 +74,12 @@ export class Point implements Geometry {
     relate(other: Geometry, tolerance: Tolerance): Relation {
         if (other instanceof Point) {
             return coordinateMatch(this.x, this.y, other.x, other.y, tolerance) ? TOUCH : DISJOINT
-        } else if (other instanceof Rectangle) {
+        } 
+        if (other instanceof Rectangle) {
             return flipAB(other.relatePoint(this, tolerance))
+        }
+        if (other.getBounds().relatePoint(this, tolerance) === DISJOINT){
+            return DISJOINT
         }
         return this.toMultiGeometry().relate(other, tolerance)
     }
@@ -92,11 +97,21 @@ export class Point implements Geometry {
     }
     less(other: Geometry, tolerance: Tolerance): Geometry | null {
         if (this.relate(other, tolerance) == DISJOINT){
-            return null
+            return this
         }
-        return other
+        return null
+    }
+    xor(other: Geometry, tolerance: Tolerance): MultiGeometry | null {
+        if (other instanceof Point) {
+            const { x: ax, y: ay } = this
+            const { x: bx, y: by } = other
+            if (coordinateMatch(ax, ay, bx, by, tolerance)) {
+                return null
+            }
+            const coordinates = [ax, ay, bx, by]
+            sortCoordinates(coordinates)
+            return MultiGeometry.unsafeValueOf(coordinates)
+        }
+        return this.toMultiGeometry().xor(other, tolerance)
     }
 }
-
-
-export type PointConsumer = (point: Point) => boolean | void

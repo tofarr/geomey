@@ -5,6 +5,7 @@ import { NumberFormatter } from "../formatter";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
+import { LinearRing } from "./LinearRing";
 import { MultiGeometry } from "./MultiGeometry";
 import { Point } from "./Point";
 import { Polygon } from "./Polygon";
@@ -18,7 +19,7 @@ export class Rectangle implements Geometry {
     private centroid?: Point
     private multiGeometry?: MultiGeometry
 
-    constructor(minX: number, minY: number, maxX: number, maxY: number) {
+    private constructor(minX: number, minY: number, maxX: number, maxY: number) {
         this.minX = minX
         this.minY = minY
         this.maxX = maxX
@@ -98,12 +99,13 @@ export class Rectangle implements Geometry {
         if (this.isCollapsible(tolerance)){
             return this.getCentroid().toMultiGeometry()
         }
-        return this.getMultiGeometry().generalize(tolerance)
+        return this.getMultiGeometry()
     }
     private getMultiGeometry(): MultiGeometry {
         let { multiGeometry } = this
         if (!multiGeometry) {
-            const polygon = Polygon.unsafeValueOf(this.toCoordinates())
+            const linearRing = LinearRing.unsafeValueOf(this.toCoordinates())
+            const polygon = Polygon.unsafeValueOf(linearRing)
             this.multiGeometry = multiGeometry = MultiGeometry.unsafeValueOf(
                 undefined, undefined, [polygon]
             )
@@ -150,18 +152,24 @@ export class Rectangle implements Geometry {
         }
         return result
     }
-    relateRectangle(rectangle: Rectangle, tolerance: Tolerance): Relation {
+    isDisjointRectangle(rectangle: Rectangle, tolerance: Tolerance): boolean {
         const { minX: aMinX, minY: aMinY, maxX: aMaxX, maxY: aMaxY } = this
         const { minX: bMinX, minY: bMinY, maxX: bMaxX, maxY: bMaxY } = rectangle
         const { tolerance: t } = tolerance
-        if (
+        return (
             aMaxX + t < bMinX ||
             aMaxY + t < bMinY ||
             aMinX - t > bMaxX ||
             aMinY - t > bMaxY
-        ) {
+        )
+    }
+    relateRectangle(rectangle: Rectangle, tolerance: Tolerance): Relation {
+        if (this.isDisjointRectangle(rectangle, tolerance)){
             return DISJOINT
         }
+        const { minX: aMinX, minY: aMinY, maxX: aMaxX, maxY: aMaxY } = this
+        const { minX: bMinX, minY: bMinY, maxX: bMaxX, maxY: bMaxY } = rectangle
+        const { tolerance: t } = tolerance
         let result = UNKNOWN
         if (aOutsideB(aMinX, aMinY, aMaxX, aMaxY, bMinX, bMinY, bMaxX, bMaxY, t)) {
             result |= A_OUTSIDE_B
@@ -209,7 +217,13 @@ export class Rectangle implements Geometry {
         )
     }
     less(other: Geometry, tolerance: Tolerance): Geometry | null {
+        if (this.getBounds().isDisjointRectangle(other.getBounds(), tolerance)){
+            return this
+        }
         return this.getMultiGeometry().less(other, tolerance)
+    }
+    xor(other: Geometry, tolerance: Tolerance): Geometry | null {
+        return this.toMultiGeometry(tolerance).xor(other, tolerance)
     }
 }
 
