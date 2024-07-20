@@ -1,5 +1,3 @@
-import { PointBuilder } from "../builder/PointBuilder";
-
 
 export interface Transformer {
     transform: (x: number, y: number) => [number, number]
