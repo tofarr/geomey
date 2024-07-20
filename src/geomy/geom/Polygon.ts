@@ -7,6 +7,7 @@ import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
 import { coordinatesToWkt, walkPath } from "./LineString";
+import { LinearRing } from "./LinearRing";
 import { MultiGeometry } from "./MultiGeometry";
 import { Point } from "./Point";
 import { Rectangle } from "./Rectangle";
@@ -25,7 +26,7 @@ export class Polygon extends AbstractGeometry {
     static valueOf(rings: ReadonlyArray<number>[], tolerance: Tolerance): Polygon[] {
         throw new Error("Method not implemented.");
     }
-    static unsafeValueOf(linearRing: ReadonlyArray<number>, children?: ReadonlyArray<Polygon>): Polygon {
+    static unsafeValueOf(linearRing: LinearRing, children?: ReadonlyArray<Polygon>): Polygon {
         throw new Error("Method not implemented.");
     }
     protected calculateCentroid(): Point {
