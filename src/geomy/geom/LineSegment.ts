@@ -108,6 +108,9 @@ export class LineSegment implements Geometry {
         }
         return this
     }
+    relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
+        return relatePointToLineSegment(x, y, this.ax, this.ay, this.bx, this.by, tolerance)
+    }
     relate(other: Geometry, tolerance: Tolerance): Relation {
         if(this.getBounds().isDisjointRectangle(other.getBounds(), tolerance)){
             return DISJOINT

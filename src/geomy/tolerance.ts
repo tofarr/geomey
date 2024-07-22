@@ -15,9 +15,12 @@ export class Tolerance {
         this.tolerance = tolerance
     }
 
+    within(value: number): boolean {
+        return Math.abs(value) <= this.tolerance
+    }
+
     match(a: number, b: number): boolean {
-        const { tolerance } = this
-        return Math.abs(a - b) <= tolerance
+        return Math.abs(a - b) <= this.tolerance
     }
     
     normalize(value: number): number{

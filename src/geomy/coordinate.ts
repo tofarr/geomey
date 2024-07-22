@@ -176,3 +176,7 @@ export function forEachCoordinate(coordinates: ReadonlyArray<number>, consumer: 
     return fromIndexInclusive >> 1
 }
 
+
+export function crossProduct(ax: number, ay: number, bx: number, by: number, cx: number, cy: number){
+    return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+}

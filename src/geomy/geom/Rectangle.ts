@@ -17,7 +17,7 @@ export class Rectangle implements Geometry {
     readonly maxX: number
     readonly maxY: number
     private centroid?: Point
-    private multiGeometry?: MultiGeometry
+    private polygon?: Polygon
 
     private constructor(minX: number, minY: number, maxX: number, maxY: number) {
         this.minX = minX
@@ -81,10 +81,10 @@ export class Rectangle implements Geometry {
         pathWalker.lineTo(minX, maxY)
     }
     toWkt(numberFormatter?: NumberFormatter): string {
-        return this.getMultiGeometry().toWkt(numberFormatter)
+        return this.getPolygon().toWkt(numberFormatter)
     }
     toGeoJson() {
-        return this.getMultiGeometry().toGeoJson()
+        return this.getPolygon().toGeoJson()
     }
     toCoordinates(): number[] {
         const { minX, minY, maxX, maxY } = this
@@ -95,22 +95,13 @@ export class Rectangle implements Geometry {
             minX, maxY
         ]
     }
-    toMultiGeometry(tolerance: Tolerance): MultiGeometry {
-        if (this.isCollapsible(tolerance)){
-            return this.getCentroid().toMultiGeometry()
-        }
-        return this.getMultiGeometry()
-    }
-    private getMultiGeometry(): MultiGeometry {
-        let { multiGeometry } = this
-        if (!multiGeometry) {
+    getPolygon(): Polygon {
+        let { polygon } = this
+        if (!polygon) {
             const linearRing = LinearRing.unsafeValueOf(this.toCoordinates())
-            const polygon = Polygon.unsafeValueOf(linearRing)
-            this.multiGeometry = multiGeometry = MultiGeometry.unsafeValueOf(
-                undefined, undefined, [polygon]
-            )
+            this.polygon = polygon = Polygon.unsafeValueOf(linearRing)
         }
-        return multiGeometry
+        return polygon
     }
     transform(transformer: Transformer): Geometry {
         return Rectangle.valueOf(transformer.transformAll(this.toCoordinates()))
@@ -121,8 +112,7 @@ export class Rectangle implements Geometry {
         }
         return this
     }
-    relatePoint(point: Point, tolerance: Tolerance): Relation {
-        const { x, y } = point
+    relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
         const { minX, minY, maxX, maxY } = this
         const { tolerance: t } = tolerance
         if (
@@ -220,10 +210,10 @@ export class Rectangle implements Geometry {
         if (this.getBounds().isDisjointRectangle(other.getBounds(), tolerance)){
             return this
         }
-        return this.getMultiGeometry().less(other, tolerance)
+        return this.getPolygon().less(other, tolerance)
     }
     xor(other: Geometry, tolerance: Tolerance): Geometry | null {
-        return this.toMultiGeometry(tolerance).xor(other, tolerance)
+        return this.getPolygon().xor(other, tolerance)
     }
 }
 

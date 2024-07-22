@@ -1,4 +1,9 @@
+import { createBuilder } from "../builder/GeometryBuilderPathWalker";
 import { NumberFormatter } from "../formatter";
+import { intersection } from "../op/intersection";
+import { less } from "../op/less";
+import { union } from "../op/union";
+import { xor } from "../op/xor";
 import { DISJOINT, Relation } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
@@ -31,42 +36,41 @@ export abstract class AbstractGeometry implements Geometry {
     abstract walkPath(pathWalker: PathWalker): void
     abstract toWkt(numberFormatter?: NumberFormatter): string
     abstract toGeoJson(): any
-    toMultiGeometry(tolerance: Tolerance): MultiGeometry {
-        if (this.getBounds().isCollapsible(tolerance)){
-            return this.getCentroid().toMultiGeometry()
-        }
-        let { multiGeometry } = this
-        if (!multiGeometry) {
-            this.multiGeometry = multiGeometry = this.calculateMultiGeometry()
-        }
-        return multiGeometry.generalize(tolerance)
-    }
-    protected abstract calculateMultiGeometry(): MultiGeometry
     abstract transform(transformer: Transformer, tolerance: Tolerance): Geometry
     abstract generalize(tolerance: Tolerance): Geometry
+    abstract relatePoint(x: number, y: number, tolerance: Tolerance): Relation
     relate(other: Geometry, tolerance: Tolerance): Relation {
         if(this.getBounds().isDisjointRectangle(other.getBounds(), tolerance)){
             return DISJOINT
         }
         return this.relateGeometry(other, tolerance)
     }
-    protected abstract relateGeometry(other: Geometry, tolerance: Tolerance): Relation
-    abstract union(other: Geometry, tolerance: Tolerance): Geometry
+    protected abstract relateGeometry(other: Geometry, tolerance: Tolerance): Relation {
+        const builder = createBuilder(tolerance, this, other)
+        const points = builder.forEachPoint() // Test point
+        const links = builder.forEachLink() // Test midpoint
+        const triangles = builder.forEachTriangle() // Test centroid
+        // Stop when all criteria met.
+    }
+    union(other: Geometry, tolerance: Tolerance): Geometry {
+        return union(this, other, tolerance)
+    }
     intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
         if(this.getBounds().isDisjointRectangle(other.getBounds(), tolerance)){
             return null
         }
-        return this.intersectionGeometry(other, tolerance)
+        return intersection(this, other, tolerance)
     }
-    protected abstract intersectionGeometry(other: Geometry, tolerance: Tolerance): Geometry
     less(other: Geometry, tolerance: Tolerance): Geometry | null {
         if(this.getBounds().isDisjointRectangle(other.getBounds(), tolerance)){
             return this
         }
         return this.lessGeometry(other, tolerance)
     }
-    protected abstract lessGeometry(other: Geometry, tolerance: Tolerance): Geometry
+    protected lessGeometry(other: Geometry, tolerance: Tolerance): Geometry {
+        return less(this, other, tolerance)
+    }
     xor(other: Geometry, tolerance: Tolerance): Geometry | null {
-        return this.toMultiGeometry(tolerance).xor(other, tolerance)
+        return xor(this, other, tolerance)
     }
 }

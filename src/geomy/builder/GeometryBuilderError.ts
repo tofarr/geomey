@@ -1,6 +1,6 @@
 
 
-export class NetworkError extends Error {
+export class GeometryBuilderError extends Error {
     constructor(msg: string) {
         super(msg)
     }

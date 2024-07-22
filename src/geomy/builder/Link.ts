@@ -2,6 +2,6 @@ import { Vertex } from "./Vertex"
 
 
 export interface Link {
-    a: Vertex
-    b: Vertex
+    readonly a: Vertex
+    readonly b: Vertex
 }

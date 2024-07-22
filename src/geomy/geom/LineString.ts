@@ -1,7 +1,10 @@
 import { A_OUTSIDE_B, B_OUTSIDE_A, DISJOINT, Relation, TOUCH, UNKNOWN } from "../Relation";
 import { Tolerance, ZERO } from "../Tolerance";
+import { createBuilder } from "../builder/GeometryBuilderPathWalker";
 import { appendChanged, CoordinateConsumer, coordinateMatch, coordinatesMatch, forEachCoordinate, forEachLineSegmentCoordinates, isNaNOrInfinite, LineSegmentCoordinatesConsumer, sortCoordinates } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { intersection } from "../op/intersection";
+import { union } from "../op/union";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
@@ -16,9 +19,7 @@ import { Rectangle } from "./Rectangle";
  */
 export class LineString extends AbstractGeometry {
     readonly coordinates: ReadonlyArray<number>
-    private withExplicitSelfIntersections?: LineString
-    private withExplicitSelfIntersectionsTolerance?: Tolerance
-
+    
     private constructor(coordinates: ReadonlyArray<number>) {
         super()
         this.coordinates = coordinates
@@ -73,9 +74,6 @@ export class LineString extends AbstractGeometry {
             coordinates
         }
     }
-    protected calculateMultiGeometry(): MultiGeometry {
-        return MultiGeometry.unsafeValueOf(undefined, [this])
-    }
     transform(transformer: Transformer): Geometry {
         return LineString.valueOf(transformer.transformAll(this.coordinates))
     }
@@ -90,27 +88,8 @@ export class LineString extends AbstractGeometry {
         }
         return new LineString(generalized)
     }
-    /**
-     * A first step to a lot of operations on a line string is to make any self intersections explicit
-     * rather than implicit.
-     */
-    getWithExplicitSelfIntersections(tolerance: Tolerance) {
-        let { withExplicitSelfIntersections, withExplicitSelfIntersectionsTolerance } = this
-        if (withExplicitSelfIntersections && withExplicitSelfIntersectionsTolerance.tolerance == tolerance.tolerance) {
-            return withExplicitSelfIntersections
-        }
-        const { coordinates } = this
-        const newCoordinates = getCoordinatesWithSelfIntersections(coordinates, tolerance)
-        this.withExplicitSelfIntersectionsTolerance = tolerance
-        if (coordinatesMatch(coordinates, newCoordinates, ZERO)){
-            this.withExplicitSelfIntersections = this
-            return this
-        }
-        const result = new LineString(newCoordinates)
-        result.withExplicitSelfIntersections = result
-        result.withExplicitSelfIntersectionsTolerance = tolerance
-        this.withExplicitSelfIntersections = result
-        return result
+    relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
+        return relatePointToLineString(x, y, this.coordinates, tolerance)
     }
     relateGeometry(other: Geometry, tolerance: Tolerance): Relation {
         if (other instanceof Point){
@@ -120,16 +99,11 @@ export class LineString extends AbstractGeometry {
         } else if (other instanceof LineString) {
             return relateLineStringToLineString(this.coordinates, other.coordinates, tolerance)
         }
-        return this.toMultiGeometry(tolerance).relate(other, tolerance)
+        return super.relateGeometry(other, tolerance)
     }
     union(other: Geometry, tolerance: Tolerance): Geometry {
-        return this.toMultiGeometry(tolerance).union(other, tolerance)
-    }
-    protected intersectionGeometry(other: Geometry, tolerance: Tolerance): Geometry {
-        return this.toMultiGeometry(tolerance).intersection(other, tolerance)
-    }
-    protected lessGeometry(other: Geometry, tolerance: Tolerance): Geometry {
-        return this.toMultiGeometry(tolerance).less(other, tolerance)
+        // TODO: I think we need types for multipoint and multilinestring for speed
+        return union(this, other, tolerance)
     }
 }
 

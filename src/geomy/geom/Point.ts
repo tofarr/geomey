@@ -1,12 +1,12 @@
 import { DISJOINT, Relation, TOUCH, flipAB } from "../Relation";
 import { Tolerance } from "../Tolerance";
-import { coordinateMatch, isNaNOrInfinite, sortCoordinates } from "../coordinate";
+import { coordinateMatch, isNaNOrInfinite } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { union } from "../op/union";
+import { xor } from "../op/xor";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
-import { GeometryBuilder } from "./GeometryBuilder";
 import { InvalidGeometryError } from "./InvalidGeometryError";
-import { MultiGeometry } from "./MultiGeometry";
 import { Rectangle } from "./Rectangle";
 
 
@@ -14,7 +14,6 @@ export class Point implements Geometry {
     readonly x: number
     readonly y: number
     private bounds?: Rectangle
-    private multiGeometry?: MultiGeometry
 
     private constructor(x: number, y: number) {
         this.x = x
@@ -55,15 +54,6 @@ export class Point implements Geometry {
             coordinates: [this.x, this.y]
         }
     }
-    toMultiGeometry(): MultiGeometry {
-        let { multiGeometry } = this
-        if (!multiGeometry) {
-            this.multiGeometry = multiGeometry = MultiGeometry.unsafeValueOf(
-                [this.x, this.y]
-            )
-        }
-        return multiGeometry
-    }
     transform(transformer: Transformer): Point {
         const [x, y] = transformer.transform(this.x, this.y)
         return Point.valueOf(x, y)
@@ -71,47 +61,39 @@ export class Point implements Geometry {
     generalize(): Geometry {
         return this
     }
+    relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
+        return coordinateMatch(this.x, this.y, x, y, tolerance) ? TOUCH : DISJOINT
+    }
     relate(other: Geometry, tolerance: Tolerance): Relation {
         if (other instanceof Point) {
-            return coordinateMatch(this.x, this.y, other.x, other.y, tolerance) ? TOUCH : DISJOINT
-        } 
-        if (other instanceof Rectangle) {
-            return flipAB(other.relatePoint(this, tolerance))
+            return this.relatePoint(other.x, other.y, tolerance)
         }
-        if (other.getBounds().relatePoint(this, tolerance) === DISJOINT){
-            return DISJOINT
-        }
-        return this.toMultiGeometry().relate(other, tolerance)
+        return flipAB(other.relatePoint(this.x, this.y, tolerance))
     }
     union(other: Geometry, tolerance: Tolerance): Geometry {
-        if (this.relate(other, tolerance) == DISJOINT){
-            return this.toMultiGeometry().union(other, tolerance)
+        if (other.relatePoint(this.x, this.y, tolerance) !== DISJOINT){
+            return other
         }
-        return other
+        return union(this, other, tolerance)
     }
     intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
-        if (this.relate(other, tolerance) == DISJOINT){
+        if (other.relatePoint(this.x, this.y, tolerance) === DISJOINT){
             return null
         }
         return other
     }
     less(other: Geometry, tolerance: Tolerance): Geometry | null {
-        if (this.relate(other, tolerance) == DISJOINT){
+        if (other.relatePoint(this.x, this.y, tolerance) === DISJOINT){
             return this
         }
         return null
     }
-    xor(other: Geometry, tolerance: Tolerance): MultiGeometry | null {
+    xor(other: Geometry, tolerance: Tolerance): Geometry | null {
         if (other instanceof Point) {
-            const { x: ax, y: ay } = this
-            const { x: bx, y: by } = other
-            if (coordinateMatch(ax, ay, bx, by, tolerance)) {
+            if (coordinateMatch(this.x, this.y, other.x, other.y, tolerance)) {
                 return null
             }
-            const coordinates = [ax, ay, bx, by]
-            sortCoordinates(coordinates)
-            return MultiGeometry.unsafeValueOf(coordinates)
         }
-        return this.toMultiGeometry().xor(other, tolerance)
+        return xor(this, other, tolerance)
     }
 }

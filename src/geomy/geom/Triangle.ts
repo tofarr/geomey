@@ -1,28 +1,46 @@
-
+import { NumberFormatter } from "../formatter";
 import { Relation } from "../Relation";
 import { Tolerance } from "../Tolerance";
-import { NumberFormatter } from "../formatter";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
-import { LineString } from "./LineString";
-import { LinearRing } from "./LinearRing";
 import { Point } from "./Point";
-import { Polygon } from "./Polygon";
 import { Rectangle } from "./Rectangle";
 
 
-export class MultiGeometry implements Geometry {
-    static valueOf(points?: ReadonlyArray<number>, lineStrings?: ReadonlyArray<LineString>, rings?: ReadonlyArray<LinearRing>): MultiGeometry {
-        throw new Error("Method not implemented.");
-    }
-    static unsafeValueOf(points?: ReadonlyArray<number>, lineStrings?: ReadonlyArray<LineString>, polygons?: ReadonlyArray<Polygon>): MultiGeometry {
-        throw new Error("Method not implemented.");
+class Triangle implements Geometry {
+    readonly ax: number
+    readonly ay: number
+    readonly bx: number
+    readonly by: number
+    readonly cx: number
+    readonly cy: number
+    protected centroid?: Point
+    protected bounds?: Rectangle
+
+    private constructor(ax: number, ay: number, bx: number, by: number, cx: number, cy: number) {
+        this.ax = ax
+        this.ay = ay
+        this.bx = bx
+        this.by = by
+        this.cx = cx
+        this.cy = cy
     }
     getCentroid(): Point {
-        throw new Error("Method not implemented.");
+        let { centroid } = this
+        if (!centroid){
+            this.centroid = centroid = Point.valueOf(
+                (this.ax + this.bx + this.cx) / 3,
+                (this.ay + this.by + this.cy) / 3
+            )
+        }
+        return centroid
     }
     getBounds(): Rectangle {
-        throw new Error("Method not implemented.");
+        let { bounds } = this
+        if (!bounds){
+            this.bounds = bounds = this.calculateBounds()
+        }
+        return bounds
     }
     walkPath(pathWalker: PathWalker): void {
         throw new Error("Method not implemented.");
@@ -31,9 +49,6 @@ export class MultiGeometry implements Geometry {
         throw new Error("Method not implemented.");
     }
     toGeoJson() {
-        throw new Error("Method not implemented.");
-    }
-    toMultiGeometry(tolerance: Tolerance): MultiGeometry {
         throw new Error("Method not implemented.");
     }
     transform(transformer: Transformer, tolerance: Tolerance): Geometry {
@@ -60,4 +75,5 @@ export class MultiGeometry implements Geometry {
     xor(other: Geometry, tolerance: Tolerance): Geometry | null {
         throw new Error("Method not implemented.");
     }
+    
 }

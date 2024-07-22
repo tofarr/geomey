@@ -3,7 +3,6 @@ import { Relation } from "../Relation"
 import { Tolerance } from "../Tolerance"
 import { NumberFormatter } from "../formatter"
 import { Transformer } from "../transformer/Transformer"
-import { MultiGeometry } from "./MultiGeometry"
 import { Point } from "./Point"
 import { Rectangle } from "./Rectangle"
 
@@ -19,10 +18,11 @@ export interface Geometry {
     toWkt(numberFormatter?: NumberFormatter): string
     toGeoJson(): any
     
-    toMultiGeometry(tolerance: Tolerance): MultiGeometry
     transform(transformer: Transformer, tolerance: Tolerance): Geometry
     generalize(tolerance: Tolerance): Geometry
+    relatePoint(x: number, y: number, tolerance: Tolerance): Relation
     relate(other: Geometry, tolerance: Tolerance): Relation
+    
     union(other: Geometry, tolerance: Tolerance): Geometry
     intersection(other: Geometry, tolerance: Tolerance): Geometry | null
     less(other: Geometry, tolerance: Tolerance): Geometry | null

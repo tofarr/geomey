@@ -1,4 +1,4 @@
-import { forEachLineSegmentCoordinates, LineSegmentCoordinatesConsumer } from "../coordinate";
+import { crossProduct, forEachCoordinate, forEachLineSegmentCoordinates, LineSegmentCoordinatesConsumer } from "../coordinate";
 import { NumberFormatter } from "../formatter";
 import { A_INSIDE_B, A_OUTSIDE_B, B_INSIDE_A, DISJOINT, Relation, TOUCH, UNKNOWN } from "../Relation";
 import { Tolerance } from "../Tolerance";
@@ -20,6 +20,7 @@ import { Rectangle } from "./Rectangle";
 export class LinearRing extends AbstractGeometry {
     readonly coordinates: ReadonlyArray<number>
     private polygon?: Polygon
+    private convex?: boolean
 
     private constructor(coordiantes: ReadonlyArray<number>) {
         super()
@@ -112,6 +113,16 @@ export class LinearRing extends AbstractGeometry {
     }
     protected lessGeometry(other: Geometry, tolerance: Tolerance): Geometry {
         throw new Error("Method not implemented.");
+    }
+    isConvex(){
+        let { convex } = this
+        if (convex == null) {
+            this.convex = convex = isConvex(this.coordinates)
+        }
+        return convex
+    }
+    getConvexComponents(){
+
     }
 }
 
@@ -255,6 +266,34 @@ export function relateRingToRing(i: ReadonlyArray<number>, j: ReadonlyArray<numb
         const my = (ay + by) / 2
         result |= relateRingToPoint(j, mx, my, tolerance)
         return result !== (TOUCH | A_OUTSIDE_B | A_INSIDE_B)
+    })
+    return result
+}
+
+
+export function forEachAngle(coordinates: ReadonlyArray<number>, consumer: (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => boolean | void) {
+    const { length } = coordinates
+    let ax = coordinates[length-2]
+    let ay = coordinates[length-1]
+    let bx = coordinates[0]
+    let by = coordinates[1]
+    forEachCoordinate(coordinates, (cx, cy) => {
+        if(consumer(ax, ay, bx, by, cx, cy) === false){
+            return
+        }
+        ax = bx
+        ay = by
+        bx = cx
+        by = by
+    }, 1, length >> 1)
+}
+
+
+export function isConvex(coordinates: ReadonlyArray<number>): boolean {
+    let result = true
+    forEachAngle(coordinates, (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => {
+        result = crossProduct(ax, ay, bx, by, cx, cy) > 0
+        return result
     })
     return result
 }
