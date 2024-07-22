@@ -1,14 +1,19 @@
 import { A_OUTSIDE_B, DISJOINT, flipAB, Relation, TOUCH, UNKNOWN } from "../Relation";
 import { Tolerance } from "../Tolerance";
+import { createBuilder } from "../builder/GeometryBuilderPathWalker";
 import { comparePointsForSort, coordinateMatch, isNaNOrInfinite } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
-import { LineString } from "./LineString";
-import { MultiGeometry } from "./MultiGeometry";
+import { LineString, relateLineStringToLineSegment } from "./LineString";
 import { Point } from "./Point";
 import { Rectangle } from "./Rectangle";
+import { intersection } from "./op/intersection";
+import { less } from "./op/less";
+import { relate } from "./op/relate";
+import { union } from "./op/union";
+import { xor } from "./op/xor";
 
 
 export class LineSegment implements Geometry {
@@ -18,7 +23,6 @@ export class LineSegment implements Geometry {
     readonly by: number
     private centroid?: Point
     private bounds?: Rectangle
-    private multiGeometry?: MultiGeometry
 
     private constructor(ax: number, ay: number, bx: number, by: number) {
         this.ax = ax
@@ -53,6 +57,9 @@ export class LineSegment implements Geometry {
         }
         return bounds
     }
+    getInternalArea(): null {
+        return null
+    }
     getDx() {
         return this.bx - this.ax
     }
@@ -80,20 +87,6 @@ export class LineSegment implements Geometry {
                 [this.bx, this.by],
             ]
         }
-    }
-    toMultiGeometry(tolerance: Tolerance): MultiGeometry {
-        if (this.getBounds().isCollapsible(tolerance)) {
-            return this.getCentroid().toMultiGeometry()
-        }
-        return this.getMultiGeometry()
-    }
-    getMultiGeometry(): MultiGeometry {
-        let { multiGeometry } = this
-        if (!multiGeometry) {
-            const lineString = LineString.unsafeValueOf([this.ax, this.ay, this.bx, this.by])
-            this.multiGeometry = multiGeometry = MultiGeometry.unsafeValueOf(undefined, [lineString])
-        }
-        return multiGeometry
     }
     transform(transformer: Transformer): LineSegment | Point {
         const [ax, ay, bx, by] = transformer.transformAll([this.ax, this.ay, this.bx, this.by])
@@ -125,19 +118,22 @@ export class LineSegment implements Geometry {
                 tolerance
             )
         }
-        return this.getMultiGeometry().relate(other, tolerance)
+        if (other instanceof LineString) {
+            return flipAB(relateLineStringToLineSegment(other.coordinates, this.ax, this.ay, this.bx, this.by, tolerance))
+        }
+        return relate(this, other, tolerance)
     }
     union(other: Geometry, tolerance: Tolerance): Geometry {
-        return this.getMultiGeometry().union(other, tolerance)
+        return union(this, other, tolerance)
     }
     intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
-        return this.getMultiGeometry().intersection(other, tolerance)
+        return intersection(this, other, tolerance)
     }
     less(other: Geometry, tolerance: Tolerance): Geometry | null {
-        return this.getMultiGeometry().less(other, tolerance)
+        return less(this, other, tolerance)
     }
     xor(other: Geometry, tolerance: Tolerance): Geometry | null {
-        return this.getMultiGeometry().xor(other, tolerance)
+        return xor(this, other, tolerance)
     }
     intersectionLineSegment(other: LineSegment, tolerance: Tolerance): Point | null {
         return intersectionLineSegment(

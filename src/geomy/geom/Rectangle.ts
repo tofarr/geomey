@@ -6,7 +6,6 @@ import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
 import { LinearRing } from "./LinearRing";
-import { MultiGeometry } from "./MultiGeometry";
 import { Point } from "./Point";
 import { Polygon } from "./Polygon";
 

@@ -1,18 +1,15 @@
-import { A_OUTSIDE_B, B_OUTSIDE_A, DISJOINT, Relation, TOUCH, UNKNOWN } from "../Relation";
-import { Tolerance, ZERO } from "../Tolerance";
-import { createBuilder } from "../builder/GeometryBuilderPathWalker";
-import { appendChanged, CoordinateConsumer, coordinateMatch, coordinatesMatch, forEachCoordinate, forEachLineSegmentCoordinates, isNaNOrInfinite, LineSegmentCoordinatesConsumer, sortCoordinates } from "../coordinate";
+import { A_OUTSIDE_B, B_OUTSIDE_A, Relation, TOUCH, UNKNOWN } from "../Relation";
+import { Tolerance } from "../Tolerance";
+import { appendChanged, CoordinateConsumer, coordinateMatch, forEachCoordinate, forEachLineSegmentCoordinates, isNaNOrInfinite, LineSegmentCoordinatesConsumer, sortCoordinates } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
-import { intersection } from "../op/intersection";
-import { union } from "../op/union";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
 import { getLength, intersectionLineSegment, LineSegment, perpendicularDistance, pointTouchesLineSegment, relateLineSegments } from "./LineSegment";
-import { MultiGeometry } from "./MultiGeometry";
 import { Point } from "./Point";
 import { Rectangle } from "./Rectangle";
+import { relate } from "./op/relate";
 
 /**
  * A line string describes a series of line segments which may or may not self intersect.
@@ -92,18 +89,12 @@ export class LineString extends AbstractGeometry {
         return relatePointToLineString(x, y, this.coordinates, tolerance)
     }
     relateGeometry(other: Geometry, tolerance: Tolerance): Relation {
-        if (other instanceof Point){
-            return relatePointToLineString(other.x, other.y, this.coordinates, tolerance)
-        } else if (other instanceof LineSegment) {
+        if (other instanceof LineSegment) {
             return relateLineStringToLineSegment(this.coordinates, other.ax, other.ay, other.bx, other.by, tolerance)
         } else if (other instanceof LineString) {
             return relateLineStringToLineString(this.coordinates, other.coordinates, tolerance)
         }
-        return super.relateGeometry(other, tolerance)
-    }
-    union(other: Geometry, tolerance: Tolerance): Geometry {
-        // TODO: I think we need types for multipoint and multilinestring for speed
-        return union(this, other, tolerance)
+        return relate(this, other, tolerance)
     }
 }
 

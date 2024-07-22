@@ -1,4 +1,4 @@
-import { crossProduct, forEachCoordinate, forEachLineSegmentCoordinates, LineSegmentCoordinatesConsumer } from "../coordinate";
+import { CoordinateConsumer, crossProduct, forEachCoordinate, forEachLineSegmentCoordinates, forEachPointCoordinate, LineSegmentCoordinatesConsumer } from "../coordinate";
 import { NumberFormatter } from "../formatter";
 import { A_INSIDE_B, A_OUTSIDE_B, B_INSIDE_A, DISJOINT, Relation, TOUCH, UNKNOWN } from "../Relation";
 import { Tolerance } from "../Tolerance";
@@ -8,6 +8,7 @@ import { Geometry } from "./Geometry";
 import { LineSegment, pointTouchesLineSegment } from "./LineSegment";
 import { douglasPeucker, getCoordinatesWithIntersectionsAgainst, LineString, walkPath } from "./LineString";
 import { MultiGeometry } from "./MultiGeometry";
+import { relate } from "./op/relate";
 import { Point } from "./Point";
 import { Polygon } from "./Polygon";
 import { Rectangle } from "./Rectangle";
@@ -20,7 +21,7 @@ import { Rectangle } from "./Rectangle";
 export class LinearRing extends AbstractGeometry {
     readonly coordinates: ReadonlyArray<number>
     private polygon?: Polygon
-    private convex?: boolean
+    private convexRings: ReadonlyArray<LinearRing>
 
     private constructor(coordiantes: ReadonlyArray<number>) {
         super()
@@ -56,8 +57,26 @@ export class LinearRing extends AbstractGeometry {
             coordinates
         }
     }
-    protected calculateMultiGeometry(): MultiGeometry {
-        return MultiGeometry.unsafeValueOf(undefined, undefined, [this.getPolygon()])
+    isConvex(): boolean {
+        return this.getConvexRings().length > 1
+    }
+    getConvexRings(): ReadonlyArray<LinearRing> {
+        let { convexRings } = this
+        if (!convexRings) {
+            const convexRingsCoordinates = []
+            splitToConvex(this.coordinates, convexRingsCoordinates)
+            if (convexRingsCoordinates.length === 1) {
+                convexRings = [this]
+            } else {
+                convexRings = convexRingsCoordinates.map((coordinates) => {
+                    const convexRing = new LinearRing(coordinates)
+                    convexRing.convexRings = [convexRing]
+                    return convexRing
+                })
+            }
+            this.convexRings = convexRings
+        }
+        return convexRings
     }
     getPolygon(): Polygon {
         let { polygon } = this
@@ -90,39 +109,8 @@ export class LinearRing extends AbstractGeometry {
         }
         return new LinearRing(generalized)
     }
-    protected relateGeometry(other: Geometry, tolerance: Tolerance): Relation {
-        if (other instanceof Point) {
-            return relateRingToPoint(this.coordinates, other.x, other.y, tolerance)
-        }
-        if (other instanceof LineSegment) {
-            return relateRingToLineString(this.coordinates, [other.ax, other.ay, other.bx, other.by], tolerance)
-        }
-        if (other instanceof LineString) {
-            return relateRingToLineString(this.coordinates, other.coordinates, tolerance)
-        }
-        if (other instanceof LinearRing) {
-            return relateRingToRing(this.coordinates, other.coordinates, tolerance)
-        }
-        return this.toMultiGeometry(tolerance).relate(other, tolerance)
-    }
-    union(other: Geometry, tolerance: Tolerance): Geometry {
-        throw new Error("Method not implemented.");
-    }
-    protected intersectionGeometry(other: Geometry, tolerance: Tolerance): Geometry {
-        throw new Error("Method not implemented.");
-    }
-    protected lessGeometry(other: Geometry, tolerance: Tolerance): Geometry {
-        throw new Error("Method not implemented.");
-    }
-    isConvex(){
-        let { convex } = this
-        if (convex == null) {
-            this.convex = convex = isConvex(this.coordinates)
-        }
-        return convex
-    }
-    getConvexComponents(){
-
+    relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
+        return relateRingToPoint(this.coordinates, x, y, tolerance)
     }
 }
 
@@ -231,45 +219,6 @@ export function relateRingToPoint(coordinates: ReadonlyArray<number>, x: number,
     return inside ? B_INSIDE_A : DISJOINT
 }
 
-export function relateRingToLineString(ringCoordinates: ReadonlyArray<number>, lineStringCoordinates: ReadonlyArray<number>, tolerance: Tolerance) {
-    const lineStringCoordinatesToTest = getCoordinatesWithIntersectionsAgainst(
-        lineStringCoordinates, 
-        ringCoordinates,
-        tolerance, 
-        lineStringCoordinates.length >> 1 - 1,
-        ringCoordinates.length >> 1
-    )
-    if (lineStringCoordinatesToTest === lineStringCoordinates){
-        return relateRingToPoint(ringCoordinates, lineStringCoordinates[0], lineStringCoordinates[1], tolerance)
-    }
-    let result = TOUCH
-    forEachLineSegmentCoordinates(lineStringCoordinatesToTest, (ax, ay, bx, by) => {
-        const mx = (ax + bx) / 2
-        const my = (ay + by) / 2
-        result |= relateRingToPoint(ringCoordinates, mx, my, tolerance)
-        return result !== (TOUCH | A_OUTSIDE_B | A_INSIDE_B)
-    })
-    return result
-}
-
-
-export function relateRingToRing(i: ReadonlyArray<number>, j: ReadonlyArray<number>, tolerance: Tolerance) {
-    const lineStringCoordinatesToTest = getCoordinatesWithIntersectionsAgainst(
-        i, j, tolerance, i.length >> 1, j.length >> 1
-    )
-    if (lineStringCoordinatesToTest === i){
-        return relateRingToPoint(i, j[0], j[1], tolerance)
-    }
-    let result = TOUCH
-    forEachLineSegmentCoordinates(lineStringCoordinatesToTest, (ax, ay, bx, by) => {
-        const mx = (ax + bx) / 2
-        const my = (ay + by) / 2
-        result |= relateRingToPoint(j, mx, my, tolerance)
-        return result !== (TOUCH | A_OUTSIDE_B | A_INSIDE_B)
-    })
-    return result
-}
-
 
 export function forEachAngle(coordinates: ReadonlyArray<number>, consumer: (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => boolean | void) {
     const { length } = coordinates
@@ -292,8 +241,69 @@ export function forEachAngle(coordinates: ReadonlyArray<number>, consumer: (ax: 
 export function isConvex(coordinates: ReadonlyArray<number>): boolean {
     let result = true
     forEachAngle(coordinates, (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => {
-        result = crossProduct(ax, ay, bx, by, cx, cy) > 0
+        result = crossProduct(ax, ay, bx, by, cx, cy) >= 0
         return result
     })
     return result
+}
+
+
+export function splitToConvex(coordinates: ReadonlyArray<number>, result: ReadonlyArray<number>[]) {
+    const { length } = coordinates
+    const splitStart = getSplitStart(coordinates)
+    if (splitStart == null) {
+        result.push(coordinates)
+        return
+    }
+    let splitEnd = getSplitEnd(coordinates, splitStart)
+    const a = coordinates.slice(0, splitStart.index + 2)
+    const b = coordinates.slice(splitStart.index, splitEnd + 2)
+    a.push.apply(coordinates.slice(splitEnd))
+    splitToConvex(a, result)
+    splitToConvex(b, result)
+}
+
+
+interface SplitStart{
+    index: number
+    ax: number
+    ay: number
+    bx: number
+    by: number
+}
+
+
+function getSplitStart(coordinates: ReadonlyArray<number>): SplitStart {
+    const { length } = coordinates
+    let result = null
+    let index = length - 2
+    forEachAngle(coordinates, (ax, ay, bx, by, cx, cy) => {
+        index += 2
+        if (crossProduct(ax, ay, bx, by, cx, cy) < 0){
+            index %= length
+            result = { index, ax, ay, bx, by }
+        }
+        return result == null
+    })
+    return result
+}
+
+
+function getSplitEnd(coordinates: ReadonlyArray<number>, splitStart: SplitStart): number {
+    // Get the point closest to b that is on the left side of the line
+    const { ax, ay, bx, by } = splitStart
+    let minDistSq = Infinity
+    let minIndex = undefined
+    let index = splitStart.index + 2
+    forEachPointCoordinate(coordinates, (x, y) => {
+        if (crossProduct(ax, ay, bx, by, x, y) >= 0){
+            const distSq = (x - bx) ** 2 + (y - by) ** 2
+            if (distSq < minDistSq){
+                minDistSq = distSq
+                minIndex = index
+            }
+            index += 2
+        }
+    }, index, coordinates.length - index)
+    return minIndex
 }

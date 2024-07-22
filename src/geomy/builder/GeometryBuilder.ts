@@ -9,21 +9,8 @@ import { Tolerance, ZERO } from "../Tolerance"
 import { Link } from "./Link"
 import { GeometryBuilderError } from "./GeometryBuilderError"
 import { Vertex } from "./Vertex"
-import { Polygon } from "../geom/Polygon"
 import { DISJOINT } from "../Relation"
 import { SpatialConsumer } from "../spatialIndex"
-
-/*
-Maybe rename this to multi-geometry builder.
-Maybe we re-institute some of the builder classes.
-Maybe we no longer need a toMultiGeometry class - we use this where applicable
-Many operations become building up one of these
-
-Maybe each geometry gets a relate to point method again that is used in builder
-If something doesn't have linear rings and polygons does it need this?
-
-The solution is not area and triangle nonsense, but to use GeometryBuilder responsibly!
-*/
 
 /**
  * Class describing a network of Vertices and Links, which may be used to build geometries.
@@ -221,6 +208,40 @@ export class GeometryBuilder {
             this.links.findAll(consumer)
         }
     }
+    forEachRing(consumer: (ring: LinearRing) => boolean | void, rectangle?: Rectangle) {
+        foo = "bar"
+    }
+    getVerticesByZ() {
+        const { tolerance: t } = this.tolerance
+        const result = Array.from(this.vertices.values())
+        result.sort((a, b) => {
+            return a.zOrder - b.zOrder
+        })
+        return result
+    }
+    clone() {
+        const result = new GeometryBuilder(this.tolerance)
+        this.vertices.forEach(vertex => {
+            result.vertices.set(vertex.zOrder, new Vertex(vertex.x, vertex.y, vertex.zOrder))
+        })
+        this.links.findAll(({a, b}, rectangle) => {
+            a = result.vertices.get(a.zOrder)
+            b = result.vertices.get(b.zOrder)
+            const aLinks = a.links as Vertex[]
+            const bLinks = b.links as Vertex[]
+            aLinks.push(b)
+            bLinks.push(a)
+            result.links.add(rectangle, { a, b })
+        })
+        this.vertices.forEach(vertex => result.addVertex(vertex.x, vertex.y))
+        this.links.findAll(({a, b}) => { result.addLink(a.x, a.y, b.x, b.y) })
+        return result
+    }
+    // I feel that below here is wrong
+
+
+
+
     cull(match: (x: number, y: number) => boolean) {
         this.cullLinks(match)
         this.cullVertices(match)
@@ -254,12 +275,6 @@ export class GeometryBuilder {
         while (i < length) {
             this.removeVertex(toRemove[i++], toRemove[i++])
         }
-    }
-    clone() {
-        const result = new GeometryBuilder(this.tolerance)
-        this.vertices.forEach(vertex => result.addVertex(vertex.x, vertex.y))
-        this.links.findAll(({a, b}) => { result.addLink(a.x, a.y, b.x, b.y) })
-        return result
     }
     clearAndBuildTriangles(): number[]{
         this.cullVertices((x: number, y: number) => )
@@ -343,16 +358,6 @@ export class GeometryBuilder {
         const lineStrings = lineStringCoordinates.map(coordinates => LineString.unsafeValueOf(coordinates))
         const rings = ringCoordinates.map(coordinates => LinearRing.unsafeValueOf(coordinates))
         return new MultiGeometry(coordinates, lineStrings, rings)
-    }
-    getVerticesByZ() {
-        const { tolerance: t } = this.tolerance
-        const result = Array.from(this.vertices.values())
-        result.sort((a, b) => {
-            const az = calculateZOrder(a.x, a.y, t)
-            const bz = calculateZOrder(b.x, b.y, t)
-            return az - bz
-        })
-        return result
     }
     createSnapped(snapTolerance: Tolerance): GeometryBuilder {
         const vertices = this.getVerticesByZ()

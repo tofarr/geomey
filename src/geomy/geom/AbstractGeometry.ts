@@ -1,14 +1,14 @@
-import { createBuilder } from "../builder/GeometryBuilderPathWalker";
 import { NumberFormatter } from "../formatter";
-import { intersection } from "../op/intersection";
-import { less } from "../op/less";
-import { union } from "../op/union";
-import { xor } from "../op/xor";
 import { DISJOINT, Relation } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { MultiGeometry } from "./MultiGeometry";
+import { intersection } from "./op/intersection";
+import { less } from "./op/less";
+import { relate } from "./op/relate";
+import { union } from "./op/union";
+import { xor } from "./op/xor";
 import { Point } from "./Point";
 import { Rectangle } from "./Rectangle";
 
@@ -43,14 +43,13 @@ export abstract class AbstractGeometry implements Geometry {
         if(this.getBounds().isDisjointRectangle(other.getBounds(), tolerance)){
             return DISJOINT
         }
+        if(other instanceof Point){
+            return this.relatePoint(other.x, other.y, tolerance)
+        }
         return this.relateGeometry(other, tolerance)
     }
-    protected abstract relateGeometry(other: Geometry, tolerance: Tolerance): Relation {
-        const builder = createBuilder(tolerance, this, other)
-        const points = builder.forEachPoint() // Test point
-        const links = builder.forEachLink() // Test midpoint
-        const triangles = builder.forEachTriangle() // Test centroid
-        // Stop when all criteria met.
+    protected relateGeometry(other: Geometry, tolerance: Tolerance): Relation{
+        return relate(this, other, tolerance)
     }
     union(other: Geometry, tolerance: Tolerance): Geometry {
         return union(this, other, tolerance)
@@ -59,6 +58,9 @@ export abstract class AbstractGeometry implements Geometry {
         if(this.getBounds().isDisjointRectangle(other.getBounds(), tolerance)){
             return null
         }
+        return this.intersectionGeometry(other, tolerance)
+    }
+    protected intersectionGeometry(other: Geometry, tolerance: Tolerance): Geometry | null {
         return intersection(this, other, tolerance)
     }
     less(other: Geometry, tolerance: Tolerance): Geometry | null {

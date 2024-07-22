@@ -8,7 +8,7 @@ export class Vertex {
     readonly zOrder: number
     readonly links: ReadonlyArray<Vertex>
 
-    constructor(x: number, y: number, zOrder: number, links?: Vertex[]) {
+    constructor(x: number, y: number, zOrder: number, links?: Vertex[], ring?: boolean) {
         this.x = x
         this.y = y
         this.zOrder = zOrder

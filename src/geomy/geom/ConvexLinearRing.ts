@@ -13,7 +13,7 @@ import { Rectangle } from "./Rectangle";
 
 
 
-export class ConvexArea extends AbstractGeometry {
+export class ConvexLinearRing extends AbstractGeometry {
     readonly coordinates: ReadonlyArray<number> 
     private constructor(coordinates: ReadonlyArray<number>){
         super()

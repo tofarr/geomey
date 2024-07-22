@@ -2,12 +2,12 @@ import { DISJOINT, Relation, TOUCH, flipAB } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { coordinateMatch, isNaNOrInfinite } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
-import { union } from "../op/union";
-import { xor } from "../op/xor";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
 import { Rectangle } from "./Rectangle";
+import { union } from "./op/union";
+import { xor } from "./op/xor";
 
 
 export class Point implements Geometry {
@@ -80,7 +80,7 @@ export class Point implements Geometry {
         if (other.relatePoint(this.x, this.y, tolerance) === DISJOINT){
             return null
         }
-        return other
+        return this
     }
     less(other: Geometry, tolerance: Tolerance): Geometry | null {
         if (other.relatePoint(this.x, this.y, tolerance) === DISJOINT){
