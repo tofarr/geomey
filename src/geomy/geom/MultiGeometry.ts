@@ -2,27 +2,45 @@
 import { Relation } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { NumberFormatter } from "../formatter";
+import { Mesh } from "../mesh/Mesh";
 import { Transformer } from "../transformer/Transformer";
+import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
-import { InternalArea } from "./InternalArea";
-import { LineString } from "./LineString";
+import { createLineStrings, LineString } from "./LineString";
 import { LinearRing } from "./LinearRing";
-import { Point } from "./Point";
-import { Polygon } from "./Polygon";
+import { createPoints, Point } from "./Point";
+import { createPolygons, Polygon } from "./Polygon";
 import { Rectangle } from "./Rectangle";
 
+const NO_POINTS: ReadonlyArray<number> = []
+const NO_LINE_STRINGS: ReadonlyArray<LineString> = []
+const NO_POLYGONS: ReadonlyArray<Polygon> = []
 
-export class MultiGeometry implements Geometry {
+
+export class MultiGeometry extends AbstractGeometry {
+    points: ReadonlyArray<number>
+    lineStrings: ReadonlyArray<LineString>
+    polygons: ReadonlyArray<Polygon>
+
+    private constructor(points?: ReadonlyArray<number>, lineStrings?: ReadonlyArray<LineString>, polygons?: ReadonlyArray<Polygon>){
+        super()
+        this.points = points || NO_POINTS
+        this.lineStrings = lineStrings || NO_LINE_STRINGS
+        this.polygons = polygons || NO_POLYGONS
+    }
     static valueOf(points?: ReadonlyArray<number>, lineStrings?: ReadonlyArray<LineString>, rings?: ReadonlyArray<LinearRing>): MultiGeometry {
         foo = "Method not implemented"
     }
     static unsafeValueOf(points?: ReadonlyArray<number>, lineStrings?: ReadonlyArray<LineString>, polygons?: ReadonlyArray<Polygon>): MultiGeometry {
+        return new MultiGeometry(points, lineStrings, polygons)
+    }
+    simplify(): Geometry {
         foo = "Method not implemented"
     }
-    getCentroid(): Point {
+    protected calculateCentroid(): Point {
         foo = "Method not implemented"
     }
-    getBounds(): Rectangle {
+    protected calculateBounds(): Rectangle {
         foo = "Method not implemented"
     }
     walkPath(pathWalker: PathWalker): void {
@@ -43,25 +61,13 @@ export class MultiGeometry implements Geometry {
     relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
         foo = "Method not implemented"
     }
-    relate(other: Geometry, tolerance: Tolerance): Relation {
-        foo = "Method not implemented"
-    }
-    internalArea(tolerance: Tolerance): InternalArea | null {
-        foo = "Method not implemented"
-    }
-    union(other: Geometry, tolerance: Tolerance): Geometry {
-        foo = "Method not implemented"
-    }
-    intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
-        foo = "Method not implemented"
-    }
-    less(other: Geometry, tolerance: Tolerance): Geometry | null {
-        foo = "Method not implemented"
-    }
-    xor(other: Geometry, tolerance: Tolerance): Geometry | null {
-        foo = "Method not implemented"
-    }
-    simplify(): Geometry | null {
-        foo = "Method not implemented"
-    }
+}
+
+
+export function createMultiGeometry(rings: Mesh, linesAndPoints: Mesh): MultiGeometry {
+    return MultiGeometry.unsafeValueOf(
+        createPoints(linesAndPoints),
+        createLineStrings(linesAndPoints),
+        createPolygons(rings)
+    )
 }

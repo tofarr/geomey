@@ -1,17 +1,22 @@
 
-import { Relation } from "../Relation";
+import { A_INSIDE_B, B_INSIDE_A, B_OUTSIDE_A, Relation, TOUCH } from "../Relation";
 import { Tolerance } from "../Tolerance";
-import { CoordinateConsumer, forEachCoordinate, forEachLineSegmentCoordinates, LineSegmentCoordinatesConsumer } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { Mesh } from "../mesh/Mesh";
+import { MeshPathWalker } from "../mesh/MeshPathWalker";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
-import { coordinatesToWkt, walkPath } from "./LineString";
-import { LinearRing } from "./LinearRing";
+import { LineSegment } from "./LineSegment";
+import { LineString } from "./LineString";
+import { createLinearRings, forEachRingCoordinate, forEachRingLineSegmentCoordinates, LinearRing, ringToWkt } from "./LinearRing";
 import { MultiGeometry } from "./MultiGeometry";
 import { Point } from "./Point";
 import { Rectangle } from "./Rectangle";
+import { PolygonBuilder } from "./builder/PolygonBuilder";
 
+
+const NO_CHILDREN: ReadonlyArray<Polygon> = []
 
 /**
  * A polygon is a non self intersecting linear ring of coordinates. Unlike WKT, the first coordinate is not
@@ -21,32 +26,51 @@ import { Rectangle } from "./Rectangle";
  * the outer shell, and must not touch or overlap with each other.
  */
 export class Polygon extends AbstractGeometry {
-    readonly shell: ReadonlyArray<number>
-    readonly children?: ReadonlyArray<Polygon>
-    static valueOf(rings: ReadonlyArray<number>[], tolerance: Tolerance): Polygon[] {
-        foo = "Method not implemented"
+    readonly shell: LinearRing
+    readonly children: ReadonlyArray<Polygon>
+    
+    private constructor(shell: LinearRing, children: ReadonlyArray<Polygon>) {
+        super()
+        this.shell = shell
+        this.children = children || NO_CHILDREN
     }
-    static unsafeValueOf(linearRing: LinearRing, children?: ReadonlyArray<Polygon>): Polygon {
-        foo = "Method not implemented"
+    static valueOf(rings: ReadonlyArray<LinearRing>, tolerance: Tolerance): Polygon[] {
+        const mesh = new Mesh(tolerance)
+        for (const ring of rings){
+            forEachRingLineSegmentCoordinates(ring.coordinates, (ax, ay, bx, by) => {
+                mesh.addLink(ax, ay, bx, by)
+            })
+        }
+        return createPolygons(mesh)
+    }
+    static unsafeValueOf(shell: LinearRing, children?: ReadonlyArray<Polygon>): Polygon {
+        return new Polygon(shell, children)
     }
     protected calculateCentroid(): Point {
-        return calculateCentroid(this.shell)
+        return this.shell.getCentroid()
     }
     protected calculateBounds(): Rectangle {
-        return Rectangle.valueOf(this.shell)
+        return this.shell.getBounds()
     }
     walkPath(pathWalker: PathWalker): void {
-        walkPath(this.shell, pathWalker)
-        pathWalker.closePath()
+        // Walk in reverse
+        this.shell.walkPath(pathWalker)
+        const { children } = this
+        for (const child of children) {
+            child.walkPathReverse(pathWalker)
+        }
+    }
+    walkPathReverse(pathWalker: PathWalker): void {
+        this.shell.walkPathReverse(pathWalker)
+        for (const child of this.children) {
+            child.walkPath(pathWalker)
+        }
     }
     protected ringsToWkt(numberFormatter: NumberFormatter, reverse: boolean, result: string[]){
-        ringToWkt(this.shell, numberFormatter, reverse, result)
-        const { children } = this
-        if (children) {
-            for(const child of children){
-                result.push(", ")
-                child.ringsToWkt(numberFormatter, !reverse, result)
-            }
+        ringToWkt(this.shell.coordinates, numberFormatter, reverse, result)
+        for(const child of this.children){
+            result.push(", ")
+            child.ringsToWkt(numberFormatter, !reverse, result)
         }
     }
     toWkt(numberFormatter: NumberFormatter =  NUMBER_FORMATTER): string {
@@ -57,13 +81,11 @@ export class Polygon extends AbstractGeometry {
     }
     protected ringsToGeoJson(reverse: boolean, result: number[][]){
         const shell = []
-        forEachRingCoordinate(this.shell, (x, y) => { shell.push([x, y]) }, reverse)
+        forEachRingCoordinate(this.shell.coordinates, (x, y) => { shell.push([x, y]) }, reverse)
         result.push(shell)
         const { children } = this
-        if (children) {
-            for(const child of children){
-                child.ringsToGeoJson(!reverse, result)
-            }
+        for(const child of children){
+            child.ringsToGeoJson(!reverse, result)
         }
     }
     toGeoJson() {
@@ -74,40 +96,113 @@ export class Polygon extends AbstractGeometry {
             coordinates
         }
     }
-    protected calculateMultiGeometry(): MultiGeometry {
-        return MultiGeometry.unsafeValueOf(undefined, undefined, [this])
-    }
-    protected transformRings(transformer: Transformer, result: ReadonlyArray<number>[]) {
-        result.push(transformer.transformAll(this.shell))
+    generalize(tolerance: Tolerance): Geometry {
+        let shell: Geometry = this.shell
+        if (shell.getBounds().isCollapsible(tolerance)){
+            return this.getCentroid()
+        }
+        shell = shell.generalize(tolerance)
+        if(!(shell instanceof LinearRing)){
+            return shell
+        }
         const { children } = this
-        if (children) {
-            for(const child of children){
-                child.transformRings(transformer, result)
-            }
+        if (!children.length){
+            return Polygon.unsafeValueOf(shell)
+        }
+        const walker = MeshPathWalker.valueOf(tolerance)
+        shell.walkPath(walker)
+        for (const child of children){
+            child.generalize(tolerance).walkPath(walker)
+        }
+        const polygons = createPolygons(walker.rings)
+        if (polygons.length == 1){
+            return polygons[0]
+        }
+        return MultiGeometry.unsafeValueOf(undefined, undefined, polygons)
+    }
+    protected transformRings(transformer: Transformer, tolerance: Tolerance, result: Geometry[]) {
+        result.push(this.shell.transform(transformer, tolerance))
+        for(const child of this.children){
+            child.transformRings(transformer, tolerance, result)
         }
     }
-    transform(transformer: Transformer, tolerance: Tolerance): Polygon | MultiGeometry {
+    transform(transformer: Transformer, tolerance: Tolerance): Geometry {
         const rings = []
-        this.transformRings(transformer, rings)
+        this.transformRings(transformer, tolerance, rings)
         const polygons = Polygon.valueOf(rings, tolerance)
         if (polygons.length === 1) {
             return polygons[0]
         }
         return MultiGeometry.unsafeValueOf(undefined, undefined, polygons)
     }
-    generalize(tolerance: Tolerance): Geometry {
-        foo = "Method not implemented"
-    }
-    protected relateGeometry(other: Geometry, tolerance: Tolerance): Relation {
-        foo = "Method not implemented"
-    }
-    union(other: Geometry, tolerance: Tolerance): Geometry {
-        foo = "Method not implemented"
-    }
-    protected intersectionGeometry(other: Geometry, tolerance: Tolerance): Geometry {
-        foo = "Method not implemented"
+    relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
+        const relation = this.shell.relatePoint(x, y, tolerance)
+        if (relation !== B_INSIDE_A){
+            return relation
+        }
+        for (const child of this.children){
+            const childRelation = child.relatePoint(x, y, tolerance)
+            if (childRelation === TOUCH) {
+                return TOUCH
+            }
+            if (childRelation == B_INSIDE_A){
+                return B_OUTSIDE_A  // inside a hole is outside!
+            }
+        }
+        return relation
     }
     protected lessGeometry(other: Geometry, tolerance: Tolerance): Geometry {
-        foo = "Method not implemented"
+        if (
+            (other instanceof Point) || 
+            (other instanceof LineSegment) ||
+            (other instanceof LineString) ||
+            (other instanceof MultiGeometry && !other.polygons.length)
+        ) {
+            return this
+        }
+        return super.lessGeometry(other, tolerance)
     }
+}
+
+
+export function createPolygons(mesh: Mesh): Polygon[] {
+    const rings = createLinearRings(mesh)
+    const builders = []
+    const { tolerance } = mesh
+    for(const ring of rings){
+        addRing(ring, tolerance, builders)
+    }
+    return builders.map(buildPolygon)
+}
+
+
+function addRing(ring: LinearRing, tolerance: Tolerance, builders: PolygonBuilder[]) {
+    for(const builder of builders){
+        const relation = ring.relate(builder.shell, tolerance)
+        if(relation & A_INSIDE_B){
+            addRing(ring, tolerance, builder.holes)
+            return
+        } else if(relation & B_INSIDE_A){
+            const hole = {
+                shell: builder.shell,
+                holes: builder.holes
+            }
+            builder.shell = ring
+            builder.holes = [hole]
+            return
+        }
+    }
+    builders.push({
+        shell: ring,
+        holes: []
+    })
+}
+
+
+function buildPolygon(builder: PolygonBuilder){
+    const children = builder.holes.map(h => buildPolygon(h))
+    return Polygon.unsafeValueOf(
+        builder.shell,
+        children.length ? children : undefined
+    )
 }

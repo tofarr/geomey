@@ -2,6 +2,7 @@ import { DISJOINT, Relation, TOUCH, flipAB } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { coordinateMatch, isNaNOrInfinite } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { Mesh } from "../mesh/Mesh";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
@@ -93,4 +94,15 @@ export class Point implements Geometry {
         }
         return xor(this, other, tolerance)
     }
+}
+
+
+export function createPoints(mesh: Mesh): number[] {
+    const coordinates = []
+    mesh.forEachVertex((vertex) => {
+        if (!vertex.links) {
+            coordinates.push(vertex.x, vertex.y)
+        }
+    })
+    return coordinates
 }

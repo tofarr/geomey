@@ -37,7 +37,6 @@ export class LinearRing extends AbstractGeometry {
         })
         const rings = []
         while(true){
-            removeNonRingVertices(mesh)
             const ring = popLinearRing(mesh)
             if(ring == null){
                 return rings
@@ -64,6 +63,10 @@ export class LinearRing extends AbstractGeometry {
     walkPath(pathWalker: PathWalker): void {
         walkPath(this.coordinates, pathWalker)
         pathWalker.closePath()
+    }
+    walkPathReverse(pathWalker: PathWalker) {
+        walkPathReverse(this.coordinates, pathWalker)
+        pathWalker.closePath()   
     }
     toWkt(numberFormatter?: NumberFormatter): string {
         const result = ["POLYGON("]
@@ -338,4 +341,26 @@ export function calculateArea(coordinates: ReadonlyArray<number>): number {
     })
     area /= 2;
     return area;
+}
+
+
+
+export function walkPathReverse(coordinates: ReadonlyArray<number>, pathWalker: PathWalker){
+    const { length } = coordinates
+    pathWalker.moveTo(coordinates[0], coordinates[1])
+    let index = length
+    while(index){
+        const y = coordinates[--index]
+        const x = coordinates[--index]
+        pathWalker.lineTo(x, y)
+    }
+}
+
+
+export function createLinearRings(mesh: Mesh): LinearRing[] {
+    const results = []
+    mesh.forEachLinearRing((coordinates) => {
+        results.push(LinearRing.unsafeValueOf(coordinates))
+    })
+    return results
 }

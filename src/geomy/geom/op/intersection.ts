@@ -3,7 +3,7 @@ import { addExplicitPointsOfIntersection } from "../../mesh/op/addExplicitPoints
 import { B_OUTSIDE_A } from "../../Relation"
 import { Tolerance } from "../../Tolerance"
 import { Geometry } from "../Geometry"
-import { createMultiGeometry } from "./createMultiGeometry"
+import { createMultiGeometry } from "../MultiGeometry"
 
 
 export function intersection(a: Geometry, b: Geometry, tolerance: Tolerance): Geometry {

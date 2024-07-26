@@ -58,6 +58,9 @@ export abstract class AbstractGeometry implements Geometry {
         if(this.getBounds().isDisjointRectangle(other.getBounds(), tolerance)){
             return null
         }
+        if(other instanceof Point) {
+            return (this.relate(other, tolerance) === DISJOINT) ? null : other
+        }
         return this.intersectionGeometry(other, tolerance)
     }
     protected intersectionGeometry(other: Geometry, tolerance: Tolerance): Geometry | null {

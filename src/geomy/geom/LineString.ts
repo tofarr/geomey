@@ -2,6 +2,7 @@ import { A_OUTSIDE_B, B_OUTSIDE_A, Relation, TOUCH, UNKNOWN } from "../Relation"
 import { Tolerance } from "../Tolerance";
 import { appendChanged, CoordinateConsumer, coordinateMatch, forEachCoordinate, forEachLineSegmentCoordinates, isNaNOrInfinite, LineSegmentCoordinatesConsumer, sortCoordinates } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { Mesh } from "../mesh/Mesh";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
@@ -288,4 +289,13 @@ export function coordinatesToWkt(coordinates: ReadonlyArray<number>, numberForma
     })
     result.pop()
     result.push(")")
+}
+
+
+export function createLineStrings(mesh: Mesh): LineString[] {
+    const results = []
+    mesh.forEachLineString((coordinates) => {
+        results.push(LineString.unsafeValueOf(coordinates))
+    })
+    return results
 }

@@ -3,7 +3,7 @@ import { addExplicitPointsOfIntersection } from "../../mesh/op/addExplicitPoints
 import { B_INSIDE_A, DISJOINT } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
 import { Geometry } from "../Geometry";
-import { createMultiGeometry } from "./createMultiGeometry";
+import { createMultiGeometry } from "../MultiGeometry"
 
 
 
