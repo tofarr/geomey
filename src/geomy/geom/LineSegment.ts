@@ -1,6 +1,5 @@
 import { A_OUTSIDE_B, DISJOINT, flipAB, Relation, TOUCH, UNKNOWN } from "../Relation";
 import { Tolerance } from "../Tolerance";
-import { createBuilder } from "../builder/GeometryBuilderPathWalker";
 import { comparePointsForSort, coordinateMatch, isNaNOrInfinite } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { Transformer } from "../transformer/Transformer";

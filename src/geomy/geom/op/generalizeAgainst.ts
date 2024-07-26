@@ -1,14 +1,18 @@
-import { createBuilder } from "../builder/GeometryBuilderPathWalker";
-import { Geometry } from "../geom/Geometry";
-import { B_INSIDE_A, DISJOINT } from "../Relation";
-import { Tolerance } from "../Tolerance";
+import { createMeshes } from "../../mesh/MeshPathWalker"
+import { generalize } from "../../mesh/op/generalize"
+import { DISJOINT } from "../../Relation"
+import { Tolerance } from "../../Tolerance"
+import { Geometry } from "../Geometry"
+import { createMultiGeometry } from "./createMultiGeometry"
 
 
-export function generalizeAgainst(geometry: Geometry, generalizeTolerance: Tolerance, tolerance: Tolerance, asPolygon: boolean, ...others: Geometry[]) {
-    let builder = createBuilder(tolerance, geometry, ...others)
-    builder = builder.createGeneralized(generalizeTolerance)
-    builder.cull((x, y) => {
-        return geometry.relatePoint(x, y, generalizeTolerance) === DISJOINT
-    })
-    return builder.clearAndBuilderGeometry()
+export function generalizeAgainst(geometry: Geometry, generalizeTolerance: Tolerance, tolerance: Tolerance, ...others: Geometry[]) {
+    let meshes = createMeshes(tolerance, geometry, ...others)
+    for(const mesh of meshes){
+        generalize(mesh, generalizeTolerance)
+        mesh.cull((x, y) => {
+            return geometry.relatePoint(x, y, generalizeTolerance) === DISJOINT
+        })
+    }
+    return createMultiGeometry(...meshes)
 }

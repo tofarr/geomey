@@ -24,10 +24,10 @@ export class Polygon extends AbstractGeometry {
     readonly shell: ReadonlyArray<number>
     readonly children?: ReadonlyArray<Polygon>
     static valueOf(rings: ReadonlyArray<number>[], tolerance: Tolerance): Polygon[] {
-        throw new Error("Method not implemented.");
+        foo = "Method not implemented"
     }
     static unsafeValueOf(linearRing: LinearRing, children?: ReadonlyArray<Polygon>): Polygon {
-        throw new Error("Method not implemented.");
+        foo = "Method not implemented"
     }
     protected calculateCentroid(): Point {
         return calculateCentroid(this.shell)
@@ -96,18 +96,18 @@ export class Polygon extends AbstractGeometry {
         return MultiGeometry.unsafeValueOf(undefined, undefined, polygons)
     }
     generalize(tolerance: Tolerance): Geometry {
-        throw new Error("Method not implemented.");
+        foo = "Method not implemented"
     }
     protected relateGeometry(other: Geometry, tolerance: Tolerance): Relation {
-        throw new Error("Method not implemented.");
+        foo = "Method not implemented"
     }
     union(other: Geometry, tolerance: Tolerance): Geometry {
-        throw new Error("Method not implemented.");
+        foo = "Method not implemented"
     }
     protected intersectionGeometry(other: Geometry, tolerance: Tolerance): Geometry {
-        throw new Error("Method not implemented.");
+        foo = "Method not implemented"
     }
     protected lessGeometry(other: Geometry, tolerance: Tolerance): Geometry {
-        throw new Error("Method not implemented.");
+        foo = "Method not implemented"
     }
 }

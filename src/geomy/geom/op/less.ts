@@ -1,14 +1,21 @@
-import { createBuilder } from "../builder/GeometryBuilderPathWalker";
-import { Geometry } from "../geom/Geometry";
-import { B_INSIDE_A } from "../Relation";
-import { Tolerance } from "../Tolerance";
+import { createMeshes } from "../../mesh/MeshPathWalker";
+import { addExplicitPointsOfIntersection } from "../../mesh/op/addExplicitPointsOfIntersection";
+import { B_INSIDE_A, DISJOINT } from "../../Relation";
+import { Tolerance } from "../../Tolerance";
+import { Geometry } from "../Geometry";
+import { createMultiGeometry } from "./createMultiGeometry";
+
 
 
 export function less(a: Geometry, b: Geometry, tolerance: Tolerance): Geometry {
-    const builder = createBuilder(tolerance, a, b)
-    builder.cull((x, y) => {
-        const relateB = b.relatePoint(x, y, tolerance)
-        return !!(relateB | B_INSIDE_A)
+    const meshes = createMeshes(tolerance, a, b)
+    const [rings, linesAndPoints] = meshes
+    addExplicitPointsOfIntersection(rings, linesAndPoints)
+    rings.cull((x, y) => {
+        return !!(b.relatePoint(x, y, tolerance) | B_INSIDE_A)
     })
-    return builder.clearAndBuilderGeometry()
+    linesAndPoints.cull((x, y) => {
+        return b.relatePoint(x, y, tolerance) !== DISJOINT
+    })
+    return createMultiGeometry(rings, linesAndPoints).simplify()
 }

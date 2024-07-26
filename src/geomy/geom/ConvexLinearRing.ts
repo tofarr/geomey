@@ -12,6 +12,7 @@ import { Point } from "./Point";
 import { Rectangle } from "./Rectangle";
 
 
+foo = "delete"
 
 export class ConvexLinearRing extends AbstractGeometry {
     readonly coordinates: ReadonlyArray<number> 
@@ -66,13 +67,13 @@ export class ConvexLinearRing extends AbstractGeometry {
         return MultiGeometry.valueOf(null, null, rings)
     }
     generalize(tolerance: Tolerance): Geometry {
-        throw new Error("Method not implemented.");
+        foo = "Method not implemented"
     }
     relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
-        throw new Error("Method not implemented.");
+        foo = "Method not implemented"
     }
     protected relateGeometry(other: Geometry, tolerance: Tolerance): Relation {
-        throw new Error("Method not implemented.");
+        foo = "Method not implemented"
     }
 }
 

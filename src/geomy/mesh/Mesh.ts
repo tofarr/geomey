@@ -1,4 +1,4 @@
-import { comparePointsForSort, coordinateMatch, coordinatesMatch, forEachCoordinate, forEachLineSegmentCoordinates, isNaNOrInfinite, sortCoordinates } from "../coordinate"
+import { appendChanged, comparePointsForSort, coordinateMatch, coordinatesMatch, forEachCoordinate, forEachLineSegmentCoordinates, isNaNOrInfinite, LinearRingCoordinatesConsumer, LineStringCoordinatesConsumer, sortCoordinates } from "../coordinate"
 import { LinearRing } from "../geom/LinearRing"
 import { intersectionLineSegment, perpendicularDistance, pointTouchesLineSegment, projectProgress } from "../geom/LineSegment"
 import { douglasPeucker, LineString } from "../geom/LineString"
@@ -7,19 +7,22 @@ import { Rectangle } from "../geom/Rectangle"
 import { calculateZOrder, ZOrderIndex } from "../spatialIndex/ZOrderIndex"
 import { Tolerance, ZERO } from "../Tolerance"
 import { Link } from "./Link"
-import { GeometryBuilderError } from "./GeometryBuilderError"
+import { MeshError } from "./MeshError"
 import { Vertex } from "./Vertex"
 import { DISJOINT } from "../Relation"
 import { SpatialConsumer } from "../spatialIndex"
+import { Triangle } from "../geom/Triangle"
+import { removeNonRingVertices } from "./op/removeNonRingVertices"
+import { popLinearRing } from "./op/popLinearRing"
 
 /**
  * Class describing a network of Vertices and Links, which may be used to build geometries.
- * Vertexes in a geometry builder are unique and rounded to the nearest tolerance, and links may not cross
+ * Vertexes in a mesh are unique and rounded to the nearest tolerance, and links may not cross
  * each other outside of a vertex. (If they do, a vertex is added.)
  * 
  * Internally, Z order indexes are used to maintain performance. 
  */
-export class GeometryBuilder {
+export class Mesh {
     readonly tolerance: Tolerance
     private vertices: Map<number, Vertex>
     private links: ZOrderIndex<Link>
@@ -34,7 +37,7 @@ export class GeometryBuilder {
         
         // Normalize point...
         if(isNaNOrInfinite(x, y)){
-            throw new GeometryBuilderError(`Invalid Vertex: ${x} ${y}`)
+            throw new MeshError(`Invalid Vertex: ${x} ${y}`)
         }
         x = tolerance.normalize(x)
         y = tolerance.normalize(y)
@@ -64,15 +67,24 @@ export class GeometryBuilder {
         const zOrder = calculateZOrder(x, y, this.tolerance.tolerance)
         return this.vertices.get(zOrder)
     }
+    getOrigin(): Vertex | null {
+        let result = null
+        for(const vertex of this.vertices.values()){
+            if(!result || comparePointsForSort(vertex.x, vertex.y, result.x, result.y) < 0){
+                result = vertex
+            }
+        }
+        return result
+    }
     /**
-     * Add a link to the geometrybuilder. return the number of links actually added to the geometrybuilder.
+     * Add a link to the mesh. splitting may occur, so return the number of links actually added to the mesh.
      */
     addLink(ax: number, ay: number, bx: number, by: number): number {
         const { tolerance } = this
 
         // Normalize link...
         if (isNaNOrInfinite(ax, ay, bx, by)){
-            throw new GeometryBuilderError(`Invalid Link: ${ax} ${ay} ${bx} ${by}`)
+            throw new MeshError(`Invalid Link: ${ax} ${ay} ${bx} ${by}`)
         }
         ax = tolerance.normalize(ax)
         ay = tolerance.normalize(ay)
@@ -134,6 +146,47 @@ export class GeometryBuilder {
         }
 
         return linksAdded
+    }
+    getIntersections(ax: number, ay: number, bx: number, by: number): number[] {
+        const { tolerance } = this
+
+        if (isNaNOrInfinite(ax, ay, bx, by)){
+            throw new MeshError(`Invalid Link: ${ax} ${ay} ${bx} ${by}`)
+        }
+        const mx = ax
+        const my = ay
+        ax = tolerance.normalize(ax)
+        ay = tolerance.normalize(ay)
+        bx = tolerance.normalize(bx)
+        by = tolerance.normalize(by)
+        const compare = comparePointsForSort(ax, ay, bx, by);
+        if (compare == 0) {
+            return []  // Can't link to self!
+        } else if(compare > 0){
+            [bx, by, ax, ay] = [ax, ay, bx, by]
+        }
+       
+        const intersections = []
+        const rectangle = Rectangle.valueOf([ax, ay, bx, by])
+        this.links.findIntersecting(rectangle, (link) => {
+            const { x: jax, y: jay } = link.a
+            const { x: jbx, y: jby } = link.b
+            const intersection = intersectionLineSegment(ax, ay, bx, by, jax, jay, jbx, jby, tolerance)
+            if (intersection) {
+                const x = tolerance.normalize(intersection.x)
+                const y = tolerance.normalize(intersection.y)
+                if ((x === ax && y === ay) || (x === bx && y === by)) {
+                    return
+                }
+                intersections.push(x, y)
+            }
+        })
+        sortCoordinates(intersections, (ix, iy, jx, jy) => {
+            const distI = (ix - mx) ** 2 + (iy - my) ** 2
+            const distJ = (jx - mx) ** 2 + (jy - my) ** 2
+            return distI - distJ
+        })
+        return intersections
     }
     removeVertex(x: number, y: number): boolean {
         const tolerance = this.tolerance.tolerance
@@ -208,19 +261,55 @@ export class GeometryBuilder {
             this.links.findAll(consumer)
         }
     }
-    forEachRing(consumer: (ring: LinearRing) => boolean | void, rectangle?: Rectangle) {
-        foo = "bar"
+    forEachLineString(consumer: LineStringCoordinatesConsumer) {
+        const spikes = new Map<number, Vertex>()
+        const processed = new Set<number>()
+        for(const vertex of this.vertices.values()){
+            const { x, y, links, zOrder } = vertex
+            if (processed.has(zOrder)){
+                continue
+            }
+            if(links.length == 2) {
+                spikes.set(zOrder, vertex)
+                continue
+            }
+            if (processLineStringNexus(vertex, spikes, processed, consumer) === false) {
+                return
+            }
+        }
+        for(const vertex of Array.from(spikes.values())){
+            if (processLineStringNexus(vertex, spikes, processed, consumer) === false) {
+                return
+            }
+        }
     }
-    getVerticesByZ() {
+    /**
+     * Note: The rings produced by this will not allow for XOR style functionality.
+     * Common lines are duplicated! For example.
+     *  -----      ---     ---
+     *  | | |  =>  | |  +  | |
+     *  -----      ---     ---
+     */
+    forEachLinearRing(consumer: LinearRingCoordinatesConsumer) {
+        const mesh = this.clone()
+        while(true){
+            removeNonRingVertices(mesh)
+            const ring = popLinearRing(mesh)
+            if(ring == null){
+                return
+            }
+            if(consumer(ring) === false){
+                return
+            }
+        }
+    }
+    getVertices() {
         const { tolerance: t } = this.tolerance
         const result = Array.from(this.vertices.values())
-        result.sort((a, b) => {
-            return a.zOrder - b.zOrder
-        })
         return result
     }
     clone() {
-        const result = new GeometryBuilder(this.tolerance)
+        const result = new Mesh(this.tolerance)
         this.vertices.forEach(vertex => {
             result.vertices.set(vertex.zOrder, new Vertex(vertex.x, vertex.y, vertex.zOrder))
         })
@@ -237,11 +326,6 @@ export class GeometryBuilder {
         this.links.findAll(({a, b}) => { result.addLink(a.x, a.y, b.x, b.y) })
         return result
     }
-    // I feel that below here is wrong
-
-
-
-
     cull(match: (x: number, y: number) => boolean) {
         this.cullLinks(match)
         this.cullVertices(match)
@@ -276,200 +360,41 @@ export class GeometryBuilder {
             this.removeVertex(toRemove[i++], toRemove[i++])
         }
     }
-    clearAndBuildTriangles(): number[]{
-        this.cullVertices((x: number, y: number) => )
-    }
-    buildGeometry() {
-        return this.clone().clearAndBuilderGeometry()
-    }
-    clearAndBuilderGeometry() {
-        const pointCoordinates = []
-        const lineStringCoordinates = []
-        const ringCoordinates = []
-        
-        const { vertices } = this
-
-        // Find vertices with no links - these are points.
-        vertices.forEach((vertex, key) => {
-            if(!vertex.links.length){
-                pointCoordinates.push(vertex.x, vertex.y)
-                vertices.delete(key)
-            }
-        })
-
-        while(vertices.size) {
-            // Find vertices that have only 1 link - follow these (removing links as we go)
-            // until we hit a vertex that does not have 1 outgoing link. That's a line string!
-            vertices.forEach((vertex) => {
-                if(vertex.links.length !== 1){
-                    return
-                }
-                let prev = vertex
-                const lineString = [vertex.x, vertex.y]
-                lineStringCoordinates.push(lineString)
-                vertex = vertex.links[0]
-                while (true) {
-                    this.removeVertex(prev.x, prev.y)
-                    lineString.push(vertex.x, vertex.y)
-                    const { links } = vertex
-                    const { length } = links
-                    if(length !== 1){
-                        if(!links){
-                            this.removeVertex(vertex.x, vertex.y)
-                        }
-                        break
-                    }
-                    const next = links[0]
-                    prev = vertex
-                    vertex = next
-                    continue
-                }
-            })
-
-            if(!vertices.size) {
-                continue
-            }
-
-            // Start with the lowest z index. Follow it always taking the rightmost path ( So we are going anti-clockwise), 
-            // removing links as we go. When we get back to the origin, we have a ring!
-            let origin = undefined
-            for (const vertex of vertices.values()) {
-                if (!origin || comparePointsForSort(vertex.x, vertex.y, origin.x, origin.y) < 0){
-                    origin = vertex
-                }
-            }
-
-            const ring = [origin.x, origin.y]
-            let current = origin
-            let prev = new Vertex(current.x, current.y - this.tolerance.tolerance * 2, undefined)
-            while(true){
-                const next = current.nextAnticlockwiseVertexFrom(prev)
-                this.removeLink(current.x, current.y, next.x, next.y)
-                if (!current.links.length ){
-                    this.removeVertex(current.x, current.y)
-                }
-                if (next == origin){
-                    break
-                }
-                ring.push(next.x, next.y)
-            }
-        }
-        sortCoordinates(pointCoordinates)
-        const lineStrings = lineStringCoordinates.map(coordinates => LineString.unsafeValueOf(coordinates))
-        const rings = ringCoordinates.map(coordinates => LinearRing.unsafeValueOf(coordinates))
-        return new MultiGeometry(coordinates, lineStrings, rings)
-    }
-    createSnapped(snapTolerance: Tolerance): GeometryBuilder {
-        const vertices = this.getVerticesByZ()
-        const result = new GeometryBuilder(this.tolerance)
-        const snapGroups = createSnapGroups(vertices, snapTolerance)
-        const snapMappings = createSnapMappings(snapGroups, result)
-        createSnappedLinks(this.links, snapMappings, result)
-        return result
-    }
-    createGeneralized(tolerance: Tolerance): GeometryBuilder {
-        const result = this.createSnapped(tolerance)
-        const lineStrings = getLineStrings(result.vertices)
-        for (const lineString of lineStrings){
-            const generalized = douglasPeucker(lineString, tolerance.tolerance)
-            if (lineString.length === generalized.length){
-                continue
-            }
-            forEachCoordinate(lineString, (x, y) => { result.removeVertex(x, y) }, 1, lineString.length >> 1 - 1)
-            forEachLineSegmentCoordinates(generalized, (ax, ay, bx, by) => {
-                result.addLink(ax, ay, bx, by)
-            })
-        }
-        return result
-    }
 }
 
 
-/**
- * Get line stringsfrom the vertices given. Line strings begin / terminate at vertices which
- * do not have 2 links
- */
-export function getLineStrings(vertices: Map<number, Vertex>): number[][]{
-    const result = []
-    for(const vertex of vertices.values()){
-        const { links } = vertex
-        if (links.length == 2){
+export function processLineStringNexus(nexus: Vertex, spikes: Map<number, Vertex>, processed: Set<number>, consumer: LineStringCoordinatesConsumer): boolean {
+    for(const link of nexus.links){
+        if (processed.has(link.zOrder)){
             continue
         }
-        const { x, y } = vertex
-        for (const link of links){
-            const { x: lx, y: ly } = link
-            if(comparePointsForSort(x, y, lx, ly) < 0){
-                const lineString = getLineString(vertex, link)
-                result.push(lineString)
-            }
+        const coordinates = followLineString(nexus, link, spikes, processed)
+        if(!consumer(coordinates)){
+            return false
         }
     }
-    return result
+    return true
 }
 
 
-/**
- * Follow the path of a linestring until we hit a vertex that is not connected to 2 other vertices
- */
-export function getLineString(prev: Vertex, current: Vertex): number[] {
-    const lineString = [prev.x, prev.y, current.x, current.y]
-    while(current.links.length == 2){
-        const next = current[current.links[0] == prev ? 1 : 0]
-        lineString.push(next.x, next.y)
-        prev = current
-        current = next
+export function followLineString(origin: Vertex, b: Vertex, spikes: Map<number, Vertex>, processed: Set<number>): number[] {
+    let a = origin
+    const coordinates = [a.x, a.y, b.x, b.y]
+    processLineStringVertex(a, spikes, processed)
+    processLineStringVertex(b, spikes, processed)
+    while(b.links.length == 2 && b != origin){
+        const c = b.links[b[0] == a ? 1 : 0]
+        coordinates.push(c.x, c.y)
+        processLineStringVertex(c, spikes, processed)
+        a = b
+        b = c
     }
-    return lineString
+    return coordinates
 }
 
 
-export function createSnapGroups(vertices: Vertex[], snapTolerance: Tolerance): Vertex[][]{
-    const result = []
-    let { length } = vertices
-    let a = 0
-    while(a < length){
-        const { x: ax, y: ay } = vertices[a]
-        let b = a
-        while(++b < length){
-            const { x: bx, y: by } = vertices[b]    
-            if(!coordinateMatch(ax, ay, bx, by, snapTolerance)) {
-                break
-            }
-        }
-        const snapSize = b - a
-        result.push(vertices.slice(a, b))
-    }
-    return result
-}
-
-
-export function createSnapMappings(snapGroups: Vertex[][], result: GeometryBuilder) {
-    const snapMappings = new Map<number, Vertex>()
-    for (const snapGroup of snapGroups){
-        let x = 0
-        let y = 0
-        for (const vertex of snapGroup) {
-            x += vertex.x
-            y += vertex.y
-        }
-        x /= snapGroup.length
-        y /= snapGroup.length
-        const snapped = result.addVertex(x, y)
-        for (const vertex of snapGroup) {
-            snapMappings.set(vertex.zOrder, snapped)
-        }
-    }
-    return snapMappings
-}
-
-
-export function createSnappedLinks(links: ZOrderIndex<Link>, snapMappings: Map<number, Vertex>, result: GeometryBuilder) {
-    links.findAll((link) => {
-        const a = snapMappings.get(link.a.zOrder)
-        const b = snapMappings.get(link.b.zOrder)
-        if (a !== b){
-            result.addLink(a.x, a.y, b.x, b.y)
-        }
-    })
+function processLineStringVertex(vertex: Vertex, spikes: Map<number, Vertex>, processed: Set<number>){
+    const { zOrder } = vertex
+    spikes.delete(zOrder)
+    processed.add(zOrder)
 }

@@ -1,6 +1,6 @@
 
 
-export class GeometryBuilderError extends Error {
+export class MeshError extends Error {
     constructor(msg: string) {
         super(msg)
     }

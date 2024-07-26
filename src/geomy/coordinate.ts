@@ -1,5 +1,6 @@
 import { Tolerance } from "./Tolerance"
 
+foo = "I think consumers should return any"
 
 export type PointCoordinatesConsumer = (x: number, y: number) => boolean | void
 
@@ -128,6 +129,11 @@ export function appendChanged(x: number, y: number, tolerance: Tolerance, coordi
 }
 
 
+export function getAngle(ax: number, ay: number, bx: number, by: number, cx: number, cy: number){
+    let linkAngle = Math.atan2(link.y - this.y, link.x - this.x) + TWO_PI - baseAngle;
+}
+
+
 export function coordinateMatch(ax: number, ay: number, bx: number, by: number, tolerance: Tolerance) {
     return tolerance.match(ax, bx) && tolerance.match(ay, by)
 }
@@ -179,4 +185,9 @@ export function forEachCoordinate(coordinates: ReadonlyArray<number>, consumer: 
 
 export function crossProduct(ax: number, ay: number, bx: number, by: number, cx: number, cy: number){
     return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+}
+
+
+export function isConvex(ax: number, ay: number, bx: number, by: number, cx: number, cy: number){
+    return crossProduct(ax, ay, bx, by, cx, cy) >= 0
 }

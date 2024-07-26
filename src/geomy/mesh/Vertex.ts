@@ -14,7 +14,7 @@ export class Vertex {
         this.zOrder = zOrder
         this.links = links || []
     }
-
+    /*
     nextAnticlockwiseVertexFrom(vertex: Vertex) {
         var baseAngle = Math.atan2(vertex.y - this.y, vertex.x - this.x) + TWO_PI;
         let minAngle = Infinity
@@ -31,4 +31,5 @@ export class Vertex {
         }
         return minLink
     }
+    */
 }

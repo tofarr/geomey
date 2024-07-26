@@ -1,25 +1,26 @@
 import { NumberFormatter } from "../formatter";
-import { Relation } from "../Relation";
+import { A_INSIDE_B, B_INSIDE_A, DISJOINT, Relation, TOUCH } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
+import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
 import { ringToWkt } from "./LinearRing";
+import { signedPerpendicularDistance } from "./LineSegment";
 import { coordinatesToWkt } from "./LineString";
 import { Point } from "./Point";
 import { Rectangle } from "./Rectangle";
 
 
-export class Triangle implements Geometry {
+export class Triangle extends AbstractGeometry {
     readonly ax: number
     readonly ay: number
     readonly bx: number
     readonly by: number
     readonly cx: number
     readonly cy: number
-    bounds?: Rectangle
-    centroid? Point
 
     private constructor(ax: number, ay: number, bx: number, by: number, cx: number, cy: number){
+        super()
         this.ax = ax
         this.ay = ay
         this.bx = bx
@@ -27,22 +28,20 @@ export class Triangle implements Geometry {
         this.cx = cx
         this.cy = cy
     }
-    getCentroid(): Point {
-        let { centroid } = this
-        if (!centroid) {
-            this.centroid = centroid = Point.unsafeValueOf(
-                (this.ax + this.bx + this.cx) / 3,
-                (this.ay + this.by + this.cy) / 3
-            )
-        }
-        return centroid
+    static valueOf(ax: number, ay: number, bx: number, by: number, cx: number, cy: number){
+        return new Triangle(ax, ay, bx, by, cx, cy)
     }
-    getBounds(): Rectangle {
-        let { bounds } = this
-        if (!bounds) {
-            this.bounds = bounds = Rectangle.valueOf([this.ax, this.ay, this.bx, this.by, this.cx, this.cy])
-        }
-        return bounds
+    static unsafeValueOf(ax: number, ay: number, bx: number, by: number, cx: number, cy: number){
+        return new Triangle(ax, ay, bx, by, cx, cy)
+    }
+    calculateCentroid(): Point {
+        return Point.unsafeValueOf(
+            (this.ax + this.bx + this.cx) / 3,
+            (this.ay + this.by + this.cy) / 3
+        )
+    }
+    calculateBounds(): Rectangle {
+        return Rectangle.valueOf([this.ax, this.ay, this.bx, this.by, this.cx, this.cy])
     }
     walkPath(pathWalker: PathWalker): void {
         pathWalker.moveTo(this.ax, this.ay)
@@ -80,28 +79,22 @@ export class Triangle implements Geometry {
         return this
     }
     relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
-        throw new Error("Method not implemented.");
+        const { ax, ay, bx, by, cx, cy } = this
+        const ab = signedPerpendicularDistance(x, y, ax, ay, bx, by)
+        const bc = signedPerpendicularDistance(x, y, bx, by, cx, cy)
+        const ca = signedPerpendicularDistance(x, y, cx, cy, ax, ay)
+        const outside = -tolerance.tolerance
+        if (ab < outside || bc < outside || ca < outside){
+            return DISJOINT
+        }
+        const inside = tolerance.tolerance
+        if (ab > inside && bc > inside && ca > inside) {
+            return B_INSIDE_A
+        }
+        let result = TOUCH
+        if (ab > inside || bc > inside || ca > inside) {
+            result |= B_INSIDE_A
+        }
+        return result
     }
-    relate(other: Geometry, tolerance: Tolerance): Relation {
-        throw new Error("Method not implemented.");
-    }
-    union(other: Geometry, tolerance: Tolerance): Geometry {
-        throw new Error("Method not implemented.");
-    }
-    intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
-        throw new Error("Method not implemented.");
-    }
-    less(other: Geometry, tolerance: Tolerance): Geometry | null {
-        throw new Error("Method not implemented.");
-    }
-    xor(other: Geometry, tolerance: Tolerance): Geometry | null {
-        throw new Error("Method not implemented.");
-    }
-    static valueOf(ax: number, ay: number, bx: number, by: number, cx: number, cy: number){
-        return new Triangle(ax, ay, bx, by, cx, cy)
-    }
-    static unsafeValueOf(ax: number, ay: number, bx: number, by: number, cx: number, cy: number){
-        return new Triangle(ax, ay, bx, by, cx, cy)
-    }
-
 }

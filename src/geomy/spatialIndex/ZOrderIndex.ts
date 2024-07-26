@@ -2,6 +2,7 @@ import { SpatialConsumer, SpatialIndex } from ".";
 import { Rectangle } from "../geom/Rectangle";
 import { Tolerance } from "../Tolerance";
 
+foo = "I think that z orders should be bigints"
 
 export interface ZOrderIndexEntry<T> {
     rectangle: Rectangle

@@ -1,14 +1,16 @@
 import { CoordinateConsumer, crossProduct, forEachCoordinate, forEachLineSegmentCoordinates, forEachPointCoordinate, LineSegmentCoordinatesConsumer } from "../coordinate";
 import { NumberFormatter } from "../formatter";
-import { A_INSIDE_B, A_OUTSIDE_B, B_INSIDE_A, DISJOINT, Relation, TOUCH, UNKNOWN } from "../Relation";
+import { Mesh } from "../mesh/Mesh";
+import { popLinearRing } from "../mesh/op/popLinearRing";
+import { removeNonRingVertices } from "../mesh/op/removeNonRingVertices";
+import { A_OUTSIDE_B, B_INSIDE_A, DISJOINT, Relation, TOUCH, UNKNOWN } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
-import { LineSegment, pointTouchesLineSegment } from "./LineSegment";
-import { douglasPeucker, getCoordinatesWithIntersectionsAgainst, LineString, walkPath } from "./LineString";
+import { pointTouchesLineSegment } from "./LineSegment";
+import { douglasPeucker, walkPath } from "./LineString";
 import { MultiGeometry } from "./MultiGeometry";
-import { relate } from "./op/relate";
 import { Point } from "./Point";
 import { Polygon } from "./Polygon";
 import { Rectangle } from "./Rectangle";
@@ -22,13 +24,26 @@ export class LinearRing extends AbstractGeometry {
     readonly coordinates: ReadonlyArray<number>
     private polygon?: Polygon
     private convexRings: ReadonlyArray<LinearRing>
+    private area?: number
 
     private constructor(coordiantes: ReadonlyArray<number>) {
         super()
         this.coordinates = coordiantes
     }
     static valueOf(coordinates: ReadonlyArray<number>, tolerance: Tolerance): LinearRing[] {
-        throw new Error("Method not implemented.");
+        const mesh = new Mesh(tolerance)
+        forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
+            mesh.addLink(ax, ay, bx, by)
+        })
+        const rings = []
+        while(true){
+            removeNonRingVertices(mesh)
+            const ring = popLinearRing(mesh)
+            if(ring == null){
+                return rings
+            }
+            rings.push(ring)
+        }
     }
     static unsafeValueOf(coordinates: ReadonlyArray<number>): LinearRing {
         return new LinearRing(coordinates)
@@ -38,6 +53,13 @@ export class LinearRing extends AbstractGeometry {
     }
     protected calculateBounds(): Rectangle {
         return Rectangle.valueOf(this.coordinates)
+    }
+    getArea(): number {
+        let { area } = this
+        if (area == null){
+            this.area = area = calculateArea(this.coordinates)
+        }
+        return area
     }
     walkPath(pathWalker: PathWalker): void {
         walkPath(this.coordinates, pathWalker)
@@ -306,4 +328,14 @@ function getSplitEnd(coordinates: ReadonlyArray<number>, splitStart: SplitStart)
         }
     }, index, coordinates.length - index)
     return minIndex
+}
+
+
+export function calculateArea(coordinates: ReadonlyArray<number>): number {
+    let area = 0
+    forEachRingLineSegmentCoordinates(this.coordinates, (ax, ay, bx, by) => {
+        area += (ax * by) - (bx * ay);
+    })
+    area /= 2;
+    return area;
 }

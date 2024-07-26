@@ -83,10 +83,7 @@ export class Point implements Geometry {
         return this
     }
     less(other: Geometry, tolerance: Tolerance): Geometry | null {
-        if (other.relatePoint(this.x, this.y, tolerance) === DISJOINT){
-            return this
-        }
-        return null
+        return this.intersection(other, tolerance)
     }
     xor(other: Geometry, tolerance: Tolerance): Geometry | null {
         if (other instanceof Point) {

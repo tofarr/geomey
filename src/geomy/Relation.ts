@@ -15,6 +15,7 @@ export const B_INSIDE_A: Relation = 16
 export const DISJOINT = (A_OUTSIDE_B | B_OUTSIDE_A) as Relation
 export const OVERLAP = (A_INSIDE_B | B_INSIDE_A) as Relation
 export const OUTSIDE_TOUCH = (A_OUTSIDE_B | B_OUTSIDE_A | TOUCH) as Relation
+export const ALL = (A_OUTSIDE_B | B_OUTSIDE_A | A_INSIDE_B | B_INSIDE_A | TOUCH) as Relation
 
 
 export function flipAB(relation: Relation): Relation {
