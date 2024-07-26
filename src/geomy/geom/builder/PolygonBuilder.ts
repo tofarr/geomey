@@ -1,4 +1,4 @@
-import { LinearRing } from "../geom/LinearRing"
+import { LinearRing } from "../LinearRing"
 
 
 export interface PolygonBuilder {

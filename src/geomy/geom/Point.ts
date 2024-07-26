@@ -47,7 +47,7 @@ export class Point implements Geometry {
         pathWalker.lineTo(x, y)
     }
     toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
-        return `POINT (${numberFormatter(this.x)} ${numberFormatter(this.y)})`
+        return pointToWkt(this.x, this.y, numberFormatter)
     }
     toGeoJson() {
         return {
@@ -105,4 +105,9 @@ export function createPoints(mesh: Mesh): number[] {
         }
     })
     return coordinates
+}
+
+
+export function pointToWkt(x: number, y: number, numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
+    return `POINT (${numberFormatter(this.x)} ${numberFormatter(this.y)})`
 }

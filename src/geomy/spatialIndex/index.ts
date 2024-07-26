@@ -1,7 +1,7 @@
 import { Rectangle } from "../geom/Rectangle";
 
 
-export type SpatialConsumer<T> = (value: T, rectangle: Rectangle) => boolean | void
+export type SpatialConsumer<T> = (value: T, rectangle: Rectangle) => any
 
 
 export interface SpatialIndex<T> {

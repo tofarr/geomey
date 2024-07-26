@@ -120,7 +120,7 @@ export class LinearRing extends AbstractGeometry {
             }
             return ring
         }
-        return MultiGeometry.valueOf(null, null, rings)
+        return MultiGeometry.valueOf(tolerance, null, null, rings)
         
     }
     generalize(tolerance: Tolerance): Geometry {

@@ -1,17 +1,16 @@
 import { Tolerance } from "./Tolerance"
 
-foo = "I think consumers should return any"
 
-export type PointCoordinatesConsumer = (x: number, y: number) => boolean | void
-
-
-export type LineSegmentCoordinatesConsumer = (ax: number, ay: number, bx: number, by: number) => boolean | void
+export type PointCoordinatesConsumer = (x: number, y: number) => any
 
 
-export type LineStringCoordinatesConsumer = (coordinates: ReadonlyArray<number>) => boolean | void
+export type LineSegmentCoordinatesConsumer = (ax: number, ay: number, bx: number, by: number) => any
 
 
-export type LinearRingCoordinatesConsumer = (coordinates: ReadonlyArray<number>) => boolean | void
+export type LineStringCoordinatesConsumer = (coordinates: ReadonlyArray<number>) => any
+
+
+export type LinearRingCoordinatesConsumer = (coordinates: ReadonlyArray<number>) => any
 
 
 export function forEachPointCoordinate(coordinates: ReadonlyArray<number>, consumer: PointCoordinatesConsumer, startIndexInclusive?: number, numberOfPoints?: number) {
@@ -126,11 +125,6 @@ export function appendChanged(x: number, y: number, tolerance: Tolerance, coordi
     if(tolerance.match(x, coordinates[length-2]) && tolerance.match(y, coordinates[length-1])) {
         coordinates.push(x, y)
     }
-}
-
-
-export function getAngle(ax: number, ay: number, bx: number, by: number, cx: number, cy: number){
-    let linkAngle = Math.atan2(link.y - this.y, link.x - this.x) + TWO_PI - baseAngle;
 }
 
 

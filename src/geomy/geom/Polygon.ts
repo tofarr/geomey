@@ -66,12 +66,14 @@ export class Polygon extends AbstractGeometry {
             child.walkPath(pathWalker)
         }
     }
-    protected ringsToWkt(numberFormatter: NumberFormatter, reverse: boolean, result: string[]){
+    ringsToWkt(numberFormatter: NumberFormatter, reverse: boolean, result: string[]){
+        result.push("(")
         ringToWkt(this.shell.coordinates, numberFormatter, reverse, result)
         for(const child of this.children){
             result.push(", ")
             child.ringsToWkt(numberFormatter, !reverse, result)
         }
+        result.push(")")
     }
     toWkt(numberFormatter: NumberFormatter =  NUMBER_FORMATTER): string {
         const result = ["POLYGON("]
