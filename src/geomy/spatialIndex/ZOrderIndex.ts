@@ -2,12 +2,11 @@ import { SpatialConsumer, SpatialIndex } from ".";
 import { Rectangle } from "../geom/Rectangle";
 import { Tolerance } from "../Tolerance";
 
-foo = "I think that z orders should be bigints"
 
 export interface ZOrderIndexEntry<T> {
     rectangle: Rectangle
-    minZ: number
-    maxZ: number
+    minZ: BigInt
+    maxZ: BigInt
     value: T
 }
 
@@ -82,14 +81,19 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
         }
     }
     sort(){
-        this.entries.sort((a, b) => a.minZ - b.minZ)
+        this.entries.sort((a, b) => {
+            const aMinZ = a.minZ as unknown as number
+            const bMinZ = b.minZ as unknown as number
+            const result: number = aMinZ - bMinZ
+            return result
+        })
     }
 }
 
 /** 
  * Find the first index of an item matching the z value given in the sorted entry array given
  */
-export function firstIndexOf(z: number, entries: ZOrderIndexEntry<any>[]){
+export function firstIndexOf(z: BigInt, entries: ZOrderIndexEntry<any>[]){
     let min = 0
     let max = entries.length - 1
     while (min < max) {
@@ -104,14 +108,14 @@ export function firstIndexOf(z: number, entries: ZOrderIndexEntry<any>[]){
     return min
 }
 
-export function calculateZOrder(x: number, y: number, tolerance: number){
+export function calculateZOrder(x: number, y: number, tolerance: number): BigInt{
     x = Math.round(x / tolerance)
     y = Math.round(y / tolerance)
-    let result = 0
-    let shift = 0
+    let result = BigInt(0)
+    let shift = BigInt(0)
     while(x || y) {
-        result |= ((x & 1) | ((y & 1) << 1)) << shift
-        shift += 2
+        result |= BigInt((x & 1) | ((y & 1) << 1)) << shift
+        shift += BigInt(2)
         x >> 1
         y >> 1
     }

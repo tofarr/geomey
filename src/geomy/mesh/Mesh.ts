@@ -1,8 +1,5 @@
-import { appendChanged, comparePointsForSort, coordinateMatch, coordinatesMatch, forEachCoordinate, forEachLineSegmentCoordinates, isNaNOrInfinite, LinearRingCoordinatesConsumer, LineStringCoordinatesConsumer, sortCoordinates } from "../coordinate"
-import { LinearRing } from "../geom/LinearRing"
-import { intersectionLineSegment, perpendicularDistance, pointTouchesLineSegment, projectProgress } from "../geom/LineSegment"
-import { douglasPeucker, LineString } from "../geom/LineString"
-import { MultiGeometry } from "../geom/MultiGeometry"
+import { comparePointsForSort, coordinateMatch, isNaNOrInfinite, LinearRingCoordinatesConsumer, LineStringCoordinatesConsumer, sortCoordinates } from "../coordinate"
+import { intersectionLineSegment, pointTouchesLineSegment } from "../geom/LineSegment"
 import { Rectangle } from "../geom/Rectangle"
 import { calculateZOrder, ZOrderIndex } from "../spatialIndex/ZOrderIndex"
 import { Tolerance, ZERO } from "../Tolerance"
@@ -11,7 +8,6 @@ import { MeshError } from "./MeshError"
 import { Vertex } from "./Vertex"
 import { DISJOINT } from "../Relation"
 import { SpatialConsumer } from "../spatialIndex"
-import { Triangle } from "../geom/Triangle"
 import { removeNonRingVertices } from "./op/removeNonRingVertices"
 import { popLinearRing } from "./op/popLinearRing"
 
@@ -24,7 +20,7 @@ import { popLinearRing } from "./op/popLinearRing"
  */
 export class Mesh {
     readonly tolerance: Tolerance
-    private vertices: Map<number, Vertex>
+    private vertices: Map<BigInt, Vertex>
     private links: ZOrderIndex<Link>
 
     constructor(tolerance: Tolerance) {
@@ -262,8 +258,8 @@ export class Mesh {
         }
     }
     forEachLineString(consumer: LineStringCoordinatesConsumer) {
-        const spikes = new Map<number, Vertex>()
-        const processed = new Set<number>()
+        const spikes = new Map<BigInt, Vertex>()
+        const processed = new Set<BigInt>()
         for(const vertex of this.vertices.values()){
             const { x, y, links, zOrder } = vertex
             if (processed.has(zOrder)){
@@ -363,7 +359,7 @@ export class Mesh {
 }
 
 
-export function processLineStringNexus(nexus: Vertex, spikes: Map<number, Vertex>, processed: Set<number>, consumer: LineStringCoordinatesConsumer): boolean {
+export function processLineStringNexus(nexus: Vertex, spikes: Map<BigInt, Vertex>, processed: Set<BigInt>, consumer: LineStringCoordinatesConsumer): boolean {
     for(const link of nexus.links){
         if (processed.has(link.zOrder)){
             continue
@@ -377,7 +373,7 @@ export function processLineStringNexus(nexus: Vertex, spikes: Map<number, Vertex
 }
 
 
-export function followLineString(origin: Vertex, b: Vertex, spikes: Map<number, Vertex>, processed: Set<number>): number[] {
+export function followLineString(origin: Vertex, b: Vertex, spikes: Map<BigInt, Vertex>, processed: Set<BigInt>): number[] {
     let a = origin
     const coordinates = [a.x, a.y, b.x, b.y]
     processLineStringVertex(a, spikes, processed)
@@ -393,7 +389,7 @@ export function followLineString(origin: Vertex, b: Vertex, spikes: Map<number, 
 }
 
 
-function processLineStringVertex(vertex: Vertex, spikes: Map<number, Vertex>, processed: Set<number>){
+function processLineStringVertex(vertex: Vertex, spikes: Map<BigInt, Vertex>, processed: Set<BigInt>){
     const { zOrder } = vertex
     spikes.delete(zOrder)
     processed.add(zOrder)
