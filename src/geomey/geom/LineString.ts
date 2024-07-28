@@ -140,8 +140,8 @@ export type LineStringConsumer = (lineString: LineString) => boolean | void;
 export function getCentroid(coordinates: ReadonlyArray<number>) {
   let x = 0;
   let y = 0;
-  const { length } = coordinates
-  let offset = length
+  const { length } = coordinates;
+  let offset = length;
   while (offset) {
     y += coordinates[--offset];
     x += coordinates[--offset];

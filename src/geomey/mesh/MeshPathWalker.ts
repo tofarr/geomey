@@ -31,7 +31,7 @@ export class MeshPathWalker implements PathWalker {
       }
     }
     coordinates.length = 0;
-    coordinates.push(x, y)
+    coordinates.push(x, y);
   }
   lineTo(x: number, y: number): void {
     this.coordinates.push(x, y);
