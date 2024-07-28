@@ -1,4 +1,5 @@
 import { NumberFormatter } from "../formatter";
+import { PathWalker } from "../path/PathWalker";
 import { DISJOINT, Relation } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";

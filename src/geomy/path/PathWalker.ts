@@ -1,7 +1,7 @@
 /**
  * Interface representing a control point - compatible with CanvasRenderingContext2D
  */
-interface PathWalker {
+export interface PathWalker {
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
   bezierCurveTo(

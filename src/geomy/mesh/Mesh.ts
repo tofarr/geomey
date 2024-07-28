@@ -111,7 +111,7 @@ export class Mesh {
 
     // Check if link already exists
     const zOrder = calculateZOrder(ax, ay, tolerance.tolerance);
-    let vertex = this.vertices.get(zOrder);
+    const vertex = this.vertices.get(zOrder);
     if (vertex) {
       if (vertex.links.find((v) => v.x === bx && v.y === by)) {
         return 0;
@@ -238,7 +238,7 @@ export class Mesh {
     y = Math.round(y / tolerance) * tolerance;
 
     const zOrder = calculateZOrder(x, y, tolerance);
-    let vertex = this.vertices.get(zOrder);
+    const vertex = this.vertices.get(zOrder);
     if (!vertex) {
       return false;
     }
@@ -310,7 +310,7 @@ export class Mesh {
     const spikes = new Map<bigint, Vertex>();
     const processed = new Set<bigint>();
     for (const vertex of this.vertices.values()) {
-      const { x, y, links, zOrder } = vertex;
+      const { links, zOrder } = vertex;
       if (processed.has(zOrder)) {
         continue;
       }
@@ -341,6 +341,7 @@ export class Mesh {
    */
   forEachLinearRing(consumer: LinearRingCoordinatesConsumer) {
     const mesh = this.clone();
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       removeNonRingVertices(mesh);
       const ring = popLinearRing(mesh);
@@ -353,7 +354,6 @@ export class Mesh {
     }
   }
   getVertices() {
-    const { tolerance: t } = this.tolerance;
     const result = Array.from(this.vertices.values());
     return result;
   }

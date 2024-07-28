@@ -8,7 +8,6 @@ import {
   DISJOINT,
   flipAB,
   Relation,
-  TOUCH,
   UNKNOWN,
 } from "../../Relation";
 import { Tolerance } from "../../Tolerance";

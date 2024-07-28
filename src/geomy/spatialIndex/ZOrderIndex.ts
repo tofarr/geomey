@@ -99,6 +99,7 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
 /**
  * Find the first index of an item matching the z value given in the sorted entry array given
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function firstIndexOf(z: bigint, entries: ZOrderIndexEntry<any>[]) {
   let min = 0;
   let max = entries.length - 1;

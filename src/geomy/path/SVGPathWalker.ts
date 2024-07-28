@@ -1,6 +1,6 @@
 import { NUMBER_FORMATTER } from "../formatter";
 
-class SVGPathWalker implements PathWalker {
+export class SVGPathWalker implements PathWalker {
   private path: string[];
   private numberFormatter: (n: number) => string;
 

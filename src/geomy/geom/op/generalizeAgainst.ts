@@ -11,7 +11,7 @@ export function generalizeAgainst(
   tolerance: Tolerance,
   ...others: Geometry[]
 ): Geometry {
-  let meshes = createMeshes(tolerance, geometry, ...others);
+  const meshes = createMeshes(tolerance, geometry, ...others);
   for (const mesh of meshes) {
     generalize(mesh, generalizeTolerance);
     mesh.cull((x, y) => {

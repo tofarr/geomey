@@ -105,7 +105,7 @@ export class AffineTransformer implements Transformer {
     );
   }
   transform(x: number, y: number): [number, number] {
-    return this.transformAll([x, y]) as [number, number]
+    return this.transformAll([x, y]) as [number, number];
   }
   transformAll(coordinates: ReadonlyArray<number>): ReadonlyArray<number> {
     const { scaleX, scaleY, shearX, shearY, translateX, translateY, mode } =
@@ -222,7 +222,7 @@ export class AffineTransformer implements Transformer {
     if (originX || originY) {
       result = result.translate(originX, originY);
     }
-    return result
+    return result;
   }
   translate(x: number, y: number): AffineTransformer {
     return this.add(1, 0, 0, 1, x || 0, y || 0);

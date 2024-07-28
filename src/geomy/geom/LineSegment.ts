@@ -13,6 +13,7 @@ import {
   isNaNOrInfinite,
 } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";

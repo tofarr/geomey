@@ -1,6 +1,7 @@
 import { Relation } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { NumberFormatter } from "../formatter";
+import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import { Point } from "./Point";
 import { Rectangle } from "./Rectangle";

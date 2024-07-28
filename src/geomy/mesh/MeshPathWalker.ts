@@ -1,9 +1,7 @@
 import { forEachLineSegmentCoordinates } from "../coordinate";
 import { Geometry } from "../geom/Geometry";
-import {
-  perpendicularDistance,
-  signedPerpendicularDistance,
-} from "../geom/LineSegment";
+import { signedPerpendicularDistance } from "../geom/LineSegment";
+import { PathWalker } from "../path/PathWalker";
 import { Tolerance } from "../Tolerance";
 import { Mesh } from "./Mesh";
 
@@ -33,6 +31,7 @@ export class MeshPathWalker implements PathWalker {
       }
     }
     coordinates.length = 0;
+    coordinates.push(x, y)
   }
   lineTo(x: number, y: number): void {
     this.coordinates.push(x, y);

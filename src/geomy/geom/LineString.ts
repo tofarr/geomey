@@ -18,6 +18,7 @@ import {
 } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { Mesh } from "../mesh/Mesh";
+import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
@@ -139,7 +140,8 @@ export type LineStringConsumer = (lineString: LineString) => boolean | void;
 export function getCentroid(coordinates: ReadonlyArray<number>) {
   let x = 0;
   let y = 0;
-  let { length, length: offset } = coordinates;
+  const { length } = coordinates
+  let offset = length
   while (offset) {
     y += coordinates[--offset];
     x += coordinates[--offset];

@@ -1,12 +1,12 @@
 import { NumberFormatter } from "../formatter";
-import { A_INSIDE_B, B_INSIDE_A, DISJOINT, Relation, TOUCH } from "../Relation";
+import { PathWalker } from "../path/PathWalker";
+import { B_INSIDE_A, DISJOINT, Relation, TOUCH } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
 import { ringToWkt } from "./LinearRing";
 import { signedPerpendicularDistance } from "./LineSegment";
-import { coordinatesToWkt } from "./LineString";
 import { Point } from "./Point";
 import { Rectangle } from "./Rectangle";
 
@@ -95,7 +95,7 @@ export class Triangle extends AbstractGeometry {
       ],
     };
   }
-  transform(transformer: Transformer, tolerance: Tolerance): Geometry {
+  transform(transformer: Transformer): Geometry {
     const { ax, ay, bx, by, cx, cy } = this;
     return Triangle.valueOf.apply(
       transformer.transformAll([ax, ay, bx, by, cx, cy]),

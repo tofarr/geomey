@@ -23,7 +23,7 @@ export function doParseWkt(
   typeParsers: TypeParsers,
 ) {
   input = normalizeWkt(input);
-  let [type, start] = parseType(input, position);
+  const [type, start] = parseType(input, position);
   return typeParsers[type](input, start + 1, tolerance);
 }
 

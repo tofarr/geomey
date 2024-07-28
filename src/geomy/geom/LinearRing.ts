@@ -9,14 +9,13 @@ import {
 import { NumberFormatter } from "../formatter";
 import { Mesh } from "../mesh/Mesh";
 import { popLinearRing } from "../mesh/op/popLinearRing";
-import { removeNonRingVertices } from "../mesh/op/removeNonRingVertices";
+import { PathWalker } from "../path/PathWalker";
 import {
   A_OUTSIDE_B,
   B_INSIDE_A,
   DISJOINT,
   Relation,
   TOUCH,
-  UNKNOWN,
 } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
@@ -52,6 +51,7 @@ export class LinearRing extends AbstractGeometry {
       mesh.addLink(ax, ay, bx, by);
     });
     const rings = [];
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const ring = popLinearRing(mesh);
       if (ring == null) {
@@ -304,7 +304,7 @@ export function forEachAngle(
       ax = bx;
       ay = by;
       bx = cx;
-      by = by;
+      by = cy;
     },
     1,
     length >> 1,
@@ -334,13 +334,12 @@ export function splitToConvex(
   coordinates: ReadonlyArray<number>,
   result: ReadonlyArray<number>[],
 ) {
-  const { length } = coordinates;
   const splitStart = getSplitStart(coordinates);
   if (splitStart == null) {
     result.push(coordinates);
     return;
   }
-  let splitEnd = getSplitEnd(coordinates, splitStart);
+  const splitEnd = getSplitEnd(coordinates, splitStart);
   const a = coordinates.slice(0, splitStart.index + 2);
   const b = coordinates.slice(splitStart.index, splitEnd + 2);
   a.push.apply(coordinates.slice(splitEnd));
@@ -400,7 +399,7 @@ function getSplitEnd(
 
 export function calculateArea(coordinates: ReadonlyArray<number>): number {
   let area = 0;
-  forEachRingLineSegmentCoordinates(this.coordinates, (ax, ay, bx, by) => {
+  forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
     area += ax * by - bx * ay;
   });
   area /= 2;

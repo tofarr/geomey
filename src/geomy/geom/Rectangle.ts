@@ -11,6 +11,7 @@ import {
 import { Tolerance } from "../Tolerance";
 import { isNaNOrInfinite } from "../coordinate";
 import { NumberFormatter } from "../formatter";
+import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry } from "./Geometry";
 import { InvalidGeometryError } from "./InvalidGeometryError";
@@ -233,7 +234,7 @@ export class Rectangle implements Geometry {
   relate(other: Geometry, tolerance: Tolerance): Relation {
     return this.relateRectangle(other.getBounds(), tolerance);
   }
-  union(other: Geometry, tolerance: Tolerance): Rectangle {
+  union(other: Geometry): Rectangle {
     const bounds = other.getBounds();
     return new Rectangle(
       Math.min(this.minX, bounds.minX),

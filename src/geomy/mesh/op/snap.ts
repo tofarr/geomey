@@ -5,8 +5,12 @@ import { Vertex } from "../Vertex";
 
 export function snap(mesh: Mesh, tolerance: Tolerance) {
   const vertices = mesh.getVertices();
-  vertices.sort((a, b) => a.zOrder - b.zOrder);
-  let { length } = vertices;
+  vertices.sort((a, b) => {
+    const aZOrder = a.zOrder as unknown as number;
+    const bZOrder = b.zOrder as unknown as number;
+    return aZOrder - bZOrder;
+  });
+  const { length } = vertices;
   let startIndex = 0;
   while (startIndex < length) {
     const endIndex = getSnapEndIndex(vertices, startIndex, tolerance);
@@ -20,8 +24,7 @@ export function getSnapEndIndex(
   startIndex: number,
   snapTolerance: Tolerance,
 ): number {
-  const result = [];
-  let { length } = vertices;
+  const { length } = vertices;
   const { x: ax, y: ay } = vertices[startIndex];
   let endIndex = startIndex;
   while (++endIndex < length) {

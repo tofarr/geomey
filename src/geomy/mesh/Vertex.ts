@@ -1,4 +1,3 @@
-const TWO_PI = 2 * Math.PI;
 
 export class Vertex {
   readonly x: number;
@@ -10,8 +9,7 @@ export class Vertex {
     x: number,
     y: number,
     zOrder: bigint,
-    links?: Vertex[],
-    ring?: boolean,
+    links?: Vertex[]
   ) {
     this.x = x;
     this.y = y;

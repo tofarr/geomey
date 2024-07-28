@@ -9,6 +9,7 @@ import { Tolerance } from "../Tolerance";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { Mesh } from "../mesh/Mesh";
 import { MeshPathWalker } from "../mesh/MeshPathWalker";
+import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
