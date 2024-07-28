@@ -1,5 +1,6 @@
 import { Rectangle } from "../geom/Rectangle";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type SpatialConsumer<T> = (value: T, rectangle: Rectangle) => any;
 
 export interface SpatialIndex<T> {

@@ -3,13 +3,13 @@ const TWO_PI = 2 * Math.PI;
 export class Vertex {
   readonly x: number;
   readonly y: number;
-  readonly zOrder: BigInt;
+  readonly zOrder: bigint;
   readonly links: ReadonlyArray<Vertex>;
 
   constructor(
     x: number,
     y: number,
-    zOrder: BigInt,
+    zOrder: bigint,
     links?: Vertex[],
     ring?: boolean,
   ) {

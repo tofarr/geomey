@@ -34,6 +34,8 @@ export abstract class AbstractGeometry implements Geometry {
   protected abstract calculateBounds(): Rectangle;
   abstract walkPath(pathWalker: PathWalker): void;
   abstract toWkt(numberFormatter?: NumberFormatter): string;
+  // TODO: Add typescript bindings for GeoJson
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   abstract toGeoJson(): any;
   abstract transform(transformer: Transformer, tolerance: Tolerance): Geometry;
   abstract generalize(tolerance: Tolerance): Geometry;

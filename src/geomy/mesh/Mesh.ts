@@ -30,7 +30,7 @@ import { popLinearRing } from "./op/popLinearRing";
  */
 export class Mesh {
   readonly tolerance: Tolerance;
-  private vertices: Map<BigInt, Vertex>;
+  private vertices: Map<bigint, Vertex>;
   private links: ZOrderIndex<Link>;
 
   constructor(tolerance: Tolerance) {
@@ -307,8 +307,8 @@ export class Mesh {
     }
   }
   forEachLineString(consumer: LineStringCoordinatesConsumer) {
-    const spikes = new Map<BigInt, Vertex>();
-    const processed = new Set<BigInt>();
+    const spikes = new Map<bigint, Vertex>();
+    const processed = new Set<bigint>();
     for (const vertex of this.vertices.values()) {
       const { x, y, links, zOrder } = vertex;
       if (processed.has(zOrder)) {
@@ -423,8 +423,8 @@ export class Mesh {
 
 export function processLineStringNexus(
   nexus: Vertex,
-  spikes: Map<BigInt, Vertex>,
-  processed: Set<BigInt>,
+  spikes: Map<bigint, Vertex>,
+  processed: Set<bigint>,
   consumer: LineStringCoordinatesConsumer,
 ): boolean {
   for (const link of nexus.links) {
@@ -442,8 +442,8 @@ export function processLineStringNexus(
 export function followLineString(
   origin: Vertex,
   b: Vertex,
-  spikes: Map<BigInt, Vertex>,
-  processed: Set<BigInt>,
+  spikes: Map<bigint, Vertex>,
+  processed: Set<bigint>,
 ): number[] {
   let a = origin;
   const coordinates = [a.x, a.y, b.x, b.y];
@@ -461,8 +461,8 @@ export function followLineString(
 
 function processLineStringVertex(
   vertex: Vertex,
-  spikes: Map<BigInt, Vertex>,
-  processed: Set<BigInt>,
+  spikes: Map<bigint, Vertex>,
+  processed: Set<bigint>,
 ) {
   const { zOrder } = vertex;
   spikes.delete(zOrder);

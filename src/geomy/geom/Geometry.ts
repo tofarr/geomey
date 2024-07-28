@@ -14,6 +14,7 @@ export interface Geometry {
 
   walkPath(pathWalker: PathWalker): void;
   toWkt(numberFormatter?: NumberFormatter): string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toGeoJson(): any;
 
   transform(transformer: Transformer, tolerance: Tolerance): Geometry;

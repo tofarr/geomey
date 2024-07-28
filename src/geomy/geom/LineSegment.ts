@@ -349,8 +349,8 @@ export function projectPointOntoLineSegment(
   const progress = projectProgress(x, y, ax, ay, abx, aby);
 
   // Get projected point
-  let px = ax + progress * abx;
-  let py = ax + progress * aby;
+  const px = ax + progress * abx;
+  const py = ax + progress * aby;
 
   if (coordinateMatch(px, py, ax, ay, tolerance)) {
     // if projected point is very close to a, use a
@@ -390,8 +390,8 @@ export function pointTouchesLineSegment(
   }
 
   // Get projected point
-  let px = ax + progress * abx;
-  let py = ax + progress * aby;
+  const px = ax + progress * abx;
+  const py = ax + progress * aby;
 
   if (coordinateMatch(px, py, ax, ay, tolerance)) {
     // if projected point is very close to a, use a

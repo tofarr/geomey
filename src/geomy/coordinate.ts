@@ -1,5 +1,6 @@
 import { Tolerance } from "./Tolerance";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type PointCoordinatesConsumer = (x: number, y: number) => any;
 
 export type LineSegmentCoordinatesConsumer = (
@@ -7,14 +8,17 @@ export type LineSegmentCoordinatesConsumer = (
   ay: number,
   bx: number,
   by: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ) => any;
 
 export type LineStringCoordinatesConsumer = (
   coordinates: ReadonlyArray<number>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ) => any;
 
 export type LinearRingCoordinatesConsumer = (
   coordinates: ReadonlyArray<number>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ) => any;
 
 export function forEachPointCoordinate(
@@ -99,7 +103,7 @@ export type Comparator = (
 
 function swap(coordinates: number[], i: number, j: number) {
   for (let n = 0; n < 1; n++) {
-    let tmp = coordinates[i];
+    const tmp = coordinates[i];
     coordinates[i] = coordinates[j];
     coordinates[j] = tmp;
     i++;
@@ -114,7 +118,7 @@ function partition(
   comparator: Comparator,
 ): number {
   const pivotX = coordinates[high];
-  let pivotY = coordinates[high + 1];
+  const pivotY = coordinates[high + 1];
   let i = low - 2;
   let j = low;
   while (j < high) {

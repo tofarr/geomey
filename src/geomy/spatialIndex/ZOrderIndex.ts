@@ -4,8 +4,8 @@ import { Tolerance } from "../Tolerance";
 
 export interface ZOrderIndexEntry<T> {
   rectangle: Rectangle;
-  minZ: BigInt;
-  maxZ: BigInt;
+  minZ: bigint;
+  maxZ: bigint;
   value: T;
 }
 
@@ -99,7 +99,7 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
 /**
  * Find the first index of an item matching the z value given in the sorted entry array given
  */
-export function firstIndexOf(z: BigInt, entries: ZOrderIndexEntry<any>[]) {
+export function firstIndexOf(z: bigint, entries: ZOrderIndexEntry<any>[]) {
   let min = 0;
   let max = entries.length - 1;
   while (min < max) {
@@ -118,7 +118,7 @@ export function calculateZOrder(
   x: number,
   y: number,
   tolerance: number,
-): BigInt {
+): bigint {
   x = Math.round(x / tolerance);
   y = Math.round(y / tolerance);
   let result = BigInt(0);

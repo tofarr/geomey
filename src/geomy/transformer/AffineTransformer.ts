@@ -1,4 +1,5 @@
 import { forEachCoordinate, isNaNOrInfinite } from "../coordinate";
+import { Transformer } from "./Transformer";
 
 const NO_OP = 0;
 const TRANSLATE = 1;
@@ -12,8 +13,8 @@ const SHEAR = 4;
  *
  * @author tofar
  */
-export class AffineTransform {
-  private static identity: AffineTransform;
+export class AffineTransformer implements Transformer {
+  private static identity: AffineTransformer;
   readonly scaleX: number;
   readonly shearX: number;
   readonly shearY: number;
@@ -39,10 +40,10 @@ export class AffineTransform {
     this.translateY = translateY;
     this.mode = mode;
   }
-  static getIdentity(): AffineTransform {
-    let { identity } = AffineTransform;
+  static getIdentity(): AffineTransformer {
+    let { identity } = AffineTransformer;
     if (!identity) {
-      AffineTransform.identity = identity = new AffineTransform(
+      AffineTransformer.identity = identity = new AffineTransformer(
         1,
         0,
         0,
@@ -61,7 +62,7 @@ export class AffineTransform {
     scaleY: number,
     translateX: number,
     translateY: number,
-  ): AffineTransform {
+  ): AffineTransformer {
     if (
       isNaNOrInfinite(scaleX, shearX, translateX, shearY, scaleY, translateY)
     ) {
@@ -79,7 +80,7 @@ export class AffineTransform {
     );
     return mode == NO_OP
       ? this.getIdentity()
-      : new AffineTransform(
+      : new AffineTransformer(
           scaleX,
           shearX,
           shearY,
@@ -89,11 +90,11 @@ export class AffineTransform {
           mode,
         );
   }
-  getInverse(): AffineTransform {
+  getInverse(): AffineTransformer {
     const { scaleX, scaleY, shearX, shearY, translateX, translateY, mode } =
       this;
     const det = scaleX * scaleY - shearX * shearY;
-    return new AffineTransform(
+    return new AffineTransformer(
       scaleY / det,
       -shearX / det,
       -shearY / det,
@@ -103,16 +104,10 @@ export class AffineTransform {
       mode,
     );
   }
-
-  /**
-   * Place a transformed version of the source vector given in the destination
-   * vector given
-   *
-   * @param src
-   * @param dst
-   * @throws NullPointerException if src or dst was null
-   */
-  transformCoordinates(coordinates: number[]): number[] {
+  transform(x: number, y: number): [number, number] {
+    return this.transformAll([x, y]) as [number, number]
+  }
+  transformAll(coordinates: ReadonlyArray<number>): ReadonlyArray<number> {
     const { scaleX, scaleY, shearX, shearY, translateX, translateY, mode } =
       this;
     if (mode === NO_OP) {
@@ -159,18 +154,18 @@ export class AffineTransform {
     nScaleY: number,
     nTranslateX: number,
     nTranslateY: number,
-  ): AffineTransform {
+  ): AffineTransformer {
     const { scaleX, shearX, shearY, scaleY, translateX, translateY } = this;
-    return AffineTransform.valueOf(
+    return AffineTransformer.valueOf(
       nScaleX * scaleX + nShearX * shearY,
-      nScaleX * shearX + nShearX * scaleY,
+      nShearX * shearX + nShearX * scaleY,
       nShearY * scaleX + scaleY * shearY,
-      nShearY * shearX + scaleY * scaleY,
-      nScaleX * translateX + nShearX * translateY + translateX,
-      nShearY * translateX + scaleY * translateY + translateY,
+      nScaleY * shearX + scaleY * scaleY,
+      nTranslateX * translateX + nShearX * translateY + translateX,
+      nTranslateY * translateX + scaleY * translateY + translateY,
     );
   }
-  scale(scaleX: number, scaleY?: number): AffineTransform {
+  scale(scaleX: number, scaleY?: number): AffineTransformer {
     if (scaleY == null) {
       scaleY = scaleX;
     }
@@ -183,7 +178,7 @@ export class AffineTransform {
     scale: number,
     originX: number,
     originY: number,
-  ): AffineTransform {
+  ): AffineTransformer {
     return this.translate(-originX, -originY)
       .scale(scale)
       .translate(originX, originY);
@@ -192,14 +187,14 @@ export class AffineTransform {
     degrees: number,
     originX?: number,
     originY?: number,
-  ): AffineTransform {
+  ): AffineTransformer {
     return this.rotateRadians((degrees * Math.PI) / 180, originX, originY);
   }
   rotateRadians(
     radians: number,
     originX?: number,
     originY?: number,
-  ): AffineTransform {
+  ): AffineTransformer {
     let sin = Math.sin(radians);
     let cos;
     if (sin == 1) {
@@ -218,7 +213,8 @@ export class AffineTransform {
         sin = 0;
       }
     }
-    let result: AffineTransform = this;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    let result: AffineTransformer = this;
     if (originX || originY) {
       result = result.translate(-originX, -originY);
     }
@@ -226,8 +222,9 @@ export class AffineTransform {
     if (originX || originY) {
       result = result.translate(originX, originY);
     }
+    return result
   }
-  translate(x: number, y: number): AffineTransform {
+  translate(x: number, y: number): AffineTransformer {
     return this.add(1, 0, 0, 1, x || 0, y || 0);
   }
 }

@@ -40,8 +40,8 @@
  * Layer: {
  *   id: string (lower case letters, underscores and numbers. Must start with letter. Unique)
  *   bounds: Rectangle   # Derived from features
- *   minZOrder: BigInt
- *   maxZOrder: BigInt
+ *   minZOrder: bigint
+ *   maxZOrder: bigint
  *   created_at datetime
  *   updated_at datetime  # Derived from features
  *   layer_i18ns: has_many layer_i18n
@@ -64,8 +64,8 @@
  *   id: uuid
  *   projection: Projection
  *   bounds: Rectangle  # derived from features
- *   minZOrder: BigInt
- *   maxZOrder: BigInt
+ *   minZOrder: bigint
+ *   maxZOrder: bigint
  *   created_at datetime
  *   updated_at datetime  # Derived from features
  * }
@@ -104,8 +104,8 @@
  *   map: Map
  *   geometry: Geometry
  *   bounds: Rectangle  # derived from features
- *   minZ: BigInt
- *   maxZ: BigInt
+ *   minZ: bigint
+ *   maxZ: bigint
  *   created_at: datetime
  *   updated_at: datetime
  * }
