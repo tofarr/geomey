@@ -19,6 +19,13 @@ import { LinearRing } from "./LinearRing";
 import { Point } from "./Point";
 import { Polygon } from "./Polygon";
 
+export interface IRectangle {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
 export class Rectangle implements Geometry {
   readonly minX: number;
   readonly minY: number;
@@ -125,6 +132,25 @@ export class Rectangle implements Geometry {
       return this.getCentroid();
     }
     return this;
+  }
+  instersectsPoint(x: number, y: number): boolean {
+    return this.minX <= x && this.minY <= y && this.maxX >= x && this.maxY >= y;
+  }
+  intersectsRectangle(rectangle: IRectangle): boolean {
+    return (
+      this.minX <= rectangle.maxX &&
+      this.minY <= rectangle.maxY &&
+      this.maxX >= rectangle.minX &&
+      this.maxY >= rectangle.minY
+    );
+  }
+  containsRectangle(rectangle: IRectangle): boolean {
+    return (
+      this.minX <= rectangle.minX &&
+      this.minY <= rectangle.minY &&
+      this.maxX >= rectangle.maxX &&
+      this.maxY >= rectangle.maxY
+    );
   }
   relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
     const { minX, minY, maxX, maxY } = this;

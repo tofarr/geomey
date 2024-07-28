@@ -32,6 +32,7 @@
     "test": "mocha dist",
     "testCoverage": "nyc --reporter=html --reporter=text mocha dist",
     "lint": "eslint src --ext .ts",
+    "lintFix": "eslint src --ext .ts --fix",
     "buildBrowserTest": "webpack",
     "browserTest": "node scripts/browserTest",
     "prettier": "npx prettier src --write",

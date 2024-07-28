@@ -1,4 +1,5 @@
 import { NUMBER_FORMATTER } from "../formatter";
+import { PathWalker } from "./PathWalker";
 
 export class SVGPathWalker implements PathWalker {
   private path: string[];
