@@ -1,7 +1,6 @@
-import { Vertex } from "./Vertex"
-
+import { Vertex } from "./Vertex";
 
 export interface Link {
-    readonly a: Vertex
-    readonly b: Vertex
+  readonly a: Vertex;
+  readonly b: Vertex;
 }

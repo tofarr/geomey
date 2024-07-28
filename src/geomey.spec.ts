@@ -6,7 +6,7 @@ import * as chai from "chai";
 const expect = chai.expect;
 describe("Geomey", () => {
   it("rule 1 empty params should convert", () => {
-    const g: Geom2D = { type: "foo", bounds: [1, 2, 3, 4]}
+    const g: Geom2D = { type: "foo", bounds: [1, 2, 3, 4] };
     expect(g.bounds[0]).to.equal(1);
   });
 

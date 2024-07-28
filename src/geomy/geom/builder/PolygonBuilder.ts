@@ -1,8 +1,6 @@
-import { LinearRing } from "../LinearRing"
-
+import { LinearRing } from "../LinearRing";
 
 export interface PolygonBuilder {
-    shell: LinearRing
-    holes: PolygonBuilder[]
+  shell: LinearRing;
+  holes: PolygonBuilder[];
 }
-
