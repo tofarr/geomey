@@ -2,8 +2,7 @@ import { createMeshes } from "../../mesh/MeshPathWalker";
 import { addExplicitPointsOfIntersection } from "../../mesh/op/addExplicitPointsOfIntersection";
 import { DISJOINT } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
-import { Geometry } from "../Geometry";
-import { createMultiGeometry } from "../MultiGeometry";
+import { createMultiGeometry, Geometry } from "../";
 
 export function xor(a: Geometry, b: Geometry, tolerance: Tolerance): Geometry {
   const meshes = createMeshes(tolerance, a, b);

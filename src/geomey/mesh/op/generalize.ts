@@ -2,7 +2,7 @@ import {
   forEachCoordinate,
   forEachLineSegmentCoordinates,
 } from "../../coordinate";
-import { douglasPeucker } from "../../geom/LineString";
+import { douglasPeucker } from "../../geom";
 import { Tolerance } from "../../Tolerance";
 import { Mesh } from "../Mesh";
 import { snap } from "./snap";

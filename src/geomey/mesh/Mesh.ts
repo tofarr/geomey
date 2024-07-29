@@ -1,6 +1,6 @@
 import {
   comparePointsForSort,
-  coordinateMatch,
+  coordinateEqual,
   isNaNOrInfinite,
   LinearRingCoordinatesConsumer,
   LineStringCoordinatesConsumer,
@@ -9,10 +9,10 @@ import {
 import {
   intersectionLineSegment,
   pointTouchesLineSegment,
-} from "../geom/LineSegment";
-import { Rectangle } from "../geom/Rectangle";
+  Rectangle,
+} from "../geom";
 import { calculateZOrder, ZOrderIndex } from "../spatialIndex/ZOrderIndex";
-import { Tolerance, ZERO } from "../Tolerance";
+import { Tolerance } from "../Tolerance";
 import { Link } from "./Link";
 import { MeshError } from "./MeshError";
 import { Vertex } from "./Vertex";
@@ -143,8 +143,8 @@ export class Mesh {
         const { x: ix, y: iy } = intersection;
         if (
           !(
-            coordinateMatch(jax, jay, ix, iy, ZERO) ||
-            coordinateMatch(jbx, jby, ix, iy, ZERO)
+            coordinateEqual(jax, jay, ix, iy) ||
+            coordinateEqual(jbx, jby, ix, iy)
           )
         ) {
           // The new link crosses an existing link - split it.
@@ -153,8 +153,8 @@ export class Mesh {
           this.addLink(jbx, jby, ix, iy);
         }
         if (
-          coordinateMatch(ax, ay, ix, iy, ZERO) ||
-          coordinateMatch(bx, by, ix, iy, ZERO)
+          coordinateEqual(ax, ay, ix, iy) ||
+          coordinateEqual(bx, by, ix, iy)
         ) {
           // An intersection on an endpoint means the new link does not cross an existing link
           return false;

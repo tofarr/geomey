@@ -7,13 +7,20 @@ import { MeshPathWalker } from "../mesh/MeshPathWalker";
 import { generalize } from "../mesh/op/generalize";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
-import { AbstractGeometry } from "./AbstractGeometry";
-import { Geometry } from "./Geometry";
-import { coordinatesToWkt, createLineStrings, LineString } from "./LineString";
-import { LinearRing } from "./LinearRing";
-import { createPoints, Point, pointToWkt } from "./Point";
-import { createPolygons, Polygon } from "./Polygon";
-import { Rectangle } from "./Rectangle";
+import {
+  AbstractGeometry,
+  Geometry,
+  Rectangle,
+  createPoints,
+  Point,
+  pointToWkt,
+  createPolygons,
+  Polygon,
+  LinearRing,
+  coordinatesToWkt,
+  createLineStrings,
+  LineString,
+} from "./";
 import { RectangleBuilder } from "./builder/RectangleBuilder";
 
 const NO_POINTS: ReadonlyArray<number> = [];

@@ -1,6 +1,6 @@
 import { SpatialConsumer, SpatialIndex } from ".";
 import { RectangleBuilder } from "../geom/builder/RectangleBuilder";
-import { IRectangle, Rectangle } from "../geom/Rectangle";
+import { IRectangle, Rectangle } from "../geom";
 
 export interface Node<T> {
   bounds: RectangleBuilder;

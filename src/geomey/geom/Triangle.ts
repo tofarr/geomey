@@ -4,11 +4,8 @@ import { B_INSIDE_A, DISJOINT, Relation, TOUCH } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
-import { Geometry } from "./Geometry";
-import { ringToWkt } from "./LinearRing";
+import { Geometry, ringToWkt, Point, Rectangle } from "./";
 import { signedPerpendicularDistance } from "./LineSegment";
-import { Point } from "./Point";
-import { Rectangle } from "./Rectangle";
 
 export class Triangle extends AbstractGeometry {
   readonly ax: number;

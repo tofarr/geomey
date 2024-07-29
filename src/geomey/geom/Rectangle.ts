@@ -13,11 +13,7 @@ import { isNaNOrInfinite } from "../coordinate";
 import { NumberFormatter } from "../formatter";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
-import { Geometry } from "./Geometry";
-import { InvalidGeometryError } from "./InvalidGeometryError";
-import { LinearRing } from "./LinearRing";
-import { Point } from "./Point";
-import { Polygon } from "./Polygon";
+import { Geometry, InvalidGeometryError, LinearRing, Point, Polygon } from "./";
 
 export interface IRectangle {
   minX: number;

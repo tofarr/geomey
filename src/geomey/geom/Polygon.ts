@@ -11,20 +11,20 @@ import { Mesh } from "../mesh/Mesh";
 import { MeshPathWalker } from "../mesh/MeshPathWalker";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
-import { AbstractGeometry } from "./AbstractGeometry";
-import { Geometry } from "./Geometry";
-import { LineSegment } from "./LineSegment";
-import { LineString } from "./LineString";
 import {
+  AbstractGeometry,
   createLinearRings,
   forEachRingCoordinate,
   forEachRingLineSegmentCoordinates,
   LinearRing,
   ringToWkt,
-} from "./LinearRing";
-import { MultiGeometry } from "./MultiGeometry";
-import { Point } from "./Point";
-import { Rectangle } from "./Rectangle";
+  Geometry,
+  LineSegment,
+  LineString,
+  MultiGeometry,
+  Point,
+  Rectangle,
+} from "./";
 import { PolygonBuilder } from "./builder/PolygonBuilder";
 
 const NO_CHILDREN: ReadonlyArray<Polygon> = [];

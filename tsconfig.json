@@ -11,5 +11,5 @@
   },
   "include": [
     "src/**/*"
-  ]
+, ".github/specs/foo.ts"  ]
 }

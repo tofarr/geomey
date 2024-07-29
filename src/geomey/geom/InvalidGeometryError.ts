@@ -1,5 +1,5 @@
 import { NUMBER_FORMATTER } from "../formatter";
-import { Geometry } from "./Geometry";
+import { Geometry } from "./";
 
 export class InvalidGeometryError extends Error {
   readonly geometry: Geometry;

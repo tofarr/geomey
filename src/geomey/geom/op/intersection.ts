@@ -2,8 +2,7 @@ import { createMeshes } from "../../mesh/MeshPathWalker";
 import { addExplicitPointsOfIntersection } from "../../mesh/op/addExplicitPointsOfIntersection";
 import { B_OUTSIDE_A } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
-import { Geometry } from "../Geometry";
-import { createMultiGeometry } from "../MultiGeometry";
+import { createMultiGeometry, Geometry } from "../";
 
 export function intersection(
   a: Geometry,

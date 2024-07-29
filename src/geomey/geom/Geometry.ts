@@ -3,8 +3,7 @@ import { Tolerance } from "../Tolerance";
 import { NumberFormatter } from "../formatter";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
-import { Point } from "./Point";
-import { Rectangle } from "./Rectangle";
+import { Point, Rectangle } from "./";
 
 /**
  * Interface describing a geometry. Geometries are typically immutable

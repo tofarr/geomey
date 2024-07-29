@@ -27,6 +27,3 @@ export class Tolerance {
     return Math.round(value / tolerance) * tolerance;
   }
 }
-
-/** Most of the time Zero tolerance is not that useful */
-export const ZERO = new Tolerance(0);

@@ -21,7 +21,7 @@ import { Mesh } from "../mesh/Mesh";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
-import { Geometry } from "./Geometry";
+import { Geometry, Point, Rectangle } from "./";
 import { InvalidGeometryError } from "./InvalidGeometryError";
 import {
   getLength,
@@ -31,8 +31,6 @@ import {
   pointTouchesLineSegment,
   relateLineSegments,
 } from "./LineSegment";
-import { Point } from "./Point";
-import { Rectangle } from "./Rectangle";
 import { relate } from "./op/relate";
 
 /**

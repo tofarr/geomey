@@ -24,9 +24,7 @@ import { Geometry } from "./Geometry";
 import { pointTouchesLineSegment } from "./LineSegment";
 import { douglasPeucker, walkPath } from "./LineString";
 import { MultiGeometry } from "./MultiGeometry";
-import { Point } from "./Point";
-import { Polygon } from "./Polygon";
-import { Rectangle } from "./Rectangle";
+import { Point, Polygon, Rectangle } from "./";
 
 /**
  * A linear is a non self intersecting closed line string. The first coordinate is not

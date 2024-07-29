@@ -1,18 +1,20 @@
 import { forEachLineSegmentCoordinates } from "../coordinate";
-import { Geometry } from "../geom/Geometry";
-import { LinearRing } from "../geom/LinearRing";
-import { LineString } from "../geom/LineString";
-import { createMultiGeometry, MultiGeometry } from "../geom/MultiGeometry";
-import { Point } from "../geom/Point";
-import { createPolygons, Polygon } from "../geom/Polygon";
+import {
+  createMultiGeometry,
+  Geometry,
+  LinearRing,
+  LineString,
+  MultiGeometry,
+  Point,
+  createPolygons,
+  Polygon,
+} from "../geom/";
 import { Mesh } from "../mesh/Mesh";
 import { MeshPathWalker } from "../mesh/MeshPathWalker";
-import { Tolerance, ZERO } from "../Tolerance";
+import { Tolerance } from "../Tolerance";
 
-export function parseWkt(input: string, tolerance: Tolerance = ZERO) {
-  const typeParsers = tolerance.tolerance
-    ? validatingTypeParsers
-    : unsafeTypeParsers;
+export function parseWkt(input: string, tolerance?: Tolerance) {
+  const typeParsers = tolerance ? validatingTypeParsers : unsafeTypeParsers;
   return doParseWkt(input, tolerance, 0, typeParsers);
 }
 

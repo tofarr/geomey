@@ -1,5 +1,5 @@
 import { SpatialConsumer, SpatialIndex } from ".";
-import { Rectangle } from "../geom/Rectangle";
+import { Rectangle } from "../geom";
 import { Tolerance } from "../Tolerance";
 
 export interface ZOrderIndexEntry<T> {

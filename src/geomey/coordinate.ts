@@ -205,6 +205,15 @@ export function coordinatesMatch(
   return true;
 }
 
+export function coordinateEqual(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+) {
+  return ax === bx && ay === by;
+}
+
 export function coordinatesEqual(
   i: ReadonlyArray<number>,
   j: ReadonlyArray<number>,

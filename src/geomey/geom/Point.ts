@@ -5,9 +5,8 @@ import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { Mesh } from "../mesh/Mesh";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
-import { Geometry } from "./Geometry";
+import { Geometry, Rectangle } from "./";
 import { InvalidGeometryError } from "./InvalidGeometryError";
-import { Rectangle } from "./Rectangle";
 import { union } from "./op/union";
 import { xor } from "./op/xor";
 

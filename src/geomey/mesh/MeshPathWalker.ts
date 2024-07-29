@@ -1,6 +1,6 @@
 import { forEachLineSegmentCoordinates } from "../coordinate";
-import { Geometry } from "../geom/Geometry";
-import { signedPerpendicularDistance } from "../geom/LineSegment";
+import { Geometry } from "../geom";
+import { signedPerpendicularDistance } from "../geom";
 import { PathWalker } from "../path/PathWalker";
 import { Tolerance } from "../Tolerance";
 import { Mesh } from "./Mesh";

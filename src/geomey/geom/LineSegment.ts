@@ -15,11 +15,14 @@ import {
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
-import { Geometry } from "./Geometry";
+import {
+  Geometry,
+  LineString,
+  relateLineStringToLineSegment,
+  Point,
+  Rectangle,
+} from "./";
 import { InvalidGeometryError } from "./InvalidGeometryError";
-import { LineString, relateLineStringToLineSegment } from "./LineString";
-import { Point } from "./Point";
-import { Rectangle } from "./Rectangle";
 import { intersection } from "./op/intersection";
 import { less } from "./op/less";
 import { relate } from "./op/relate";

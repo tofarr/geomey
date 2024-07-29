@@ -1,13 +1,20 @@
-import { Geom2D } from "./";
-
 // import * as mocha from 'mocha';
 import * as chai from "chai";
+import { IRectangle } from "./geomey/geom";
+import { parseWkt } from "./geomey/parser/WktParser";
 
 const expect = chai.expect;
 describe("Geomey", () => {
-  it("rule 1 empty params should convert", () => {
-    const g: Geom2D = { type: "foo", bounds: [1, 2, 3, 4] };
-    expect(g.bounds[0]).to.equal(1);
+  it("dummy test", () => {
+    const bounds: IRectangle = { minX: 0, minY: 1, maxX: 2, maxY: 3 };
+    expect(bounds.minY).to.equal(1);
+  });
+
+  it("simple linestring", () => {
+    const wkt = "LINESTRING(0 0, 100, 0, 100, 100, 0, 100)";
+    const parsed = parseWkt(wkt);
+    const rendered = parsed.toWkt();
+    expect(rendered).to.equal(wkt);
   });
 
   /*

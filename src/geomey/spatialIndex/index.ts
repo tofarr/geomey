@@ -1,4 +1,4 @@
-import { Rectangle } from "../geom/Rectangle";
+import { Rectangle } from "../geom";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type SpatialConsumer<T> = (value: T, rectangle: Rectangle) => any;

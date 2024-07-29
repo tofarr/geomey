@@ -2,8 +2,7 @@ import { createMeshes } from "../../mesh/MeshPathWalker";
 import { generalize } from "../../mesh/op/generalize";
 import { DISJOINT } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
-import { Geometry } from "../Geometry";
-import { createMultiGeometry } from "../MultiGeometry";
+import { createMultiGeometry, Geometry } from "../";
 
 export function generalizeAgainst(
   geometry: Geometry,

@@ -11,7 +11,7 @@ import {
   UNKNOWN,
 } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
-import { Geometry } from "../Geometry";
+import { Geometry } from "../";
 
 /**
  * A general algorithm for relating geometries. This may be far more resource intensive than type specific versions

@@ -1,8 +1,7 @@
 import { createMeshes } from "../../mesh/MeshPathWalker";
 import { B_INSIDE_A } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
-import { Geometry } from "../Geometry";
-import { createMultiGeometry } from "../MultiGeometry";
+import { createMultiGeometry, Geometry } from "../";
 
 export function union(
   a: Geometry,
