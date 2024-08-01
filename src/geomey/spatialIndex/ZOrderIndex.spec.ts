@@ -87,7 +87,7 @@ export const zOrderIndexSpec = () => {
     const index = new ZOrderIndex(new Tolerance(0.05))
     for (let i = 0; i < 5; i++) {
         for (let j = 0; j < 5; j++) {
-            index.add(Rectangle.unsafeValueOf(0, 0, i+1, j+1), `${i}:${j}`)
+            index.add(Rectangle.unsafeValueOf(-1, -1, i+1, j+1), `${i}:${j}`)
         }
     }
     const results = []
@@ -111,27 +111,22 @@ export const zOrderIndexSpec = () => {
     ])
   })
 
-  /*
-  it("simple linestring", () => {
-    const wkt = "LINESTRING (0 0, 100 0, 100 100, 0 100)";
-    const parsed = parseWkt(wkt);
-    const rendered = parsed.toWkt();
-    expect(rendered).to.equal(wkt);
-  });
 
-  it("unvalidated self intersecting linestring", () => {
-    const wkt = "LINESTRING (0 50, 100 50, 100 100, 50 100, 50 0)";
-    const parsed = parseWkt(wkt);
-    const rendered = parsed.toWkt();
-    expect(rendered).to.equal(wkt);
-  });
-
-  it("validated self intersecting linestring", () => {
-    const wkt = "LINESTRING (0 50, 100 50, 100 100, 50 100, 50 0)";
-    debugger;
-    const parsed = parseWkt(wkt, new Tolerance(0.05));
-    const rendered = parsed.toWkt();
-    expect(rendered).to.equal(wkt);
-  });
-  */
+  it("Loads nothing when there is no overlap", () => {
+    const index = new ZOrderIndex(new Tolerance(0.05))
+    for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 5; j++) {
+            index.add(Rectangle.unsafeValueOf(0, 0, i+1, j+1), `${i}:${j}`)
+        }
+    }
+    const results = []
+    index.findIntersecting(Rectangle.unsafeValueOf(6, 6, 7, 7), (value, rectangle) => {
+        results.push(value)
+    })
+    expect(results).to.eql([])
+    index.findIntersecting(Rectangle.unsafeValueOf(-2, -2, -1, -1), (value, rectangle) => {
+        results.push(value)
+    })
+    expect(results).to.eql([])
+  })
 };

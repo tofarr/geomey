@@ -28,10 +28,17 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
     this.entriesByMax = null;
   }
   remove(rectangle: Rectangle, matcher: (value: T) => boolean): boolean {
+    const { entries } = this
+    if(!entries.length){
+      return
+    }
     this.prepareIndex();
-    const { tolerance, entries, entriesByMax } = this
-    const minZ = calculateZOrder(rectangle.minX - this.minX, rectangle.minY - this.minY, this.tolerance.tolerance);
-    const maxZ = calculateZOrder(rectangle.maxX - this.minX, rectangle.maxY - this.minY, this.tolerance.tolerance);
+    const { tolerance, entriesByMax } = this
+    const minZ = calculateZOrder(
+      Math.max(rectangle.minX, this.minX) - this.minX,
+      Math.max(rectangle.minY, this.minY) - this.minY,
+      this.tolerance.tolerance
+    );
     const { length } = entries
     const { maxX, maxY } = rectangle
     let index = firstIndexOf(minZ, entriesByMax)
@@ -54,11 +61,18 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
     return false
   }
   findIntersecting(rectangle: Rectangle, consumer: SpatialConsumer<T>) {
+    const { entries } = this
+    if(!entries.length){
+      return
+    }
     this.prepareIndex();
-    const { tolerance, entries, entriesByMax } = this
+    const { tolerance, entriesByMax } = this
     const t = tolerance.tolerance
-    const minZ = calculateZOrder(rectangle.minX - this.minX, rectangle.minY - this.minY, this.tolerance.tolerance);
-    const maxZ = calculateZOrder(rectangle.maxX - this.minX, rectangle.maxY - this.minY, this.tolerance.tolerance);
+    const minZ = calculateZOrder(
+      Math.max(rectangle.minX, this.minX) - this.minX,
+      Math.max(rectangle.minY, this.minY) - this.minY,
+      this.tolerance.tolerance
+    );
     const { length } = entries
     const { maxX, maxY } = rectangle
     let index = firstIndexOf(minZ, entriesByMax)
