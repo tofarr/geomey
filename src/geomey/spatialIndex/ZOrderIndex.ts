@@ -3,7 +3,7 @@ import { Rectangle } from "../geom";
 import { DISJOINT } from "../Relation";
 import { Tolerance } from "../Tolerance";
 
-interface ZOrderIndexEntry<T> {
+export interface ZOrderIndexEntry<T> {
   rectangle: Rectangle;
   value: T;
   minZ?: bigint;
@@ -27,47 +27,13 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
     this.entries.push({ rectangle, value });
     this.entriesByMax = null;
   }
-  remove(rectangle: Rectangle, matcher: (value: T) => boolean): boolean {
+  private forEachEntry(rectangle: Rectangle, consumer: (entry: ZOrderIndexEntry<T>) => boolean) {
     const { entries } = this
     if(!entries.length){
       return
     }
     this.prepareIndex();
     const { tolerance, entriesByMax } = this
-    const minZ = calculateZOrder(
-      Math.max(rectangle.minX, this.minX) - this.minX,
-      Math.max(rectangle.minY, this.minY) - this.minY,
-      this.tolerance.tolerance
-    );
-    const { length } = entries
-    const { maxX, maxY } = rectangle
-    let index = firstIndexOf(minZ, entriesByMax)
-    while (index < length) {
-      const entry = entries[index++];
-      const entryRectangle = entry.rectangle
-      if (entryRectangle.minX > maxX && entryRectangle.minY > maxY){
-        return
-      }
-      if (rectangle.relateRectangle(entry.rectangle, tolerance) == DISJOINT){
-        continue
-      }
-      if (matcher(entry.value) === false) {
-        entries.splice(index, 1)
-        this.entriesByMax = null
-        return true;
-      }
-      index++
-    }
-    return false
-  }
-  findIntersecting(rectangle: Rectangle, consumer: SpatialConsumer<T>) {
-    const { entries } = this
-    if(!entries.length){
-      return
-    }
-    this.prepareIndex();
-    const { tolerance, entriesByMax } = this
-    const t = tolerance.tolerance
     const minZ = calculateZOrder(
       Math.max(rectangle.minX, this.minX) - this.minX,
       Math.max(rectangle.minY, this.minY) - this.minY,
@@ -85,10 +51,30 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
       if (rectangle.relateRectangle(entryRectangle, tolerance) == DISJOINT){
         continue
       }
-      if (consumer(entry.value, entry.rectangle) === false) {
-        return;
+      if(consumer(entry) === false){
+        return false
       }
     }
+  }
+  remove(rectangle: Rectangle, matcher: (value: T) => boolean): boolean {
+    let found = false
+    this.forEachEntry(rectangle, (entry) => {
+      if (matcher(entry.value) === false) {
+        this.entries.splice(entry.minIndex, 1)
+        this.entriesByMax = null
+        found = true
+      }
+      return !found
+    })
+    return found
+  }
+  findIntersecting(rectangle: Rectangle, consumer: SpatialConsumer<T>) {
+    this.forEachEntry(rectangle, (entry) => {
+      if (consumer(entry.value, entry.rectangle) === false) {
+        return false
+      }
+      return true
+    })
   }
   findAll(consumer: SpatialConsumer<T>) {
     for (const entry of this.entries) {
@@ -184,7 +170,7 @@ export function binarySearch<T>(entries: ZOrderIndexEntry<T>[], compare: (entry:
 
 export function firstIndexOf<T>(z: bigint, entriesByMax: ZOrderIndexEntry<T>[]): number {
   let index = binarySearch(entriesByMax, (entry) => compareBigInt(z, entry.maxZ))
-  while (index && compareBigInt(z, entriesByMax[index - 1].maxZ) >= 0) {
+  while (index && compareBigInt(z, entriesByMax[index].maxZ) <= 0) {
     index--
   }
   const result = entriesByMax[index].minIndex

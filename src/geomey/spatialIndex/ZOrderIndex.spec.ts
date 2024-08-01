@@ -30,32 +30,32 @@ export const zOrderIndexSpec = () => {
     }
   })
   
-  it("Loads overlapping data", () => {
+  it("Loads non overlapping data", () => {
     const index = new ZOrderIndex(new Tolerance(0.05))
-    for (let i = 0; i < 5; i++) {
-        for (let j = 0; j < 5; j++) {
+    for (let i = 0; i < 7; i++) {
+        for (let j = 0; j < 7; j++) {
             index.add(Rectangle.unsafeValueOf(i, j, i+1, j+1), `${i}:${j}`)
         }
     }
     const results = []
-    index.findIntersecting(Rectangle.unsafeValueOf(1, 1, 2, 2), (value, rectangle) => {
+    index.findIntersecting(Rectangle.unsafeValueOf(2, 3, 3, 4), (value, rectangle) => {
         expect(value).to.equal(`${rectangle.minX}:${rectangle.minY}`)
         results.push(value)
     })
     results.sort()
     expect(results).to.eql([
-        "0:0",
-        "0:1",
-        "0:2",
-        "1:0",
-        "1:1",
         "1:2",
-        "2:0",
-        "2:1",
+        "1:3",
+        "1:4",
         "2:2",
+        "2:3",
+        "2:4",
+        "3:2",
+        "3:3",
+        "3:4",
     ])
   })
-  
+
   it("Loads data which overlaps at the max", () => {
     const index = new ZOrderIndex(new Tolerance(0.05))
     for (let i = 0; i < 5; i++) {
@@ -129,4 +129,5 @@ export const zOrderIndexSpec = () => {
     })
     expect(results).to.eql([])
   })
+
 };
