@@ -52,11 +52,6 @@ export class MultiGeometry extends AbstractGeometry {
     rings?: ReadonlyArray<LinearRing>,
   ): MultiGeometry {
     const pathWalker = MeshPathWalker.valueOf(tolerance);
-    if (points) {
-      forEachCoordinate(points, (x, y) => {
-        pathWalker.linesAndPoints.addVertex(x, y);
-      });
-    }
     if (lineStrings) {
       for (const lineString of lineStrings) {
         lineString.walkPath(pathWalker);
@@ -67,7 +62,13 @@ export class MultiGeometry extends AbstractGeometry {
         ring.walkPath(pathWalker);
       }
     }
-    return createMultiGeometry(pathWalker.rings, pathWalker.linesAndPoints);
+    const [ringMesh, linesAndPoints] = pathWalker.getMeshes();
+    if (points) {
+      forEachCoordinate(points, (x, y) => {
+        linesAndPoints.addVertex(x, y);
+      });
+    }
+    return createMultiGeometry(ringMesh, linesAndPoints);
   }
   static unsafeValueOf(
     points?: ReadonlyArray<number>,
@@ -183,17 +184,17 @@ export class MultiGeometry extends AbstractGeometry {
   }
   transform(transformer: Transformer, tolerance: Tolerance): Geometry {
     const pathWalker = MeshPathWalker.valueOf(tolerance);
-    forEachCoordinate(transformer.transformAll(this.points), (x, y) => {
-      pathWalker.moveTo(x, y);
-      pathWalker.lineTo(x, y);
-    });
     for (const lineString of this.lineStrings) {
       lineString.transform(transformer).walkPath(pathWalker);
     }
     for (const polygon of this.polygons) {
       polygon.transform(transformer, tolerance).walkPath(pathWalker);
     }
-    return createMultiGeometry(pathWalker.rings, pathWalker.linesAndPoints);
+    const [rings, linesAndPoints] = pathWalker.getMeshes();
+    forEachCoordinate(transformer.transformAll(this.points), (x, y) => {
+      linesAndPoints.addVertex(x, y);
+    });
+    return createMultiGeometry(rings, linesAndPoints);
   }
   generalize(tolerance: Tolerance): Geometry {
     const pathWalker = MeshPathWalker.valueOf(tolerance);
@@ -207,9 +208,13 @@ export class MultiGeometry extends AbstractGeometry {
     for (const polygon of this.polygons) {
       polygon.walkPath(pathWalker);
     }
-    generalize(pathWalker.rings, tolerance);
-    generalize(pathWalker.linesAndPoints, tolerance);
-    return createMultiGeometry(pathWalker.rings, pathWalker.linesAndPoints);
+    const [rings, linesAndPoints] = pathWalker.getMeshes();
+    forEachCoordinate(this.points, (x, y) => {
+      linesAndPoints.addVertex(x, y);
+    });
+    generalize(rings, tolerance);
+    generalize(linesAndPoints, tolerance);
+    return createMultiGeometry(rings, linesAndPoints);
   }
   relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
     if (this.getBounds().relatePoint(x, y, tolerance) == DISJOINT) {

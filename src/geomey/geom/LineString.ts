@@ -309,7 +309,7 @@ export function relatePointToLineString(
   tolerance: Tolerance,
 ): Relation {
   let result = UNKNOWN;
-  forEachLineSegmentCoordinates(this.coordinates, (ax, ay, bx, by) => {
+  forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
     if (pointTouchesLineSegment(x, y, ax, ay, bx, by, tolerance)) {
       result |= TOUCH;
     }
@@ -386,7 +386,7 @@ export function coordinatesToWkt(
   result: string[],
 ) {
   result.push("(");
-  forEachCoordinate(this.coordinates, (x, y) => {
+  forEachCoordinate(coordinates, (x, y) => {
     result.push(numberFormatter(x), " ", numberFormatter(y), ", ");
   });
   result.pop();

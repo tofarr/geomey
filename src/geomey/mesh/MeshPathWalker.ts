@@ -1,14 +1,14 @@
 import { forEachLineSegmentCoordinates } from "../coordinate";
-import { Geometry } from "../geom";
+import { forEachRingLineSegmentCoordinates, Geometry } from "../geom";
 import { signedPerpendicularDistance } from "../geom";
 import { PathWalker } from "../path/PathWalker";
 import { Tolerance } from "../Tolerance";
 import { Mesh } from "./Mesh";
 
 export class MeshPathWalker implements PathWalker {
-  rings: Mesh;
-  linesAndPoints: Mesh;
-  coordinates: number[];
+  private rings: Mesh;
+  private linesAndPoints: Mesh;
+  private coordinates: number[];
 
   constructor(rings: Mesh, linesAndPoints: Mesh) {
     this.rings = rings;
@@ -19,6 +19,10 @@ export class MeshPathWalker implements PathWalker {
     return new MeshPathWalker(new Mesh(tolerance), new Mesh(tolerance));
   }
   moveTo(x: number, y: number): void {
+    this.flushLineSegments();
+    this.coordinates.push(x, y);
+  }
+  private flushLineSegments() {
     const { coordinates } = this;
     const { length } = coordinates;
     if (length) {
@@ -31,7 +35,6 @@ export class MeshPathWalker implements PathWalker {
       }
     }
     coordinates.length = 0;
-    coordinates.push(x, y);
   }
   lineTo(x: number, y: number): void {
     this.coordinates.push(x, y);
@@ -78,10 +81,14 @@ export class MeshPathWalker implements PathWalker {
   closePath(): void {
     const { coordinates } = this;
     coordinates.push(coordinates[0], coordinates[1]);
-    forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
+    forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
       this.rings.addLink(ax, ay, bx, by);
     });
     coordinates.length = 0;
+  }
+  getMeshes(): [Mesh, Mesh] {
+    this.flushLineSegments();
+    return [this.rings, this.linesAndPoints];
   }
 }
 
@@ -97,5 +104,5 @@ export function createMeshes(
   for (const geometry of geometries) {
     geometry.walkPath(pathWalker);
   }
-  return [pathWalker.rings, pathWalker.linesAndPoints];
+  return pathWalker.getMeshes();
 }

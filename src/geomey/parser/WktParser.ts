@@ -15,7 +15,8 @@ import { Tolerance } from "../Tolerance";
 
 export function parseWkt(input: string, tolerance?: Tolerance) {
   const typeParsers = tolerance ? validatingTypeParsers : unsafeTypeParsers;
-  return doParseWkt(input, tolerance, 0, typeParsers);
+  const parsed = doParseWkt(input, tolerance, 0, typeParsers);
+  return parsed[0];
 }
 
 export function doParseWkt(
@@ -70,7 +71,11 @@ interface TypeParsers {
     position: number,
     tolerance: Tolerance,
   ): [Geometry, number];
-  linestring(input: string, position: number): [Geometry, number];
+  linestring(
+    input: string,
+    position: number,
+    tolerance: Tolerance,
+  ): [Geometry, number];
   multilinestring(
     input: string,
     position: number,
@@ -110,9 +115,15 @@ const validatingTypeParsers: TypeParsers = {
     const [coordinates, next] = parseCoordinates(input, position);
     return [MultiGeometry.valueOf(tolerance, coordinates), next];
   },
-  linestring(input: string, position: number): [Geometry, number] {
+  linestring(input: string, position: number, tolerance): [Geometry, number] {
     const [coordinates, next] = parseCoordinates(input, position);
-    return [LineString.valueOf(coordinates), next];
+    const lineStrings = [LineString.unsafeValueOf(coordinates)];
+    const geometry = MultiGeometry.valueOf(
+      tolerance,
+      undefined,
+      lineStrings,
+    ).simplify();
+    return [geometry, next];
   },
   multilinestring(
     input: string,
@@ -191,10 +202,8 @@ const validatingTypeParsers: TypeParsers = {
       geometry.walkPath(walker);
       position = end;
     }
-    return [
-      createMultiGeometry(walker.rings, walker.linesAndPoints),
-      position + 1,
-    ];
+    const [rings, linesAndPoints] = walker.getMeshes();
+    return [createMultiGeometry(rings, linesAndPoints), position + 1];
   },
 };
 

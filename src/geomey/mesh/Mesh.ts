@@ -35,7 +35,8 @@ export class Mesh {
 
   constructor(tolerance: Tolerance) {
     this.tolerance = tolerance;
-    this.links = new ZOrderIndex<Link>(tolerance);
+    this.vertices = new Map();
+    this.links = new ZOrderIndex(tolerance);
   }
 
   addVertex(x: number, y: number): Vertex {
@@ -71,6 +72,7 @@ export class Mesh {
         }
       },
     );
+    return vertex
   }
   getVertex(x: number, y: number): Vertex | null {
     const zOrder = calculateZOrder(x, y, this.tolerance.tolerance);

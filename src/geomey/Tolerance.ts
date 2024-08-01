@@ -22,6 +22,14 @@ export class Tolerance {
     return Math.abs(a - b) <= this.tolerance;
   }
 
+  gt(a: number, b: number): boolean {
+    return a - this.tolerance > b
+  }
+
+  lt(a: number, b: number): boolean {
+    return a + this.tolerance < b
+  }
+
   normalize(value: number): number {
     const { tolerance } = this;
     return Math.round(value / tolerance) * tolerance;

@@ -143,7 +143,8 @@ export class Polygon extends AbstractGeometry {
     for (const child of children) {
       child.generalize(tolerance).walkPath(walker);
     }
-    const polygons = createPolygons(walker.rings);
+    const [rings] = walker.getMeshes();
+    const polygons = createPolygons(rings);
     if (polygons.length == 1) {
       return polygons[0];
     }
