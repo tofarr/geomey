@@ -16,13 +16,16 @@ export class RTree<T> implements SpatialIndex<T> {
   root: Node<T>;
   maxLeafSize: number;
 
-  constructor(maxLeafSize?: number) {
+  constructor(maxLeafSize?: number, leafBounds?: Rectangle[], leafValues?: T[]) {
     this.root = {
       bounds: new RectangleBuilder(),
-      leafBounds: [],
-      leafValues: [] as T[],
+      leafBounds: leafBounds || [],
+      leafValues: leafValues || [],
     };
     this.maxLeafSize = maxLeafSize || MAX_LEAF_SIZE;
+    if(this.root.leafBounds.length > this.maxLeafSize){
+      this.splitLeaf(this.root)
+    }
   }
   add(rectangle: Rectangle, value: T) {
     this.addToNode(this.root, rectangle, value);
@@ -45,29 +48,64 @@ export class RTree<T> implements SpatialIndex<T> {
     a: Node<T>,
     b: Node<T>,
   ): Node<T> {
-    const expandA = expansionSize(a.bounds, rectangle);
-    const expandB = expansionSize(b.bounds, rectangle);
+    const ab = a.bounds
+    const bb = b.bounds
+    let expandA = expansionSize(ab, rectangle);
+    let expandB = expansionSize(bb, rectangle);
+    if (expandA == expandB){
+      expandA = getArea(ab.minX, ab.minY, ab.maxX, ab.maxY)
+      expandB = getArea(bb.minX, bb.minY, bb.maxX, bb.maxY)
+    }
     return expandA < expandB ? a : b;
   }
   private splitLeaf(node: Node<T>) {
-    const splits = findMostDifferentBounds(node.leafBounds);
-    const [boundsA, boundsB] = splits;
-    node.a = {
-      bounds: new RectangleBuilder().unionRectangle(boundsA),
+    const { bounds } = node
+    const { minX, minY, maxX, maxY } = bounds
+    const width = maxX - minX
+    const height = maxY - minY
+    let boundsA = null
+    let boundsB = null;
+    if (width > height){
+      const split = (minX + maxX) / 2
+      boundsA = new RectangleBuilder(minX, minY, split, maxY)
+      boundsB = new RectangleBuilder(split, minY, maxX, maxY)
+    } else {
+      const split = (minX + maxX) / 2
+      boundsA = new RectangleBuilder(minX, minY, split, maxY)
+      boundsB = new RectangleBuilder(split, minY, maxX, maxY)
+    }
+    const a = {
+      bounds: boundsA,
       leafBounds: [],
       leafValues: [],
     };
-    node.b = {
-      bounds: new RectangleBuilder().unionRectangle(boundsB),
+    const b = {
+      bounds: boundsB,
       leafBounds: [],
       leafValues: [],
     };
     const { leafBounds, leafValues } = node;
-    node.leafBounds = null;
-    node.leafValues = null;
     const { length } = leafBounds;
     for (let i = 0; i < length; i++) {
-      this.addToNode(node, leafBounds[i], leafValues[i]);
+      const leafBound = leafBounds[i]
+      const child = this.chooseBestMatch(leafBound, a, b);
+      child.leafBounds.push(leafBound)
+      child.leafValues.push(leafValues[i])
+    }
+    if (a.leafBounds.length && b.leafBounds.length){
+      node.leafBounds = null;
+      node.leafValues = null;
+      this.recalculateBounds(a)
+      this.recalculateBounds(b)
+      node.a = a
+      node.b = b
+    }
+  }
+  private recalculateBounds(node: Node<T>) {
+    const { bounds, leafBounds } = node
+    bounds.reset()
+    for(const b of leafBounds) {
+      bounds.unionRectangle(b)
     }
   }
   remove(rectangle: Rectangle, matcher: (value: T) => boolean): boolean {
@@ -78,7 +116,7 @@ export class RTree<T> implements SpatialIndex<T> {
     rectangle: Rectangle,
     matcher: (value: T) => boolean,
   ): boolean {
-    if (!node.bounds.containsRectangle(rectangle)) {
+    if (!node.bounds.intersectsRectangle(rectangle)) {
       return false;
     }
     const { a, b } = node;
@@ -86,6 +124,10 @@ export class RTree<T> implements SpatialIndex<T> {
       const result =
         this.removeFromNode(a, rectangle, matcher) ||
         this.removeFromNode(b, rectangle, matcher);
+      if(!result){
+        return result
+      }
+      node.bounds.reset().unionRectangle(a.bounds).unionRectangle(b.bounds)
       const aLeafBounds = a.leafBounds;
       const bLeafBounds = b.leafBounds;
       if (
@@ -101,6 +143,21 @@ export class RTree<T> implements SpatialIndex<T> {
       }
       return result;
     }
+    const { leafBounds, leafValues } = node
+    const { length } = leafBounds
+    for(let i = 0; i < length; i++){
+      const leafBound = leafBounds[i]
+      if (!leafBound.intersectsRectangle(rectangle)) {
+        continue
+      }
+      if (matcher(leafValues[i])){
+        leafBounds.splice(i, 1)
+        leafValues.splice(i, 1)
+        this.recalculateBounds(node)
+        return true
+      }
+    }
+    return false
   }
   findIntersecting(rectangle: Rectangle, consumer: SpatialConsumer<T>) {
     this.findIntersectingNode(this.root, rectangle, consumer);
@@ -111,7 +168,7 @@ export class RTree<T> implements SpatialIndex<T> {
     consumer: SpatialConsumer<T>,
   ): boolean {
     if (!node.bounds.intersectsRectangle(rectangle)) {
-      return;
+      return true;
     }
     if (node.a) {
       return (
@@ -122,7 +179,11 @@ export class RTree<T> implements SpatialIndex<T> {
     const { leafBounds, leafValues } = node;
     const { length } = leafBounds;
     for (let i = 0; i < length; i++) {
-      if (consumer(leafValues[i], leafBounds[i]) === false) {
+      const leafBound = leafBounds[i]
+      if (!rectangle.intersectsRectangle(leafBound)){
+        continue
+      }
+      if (consumer(leafValues[i], leafBound) === false) {
         return false;
       }
     }
@@ -159,37 +220,4 @@ function expansionSize(origin: IRectangle, expansion: IRectangle) {
 
 function getArea(minX: number, minY: number, maxX: number, maxY: number) {
   return (maxX - minX) * (maxY - minY);
-}
-
-function findMostDifferentBounds(bounds: IRectangle[]) {
-  bounds = bounds.slice();
-  const last = bounds.length - 1;
-  bounds.sort((a, b) => {
-    return a.minX - b.minX || a.maxX - b.maxX;
-  });
-  let maxDiff = -Infinity;
-  let a = null;
-  let b = bounds[last];
-  for (const c of bounds) {
-    const diff = b.minX - c.maxX;
-    if (diff > maxDiff) {
-      a = c;
-      maxDiff = diff;
-    }
-  }
-  bounds.sort((a, b) => {
-    return a.minY - b.minY || a.maxY - b.maxY;
-  });
-  const d = bounds[last];
-  for (const c of bounds) {
-    const diff = d.minX - c.maxX;
-    if (diff > maxDiff) {
-      a = c;
-      b = d;
-      maxDiff = diff;
-    }
-  }
-  if (maxDiff > 0) {
-    return [a, b];
-  }
 }

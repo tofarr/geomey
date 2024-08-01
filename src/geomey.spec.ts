@@ -2,9 +2,11 @@ import * as chai from "chai";
 import { parseWkt } from "./geomey/parser/WktParser";
 import { Tolerance } from "./geomey/Tolerance";
 import { zOrderIndexSpec } from "./geomey/spatialIndex/ZOrderIndex.spec";
+import { rTreeSpec } from "./geomey/spatialIndex/RTree.spec";
 
 
 describe("ZOrderIndex", zOrderIndexSpec)
+describe("RTree", rTreeSpec)
 
 
 const expect = chai.expect;

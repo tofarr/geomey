@@ -48,7 +48,7 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
       if (entryRectangle.minX > maxX && entryRectangle.minY > maxY){
         return
       }
-      if (rectangle.relateRectangle(entryRectangle, tolerance) == DISJOINT){
+      if (!rectangle.intersectsRectangle(entryRectangle)){
         continue
       }
       if(consumer(entry) === false){
@@ -59,7 +59,7 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
   remove(rectangle: Rectangle, matcher: (value: T) => boolean): boolean {
     let found = false
     this.forEachEntry(rectangle, (entry) => {
-      if (matcher(entry.value) === false) {
+      if (matcher(entry.value)) {
         this.entries.splice(entry.minIndex, 1)
         this.entriesByMax = null
         found = true

@@ -2,11 +2,29 @@ import { forEachCoordinate } from "../../coordinate";
 import { IRectangle, Rectangle } from "../Rectangle";
 
 export class RectangleBuilder {
-  minX: number = Infinity;
-  minY: number = Infinity;
-  maxX: number = -Infinity;
-  maxY: number = -Infinity;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
 
+  constructor(
+    minX: number = Infinity,
+    minY: number = Infinity,
+    maxX: number = -Infinity,
+    maxY: number = -Infinity
+  ) {
+    this.minX = minX
+    this.minY = minY
+    this.maxX = maxX
+    this.maxY = maxY
+  }
+  reset(){
+    this.minX = Infinity
+    this.minY = Infinity
+    this.maxX = -Infinity
+    this.maxY = -Infinity
+    return this
+  }
   union(x: number, y: number): RectangleBuilder {
     this.minX = Math.min(this.minX, x);
     this.minY = Math.min(this.minY, y);
