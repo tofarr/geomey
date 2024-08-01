@@ -8,6 +8,7 @@ import {
 } from "../coordinate";
 import {
   intersectionLineSegment,
+  Point,
   pointTouchesLineSegment,
   Rectangle,
 } from "../geom";
@@ -20,6 +21,8 @@ import { DISJOINT } from "../Relation";
 import { SpatialConsumer } from "../spatialIndex";
 import { removeNonRingVertices } from "./op/removeNonRingVertices";
 import { popLinearRing } from "./op/popLinearRing";
+
+foo = "Needs a refactor - use an RTree instead (Faster random updates) Using 0, 0 as tolerance is bogus"
 
 /**
  * Class describing a network of Vertices and Links, which may be used to build geometries.
@@ -50,7 +53,7 @@ export class Mesh {
     y = tolerance.normalize(y);
 
     // Add vertex
-    const zOrder = calculateZOrder(x, y, tolerance.tolerance);
+    const zOrder = calculateZOrder(x, y, Point.ORIGIN, tolerance.tolerance);
     let vertex = this.vertices.get(zOrder);
     if (vertex) {
       return vertex; // already exists
@@ -75,7 +78,7 @@ export class Mesh {
     return vertex
   }
   getVertex(x: number, y: number): Vertex | null {
-    const zOrder = calculateZOrder(x, y, this.tolerance.tolerance);
+    const zOrder = calculateZOrder(x, y, Point.ORIGIN, this.tolerance.tolerance);
     return this.vertices.get(zOrder);
   }
   getOrigin(): Vertex | null {
@@ -112,7 +115,7 @@ export class Mesh {
     }
 
     // Check if link already exists
-    const zOrder = calculateZOrder(ax, ay, tolerance.tolerance);
+    const zOrder = calculateZOrder(ax, ay, Point.ORIGIN, tolerance.tolerance);
     const vertex = this.vertices.get(zOrder);
     if (vertex) {
       if (vertex.links.find((v) => v.x === bx && v.y === by)) {
@@ -239,7 +242,7 @@ export class Mesh {
     x = Math.round(x / tolerance) * tolerance;
     y = Math.round(y / tolerance) * tolerance;
 
-    const zOrder = calculateZOrder(x, y, tolerance);
+    const zOrder = calculateZOrder(x, y, Point.ORIGIN, tolerance);
     const vertex = this.vertices.get(zOrder);
     if (!vertex) {
       return false;
@@ -259,7 +262,7 @@ export class Mesh {
     bx = Math.round(bx / t) * t;
     by = Math.round(by / t) * t;
 
-    const zOrder = calculateZOrder(ax, ay, t);
+    const zOrder = calculateZOrder(ax, ay, Point.ORIGIN, t);
     const a = this.vertices.get(zOrder);
     if (!a) {
       return false;

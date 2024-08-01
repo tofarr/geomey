@@ -1,5 +1,5 @@
 import { SpatialConsumer, SpatialIndex } from ".";
-import { Rectangle } from "../geom";
+import { Point, Rectangle } from "../geom";
 import { DISJOINT } from "../Relation";
 import { Tolerance } from "../Tolerance";
 
@@ -14,14 +14,15 @@ export interface ZOrderIndexEntry<T> {
 
 export class ZOrderIndex<T> implements SpatialIndex<T> {
   readonly tolerance: Tolerance;
+  readonly origin?: Point
   private entries: ZOrderIndexEntry<T>[];
   private entriesByMax?: ZOrderIndexEntry<T>[];
-  private minX?: number
-  private minY?: number
+  private calculatedOrigin?: Point
 
-  constructor(tolerance: Tolerance) {
+  constructor(tolerance: Tolerance, origin?: Point) {
     this.tolerance = tolerance;
     this.entries = [];
+    this.origin = origin
   }
   add(rectangle: Rectangle, value: T) {
     this.entries.push({ rectangle, value });
@@ -33,10 +34,11 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
       return
     }
     this.prepareIndex();
-    const { tolerance, entriesByMax } = this
+    const { tolerance, entriesByMax, calculatedOrigin } = this
     const minZ = calculateZOrder(
-      Math.max(rectangle.minX, this.minX) - this.minX,
-      Math.max(rectangle.minY, this.minY) - this.minY,
+      Math.max(rectangle.minX, calculatedOrigin.x),
+      Math.max(rectangle.minY, calculatedOrigin.y),
+      calculatedOrigin,
       this.tolerance.tolerance
     );
     const { length } = entries
@@ -90,29 +92,33 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
     }
     const { entries, tolerance } = this
     const t = tolerance.tolerance
+    
+    let origin = this.origin
     let minX = Infinity
     let minY = Infinity
-    for(const entry of entries){
-      const { rectangle } = entry
-      minX = Math.min(minX, rectangle.minX)
-      minY = Math.min(minY, rectangle.minY)
+    if (!origin) {
+      for(const entry of entries){
+        const { rectangle } = entry
+        minX = Math.min(minX, rectangle.minX)
+        minY = Math.min(minY, rectangle.minY)
+      }
+      minX -= t
+      minY -= t
+      origin = Point.unsafeValueOf(minX, minY)
     }
-    minX -= t
-    minY -= t
-    this.minX = minX
-    this.minY = minY
+    this.calculatedOrigin = origin
 
     entries.forEach((entry) => {
       const { rectangle } = entry
       entry.minZ = calculateZOrder(
-        rectangle.minX - t - minX,
-        rectangle.minY - t - minY,
-        t,
+        rectangle.minX - t,
+        rectangle.minY - t,
+        origin, t,
       )
       entry.maxZ = calculateZOrder(
-        rectangle.maxX + t - minX,
-        rectangle.maxY + t - minY,
-        t,
+        rectangle.maxX + t,
+        rectangle.maxY + t,
+        origin, t,
       )
     })
 
@@ -180,8 +186,11 @@ export function firstIndexOf<T>(z: bigint, entriesByMax: ZOrderIndexEntry<T>[]):
 export function calculateZOrder(
   x: number,
   y: number,
+  origin: Point,
   tolerance: number,
 ): bigint {
+  x -= origin.x
+  y -= origin.y
   if (x < 0 || y < 0){
     throw new Error(`illegal_argument:${x}:${y}`)
   }

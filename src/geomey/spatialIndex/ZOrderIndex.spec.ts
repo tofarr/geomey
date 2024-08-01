@@ -1,26 +1,27 @@
 import * as chai from "chai";
 import { calculateZOrder, ZOrderIndex } from "./ZOrderIndex";
 import { Tolerance } from "../Tolerance";
-import { Rectangle } from "../geom";
+import { Point, Rectangle } from "../geom";
 
 const expect = chai.expect;
+const ORIGIN = Point.ORIGIN
 
 
 export const zOrderIndexSpec = () => {
 
   it("calculates Z Orders as expected", () => {
-    expect(calculateZOrder(1, 0, 0.1)).to.equal(BigInt(68))
-    expect(calculateZOrder(0, 1, 0.1)).to.equal(BigInt(136))
-    expect(calculateZOrder(2, 1, 0.1)).to.equal(BigInt(408))
-    expect(calculateZOrder(2, 3, 0.1)).to.equal(BigInt(952))
+    expect(calculateZOrder(1, 0, ORIGIN, 0.1)).to.equal(BigInt(68))
+    expect(calculateZOrder(0, 1, ORIGIN, 0.1)).to.equal(BigInt(136))
+    expect(calculateZOrder(2, 1, ORIGIN, 0.1)).to.equal(BigInt(408))
+    expect(calculateZOrder(2, 3, ORIGIN, 0.1)).to.equal(BigInt(952))
   })
 
   it("creates Z Orders that sort", () => {
     for(let i = 0; i < 10; i++){
-        const a = Number(calculateZOrder(i, 0, 0.1))
-        const b = Number(calculateZOrder(i+1, 0, 0.1))
-        const c = Number(calculateZOrder(i, 1, 0.1))
-        const d = Number(calculateZOrder(i+1, 1, 0.1))
+        const a = Number(calculateZOrder(i, 0, ORIGIN, 0.1))
+        const b = Number(calculateZOrder(i+1, 0, ORIGIN, 0.1))
+        const c = Number(calculateZOrder(i, 1, ORIGIN, 0.1))
+        const d = Number(calculateZOrder(i+1, 1, ORIGIN, 0.1))
         expect(a).to.be.below(d)
         expect(a).to.be.below(b)
         expect(a).to.be.below(c)
