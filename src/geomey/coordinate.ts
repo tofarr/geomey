@@ -60,7 +60,7 @@ export function forEachLineSegmentCoordinates(
   }
   const { length } = coordinates;
   if (numberOfLineSegments == null) {
-    numberOfLineSegments = length >> 1;
+    numberOfLineSegments = (length >> 1) - 1;
   }
   while (--numberOfLineSegments >= 0) {
     const ax = coordinates[startIndexInclusive++];
@@ -170,10 +170,10 @@ export function appendChanged(
     return;
   }
   const { length } = coordinates;
-  if (
+  if (!(
     tolerance.match(x, coordinates[length - 2]) &&
     tolerance.match(y, coordinates[length - 1])
-  ) {
+  )) {
     coordinates.push(x, y);
   }
 }

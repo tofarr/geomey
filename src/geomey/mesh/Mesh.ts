@@ -1,6 +1,8 @@
 import {
+  appendChanged,
   comparePointsForSort,
   coordinateEqual,
+  forEachLineSegmentCoordinates,
   isNaNOrInfinite,
   LinearRingCoordinatesConsumer,
   LineStringCoordinatesConsumer,
@@ -8,11 +10,9 @@ import {
 } from "../coordinate";
 import {
   intersectionLineSegment,
-  Point,
   pointTouchesLineSegment,
   Rectangle,
 } from "../geom";
-import { calculateZOrder, ZOrderIndex } from "../spatialIndex/ZOrderIndex";
 import { Tolerance } from "../Tolerance";
 import { Link } from "./Link";
 import { MeshError } from "./MeshError";
@@ -21,8 +21,7 @@ import { DISJOINT } from "../Relation";
 import { SpatialConsumer } from "../spatialIndex";
 import { removeNonRingVertices } from "./op/removeNonRingVertices";
 import { popLinearRing } from "./op/popLinearRing";
-
-foo = "Needs a refactor - use an RTree instead (Faster random updates) Using 0, 0 as tolerance is bogus"
+import { RTree } from "../spatialIndex/RTree";
 
 /**
  * Class describing a network of Vertices and Links, which may be used to build geometries.
@@ -33,13 +32,13 @@ foo = "Needs a refactor - use an RTree instead (Faster random updates) Using 0, 
  */
 export class Mesh {
   readonly tolerance: Tolerance;
-  private vertices: Map<bigint, Vertex>;
-  private links: ZOrderIndex<Link>;
+  private vertices: Map<string, Vertex>;
+  private links: RTree<Link>;
 
   constructor(tolerance: Tolerance) {
     this.tolerance = tolerance;
     this.vertices = new Map();
-    this.links = new ZOrderIndex(tolerance);
+    this.links = new RTree();
   }
 
   addVertex(x: number, y: number): Vertex {
@@ -53,13 +52,13 @@ export class Mesh {
     y = tolerance.normalize(y);
 
     // Add vertex
-    const zOrder = calculateZOrder(x, y, Point.ORIGIN, tolerance.tolerance);
-    let vertex = this.vertices.get(zOrder);
+    const key = calculateKey(x, y, tolerance.tolerance);
+    let vertex = this.vertices.get(key);
     if (vertex) {
       return vertex; // already exists
     }
-    vertex = new Vertex(x, y, zOrder);
-    this.vertices.set(zOrder, vertex);
+    vertex = new Vertex(x, y, key);
+    this.vertices.set(key, vertex);
 
     // If the vertex lies on an existing link, break the link and add the vertex in the middle
     this.links.findIntersecting(
@@ -75,11 +74,11 @@ export class Mesh {
         }
       },
     );
-    return vertex
+    return vertex;
   }
   getVertex(x: number, y: number): Vertex | null {
-    const zOrder = calculateZOrder(x, y, Point.ORIGIN, this.tolerance.tolerance);
-    return this.vertices.get(zOrder);
+    const key = calculateKey(x, y, this.tolerance.tolerance);
+    return this.vertices.get(key);
   }
   getOrigin(): Vertex | null {
     let result = null;
@@ -115,22 +114,19 @@ export class Mesh {
     }
 
     // Check if link already exists
-    const zOrder = calculateZOrder(ax, ay, Point.ORIGIN, tolerance.tolerance);
-    const vertex = this.vertices.get(zOrder);
+    const key = calculateKey(ax, ay, tolerance.tolerance);
+    const vertex = this.vertices.get(key);
     if (vertex) {
       if (vertex.links.find((v) => v.x === bx && v.y === by)) {
         return 0;
       }
     }
 
-    // Upsert the endpoints exist
-    const a = this.addVertex(ax, ay);
-    const b = this.addVertex(bx, by);
-
     // check if the link intersects any existing links
-    const rectangle = Rectangle.valueOf([ax, ay, bx, by]);
-    let linksAdded = 0;
-    this.links.findIntersecting(rectangle, (link) => {
+    const toRemove = []
+    const toAdd = []
+    const intersections = [ax, ay]
+    this.links.findIntersecting(Rectangle.valueOf([ax, ay, bx, by]), (link) => {
       const { x: jax, y: jay } = link.a;
       const { x: jbx, y: jby } = link.b;
       const intersection = intersectionLineSegment(
@@ -152,35 +148,36 @@ export class Mesh {
             coordinateEqual(jbx, jby, ix, iy)
           )
         ) {
-          // The new link crosses an existing link - split it.
-          this.removeLink(jax, jay, jbx, jby);
-          this.addLink(jax, jay, ix, iy);
-          this.addLink(jbx, jby, ix, iy);
+          toRemove.push(jax, jay, jbx, jby)
+          toAdd.push(jax, jay, ix, iy, ix, iy, jbx, jby)
         }
-        if (
-          coordinateEqual(ax, ay, ix, iy) ||
-          coordinateEqual(bx, by, ix, iy)
-        ) {
-          // An intersection on an endpoint means the new link does not cross an existing link
-          return false;
-        }
-        linksAdded += this.addLink(ax, ay, ix, iy);
-        linksAdded += this.addLink(bx, by, ix, iy);
+        appendChanged(ix, iy, tolerance, intersections)
       }
-    });
-
-    if (!linksAdded) {
-      const aLinks = a.links as Vertex[];
-      aLinks.push(b);
-      aLinks.sort((u, v) => comparePointsForSort(u.x, u.y, v.x, v.y));
-      const bLinks = b.links as Vertex[];
-      bLinks.push(a);
-      bLinks.sort((u, v) => comparePointsForSort(u.x, u.y, v.x, v.y));
-      this.links.add(rectangle, { a, b });
-      linksAdded++;
+    })
+    appendChanged(bx, by, tolerance, intersections)
+    let i = 0
+    while(i < toRemove.length) {
+      this.removeLink(toRemove[i++], toRemove[i++], toRemove[i++], toRemove[i++]) 
     }
-
-    return linksAdded;
+    i = 0
+    while(i < toAdd.length) {
+      this.addLinkInternal(toAdd[i++], toAdd[i++], toAdd[i++], toAdd[i++])
+    }
+    forEachLineSegmentCoordinates(intersections, (ax, ay, bx, by) => {
+      this.addLinkInternal(ax, ay, bx, by)
+    })
+    return (intersections.length >> 1) - 1;
+  }
+  private addLinkInternal(ax: number, ay: number, bx: number, by: number) {
+    const a = this.addVertex(ax, ay)
+    const b = this.addVertex(bx, by)
+    const aLinks = a.links as Vertex[];
+    aLinks.push(b);
+    aLinks.sort((u, v) => comparePointsForSort(u.x, u.y, v.x, v.y));
+    const bLinks = b.links as Vertex[];
+    bLinks.push(a);
+    bLinks.sort((u, v) => comparePointsForSort(u.x, u.y, v.x, v.y));
+    this.links.add(Rectangle.valueOf([ax, ay, bx, by]), { a, b });
   }
   getIntersections(ax: number, ay: number, bx: number, by: number): number[] {
     const { tolerance } = this;
@@ -242,15 +239,15 @@ export class Mesh {
     x = Math.round(x / tolerance) * tolerance;
     y = Math.round(y / tolerance) * tolerance;
 
-    const zOrder = calculateZOrder(x, y, Point.ORIGIN, tolerance);
-    const vertex = this.vertices.get(zOrder);
+    const key = calculateKey(x, y, tolerance);
+    const vertex = this.vertices.get(key);
     if (!vertex) {
       return false;
     }
     for (const otherVertex of vertex.links) {
       this.removeLink(x, y, otherVertex.x, otherVertex.y);
     }
-    this.vertices.delete(zOrder);
+    this.vertices.delete(key);
     return true;
   }
   removeLink(ax: number, ay: number, bx: number, by: number): boolean {
@@ -262,8 +259,8 @@ export class Mesh {
     bx = Math.round(bx / t) * t;
     by = Math.round(by / t) * t;
 
-    const zOrder = calculateZOrder(ax, ay, Point.ORIGIN, t);
-    const a = this.vertices.get(zOrder);
+    const key = calculateKey(ax, ay, t);
+    const a = this.vertices.get(key);
     if (!a) {
       return false;
     }
@@ -312,15 +309,15 @@ export class Mesh {
     }
   }
   forEachLineString(consumer: LineStringCoordinatesConsumer) {
-    const spikes = new Map<bigint, Vertex>();
-    const processed = new Set<bigint>();
+    const spikes = new Map<string, Vertex>();
+    const processed = new Set<string>();
     for (const vertex of this.vertices.values()) {
-      const { links, zOrder } = vertex;
-      if (processed.has(zOrder)) {
+      const { links, key } = vertex;
+      if (processed.has(key)) {
         continue;
       }
       if (links.length == 2) {
-        spikes.set(zOrder, vertex);
+        spikes.set(key, vertex);
         continue;
       }
       if (
@@ -366,13 +363,13 @@ export class Mesh {
     const result = new Mesh(this.tolerance);
     this.vertices.forEach((vertex) => {
       result.vertices.set(
-        vertex.zOrder,
-        new Vertex(vertex.x, vertex.y, vertex.zOrder),
+        vertex.key,
+        new Vertex(vertex.x, vertex.y, vertex.key),
       );
     });
     this.links.findAll(({ a, b }, rectangle) => {
-      a = result.vertices.get(a.zOrder);
-      b = result.vertices.get(b.zOrder);
+      a = result.vertices.get(a.key);
+      b = result.vertices.get(b.key);
       const aLinks = a.links as Vertex[];
       const bLinks = b.links as Vertex[];
       aLinks.push(b);
@@ -428,12 +425,12 @@ export class Mesh {
 
 export function processLineStringNexus(
   nexus: Vertex,
-  spikes: Map<bigint, Vertex>,
-  processed: Set<bigint>,
+  spikes: Map<string, Vertex>,
+  processed: Set<string>,
   consumer: LineStringCoordinatesConsumer,
 ): boolean {
   for (const link of nexus.links) {
-    if (processed.has(link.zOrder)) {
+    if (processed.has(link.key)) {
       continue;
     }
     const coordinates = followLineString(nexus, link, spikes, processed);
@@ -447,8 +444,8 @@ export function processLineStringNexus(
 export function followLineString(
   origin: Vertex,
   b: Vertex,
-  spikes: Map<bigint, Vertex>,
-  processed: Set<bigint>,
+  spikes: Map<string, Vertex>,
+  processed: Set<string>,
 ): number[] {
   let a = origin;
   const coordinates = [a.x, a.y, b.x, b.y];
@@ -466,10 +463,14 @@ export function followLineString(
 
 function processLineStringVertex(
   vertex: Vertex,
-  spikes: Map<bigint, Vertex>,
-  processed: Set<bigint>,
+  spikes: Map<string, Vertex>,
+  processed: Set<string>,
 ) {
-  const { zOrder } = vertex;
-  spikes.delete(zOrder);
-  processed.add(zOrder);
+  const { key } = vertex;
+  spikes.delete(key);
+  processed.add(key);
+}
+
+function calculateKey(x: number, y: number, tolerance: number): string {
+  return `${Math.round(x / tolerance)}:${Math.round(y / tolerance)}`;
 }

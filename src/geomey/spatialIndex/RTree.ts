@@ -16,15 +16,19 @@ export class RTree<T> implements SpatialIndex<T> {
   root: Node<T>;
   maxLeafSize: number;
 
-  constructor(maxLeafSize?: number, leafBounds?: Rectangle[], leafValues?: T[]) {
+  constructor(
+    maxLeafSize?: number,
+    leafBounds?: Rectangle[],
+    leafValues?: T[],
+  ) {
     this.root = {
       bounds: new RectangleBuilder(),
       leafBounds: leafBounds || [],
       leafValues: leafValues || [],
     };
     this.maxLeafSize = maxLeafSize || MAX_LEAF_SIZE;
-    if(this.root.leafBounds.length > this.maxLeafSize){
-      this.splitLeaf(this.root)
+    if (this.root.leafBounds.length > this.maxLeafSize) {
+      this.splitLeaf(this.root);
     }
   }
   add(rectangle: Rectangle, value: T) {
@@ -48,31 +52,31 @@ export class RTree<T> implements SpatialIndex<T> {
     a: Node<T>,
     b: Node<T>,
   ): Node<T> {
-    const ab = a.bounds
-    const bb = b.bounds
+    const ab = a.bounds;
+    const bb = b.bounds;
     let expandA = expansionSize(ab, rectangle);
     let expandB = expansionSize(bb, rectangle);
-    if (expandA == expandB){
-      expandA = getArea(ab.minX, ab.minY, ab.maxX, ab.maxY)
-      expandB = getArea(bb.minX, bb.minY, bb.maxX, bb.maxY)
+    if (expandA == expandB) {
+      expandA = getArea(ab.minX, ab.minY, ab.maxX, ab.maxY);
+      expandB = getArea(bb.minX, bb.minY, bb.maxX, bb.maxY);
     }
     return expandA < expandB ? a : b;
   }
   private splitLeaf(node: Node<T>) {
-    const { bounds } = node
-    const { minX, minY, maxX, maxY } = bounds
-    const width = maxX - minX
-    const height = maxY - minY
-    let boundsA = null
+    const { bounds } = node;
+    const { minX, minY, maxX, maxY } = bounds;
+    const width = maxX - minX;
+    const height = maxY - minY;
+    let boundsA = null;
     let boundsB = null;
-    if (width > height){
-      const split = (minX + maxX) / 2
-      boundsA = new RectangleBuilder(minX, minY, split, maxY)
-      boundsB = new RectangleBuilder(split, minY, maxX, maxY)
+    if (width > height) {
+      const split = (minX + maxX) / 2;
+      boundsA = new RectangleBuilder(minX, minY, split, maxY);
+      boundsB = new RectangleBuilder(split, minY, maxX, maxY);
     } else {
-      const split = (minX + maxX) / 2
-      boundsA = new RectangleBuilder(minX, minY, split, maxY)
-      boundsB = new RectangleBuilder(split, minY, maxX, maxY)
+      const split = (minX + maxX) / 2;
+      boundsA = new RectangleBuilder(minX, minY, split, maxY);
+      boundsB = new RectangleBuilder(split, minY, maxX, maxY);
     }
     const a = {
       bounds: boundsA,
@@ -87,25 +91,25 @@ export class RTree<T> implements SpatialIndex<T> {
     const { leafBounds, leafValues } = node;
     const { length } = leafBounds;
     for (let i = 0; i < length; i++) {
-      const leafBound = leafBounds[i]
+      const leafBound = leafBounds[i];
       const child = this.chooseBestMatch(leafBound, a, b);
-      child.leafBounds.push(leafBound)
-      child.leafValues.push(leafValues[i])
+      child.leafBounds.push(leafBound);
+      child.leafValues.push(leafValues[i]);
     }
-    if (a.leafBounds.length && b.leafBounds.length){
+    if (a.leafBounds.length && b.leafBounds.length) {
       node.leafBounds = null;
       node.leafValues = null;
-      this.recalculateBounds(a)
-      this.recalculateBounds(b)
-      node.a = a
-      node.b = b
+      this.recalculateBounds(a);
+      this.recalculateBounds(b);
+      node.a = a;
+      node.b = b;
     }
   }
   private recalculateBounds(node: Node<T>) {
-    const { bounds, leafBounds } = node
-    bounds.reset()
-    for(const b of leafBounds) {
-      bounds.unionRectangle(b)
+    const { bounds, leafBounds } = node;
+    bounds.reset();
+    for (const b of leafBounds) {
+      bounds.unionRectangle(b);
     }
   }
   remove(rectangle: Rectangle, matcher: (value: T) => boolean): boolean {
@@ -124,10 +128,10 @@ export class RTree<T> implements SpatialIndex<T> {
       const result =
         this.removeFromNode(a, rectangle, matcher) ||
         this.removeFromNode(b, rectangle, matcher);
-      if(!result){
-        return result
+      if (!result) {
+        return result;
       }
-      node.bounds.reset().unionRectangle(a.bounds).unionRectangle(b.bounds)
+      node.bounds.reset().unionRectangle(a.bounds).unionRectangle(b.bounds);
       const aLeafBounds = a.leafBounds;
       const bLeafBounds = b.leafBounds;
       if (
@@ -143,21 +147,21 @@ export class RTree<T> implements SpatialIndex<T> {
       }
       return result;
     }
-    const { leafBounds, leafValues } = node
-    const { length } = leafBounds
-    for(let i = 0; i < length; i++){
-      const leafBound = leafBounds[i]
+    const { leafBounds, leafValues } = node;
+    const { length } = leafBounds;
+    for (let i = 0; i < length; i++) {
+      const leafBound = leafBounds[i];
       if (!leafBound.intersectsRectangle(rectangle)) {
-        continue
+        continue;
       }
-      if (matcher(leafValues[i])){
-        leafBounds.splice(i, 1)
-        leafValues.splice(i, 1)
-        this.recalculateBounds(node)
-        return true
+      if (matcher(leafValues[i])) {
+        leafBounds.splice(i, 1);
+        leafValues.splice(i, 1);
+        this.recalculateBounds(node);
+        return true;
       }
     }
-    return false
+    return false;
   }
   findIntersecting(rectangle: Rectangle, consumer: SpatialConsumer<T>) {
     this.findIntersectingNode(this.root, rectangle, consumer);
@@ -179,9 +183,9 @@ export class RTree<T> implements SpatialIndex<T> {
     const { leafBounds, leafValues } = node;
     const { length } = leafBounds;
     for (let i = 0; i < length; i++) {
-      const leafBound = leafBounds[i]
-      if (!rectangle.intersectsRectangle(leafBound)){
-        continue
+      const leafBound = leafBounds[i];
+      if (!rectangle.intersectsRectangle(leafBound)) {
+        continue;
       }
       if (consumer(leafValues[i], leafBound) === false) {
         return false;

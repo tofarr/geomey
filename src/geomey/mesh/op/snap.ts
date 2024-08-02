@@ -1,4 +1,4 @@
-import { coordinateMatch } from "../../coordinate";
+import { comparePointsForSort, coordinateMatch } from "../../coordinate";
 import { Tolerance } from "../../Tolerance";
 import { Mesh } from "../Mesh";
 import { Vertex } from "../Vertex";
@@ -6,9 +6,7 @@ import { Vertex } from "../Vertex";
 export function snap(mesh: Mesh, tolerance: Tolerance) {
   const vertices = mesh.getVertices();
   vertices.sort((a, b) => {
-    const aZOrder = a.zOrder as unknown as number;
-    const bZOrder = b.zOrder as unknown as number;
-    return aZOrder - bZOrder;
+    return comparePointsForSort(a.x, a.y, b.x, b.y)
   });
   const { length } = vertices;
   let startIndex = 0;
@@ -69,7 +67,7 @@ export function createSnapVertex(
 }
 
 export function snapVertex(vertex: Vertex, toVertex: Vertex, mesh: Mesh) {
-  if (vertex.zOrder == toVertex.zOrder) {
+  if (vertex.key == toVertex.key) {
     return;
   }
   for (const link of vertex.links) {

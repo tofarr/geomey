@@ -11,19 +11,19 @@ export class RectangleBuilder {
     minX: number = Infinity,
     minY: number = Infinity,
     maxX: number = -Infinity,
-    maxY: number = -Infinity
+    maxY: number = -Infinity,
   ) {
-    this.minX = minX
-    this.minY = minY
-    this.maxX = maxX
-    this.maxY = maxY
+    this.minX = minX;
+    this.minY = minY;
+    this.maxX = maxX;
+    this.maxY = maxY;
   }
-  reset(){
-    this.minX = Infinity
-    this.minY = Infinity
-    this.maxX = -Infinity
-    this.maxY = -Infinity
-    return this
+  reset() {
+    this.minX = Infinity;
+    this.minY = Infinity;
+    this.maxX = -Infinity;
+    this.maxY = -Infinity;
+    return this;
   }
   union(x: number, y: number): RectangleBuilder {
     this.minX = Math.min(this.minX, x);

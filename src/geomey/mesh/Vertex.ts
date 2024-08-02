@@ -1,13 +1,13 @@
 export class Vertex {
   readonly x: number;
   readonly y: number;
-  readonly zOrder: bigint;
+  readonly key: string;
   readonly links: ReadonlyArray<Vertex>;
 
-  constructor(x: number, y: number, zOrder: bigint, links?: Vertex[]) {
+  constructor(x: number, y: number, key: string, links?: Vertex[]) {
     this.x = x;
     this.y = y;
-    this.zOrder = zOrder;
+    this.key = key;
     this.links = links || [];
   }
 }

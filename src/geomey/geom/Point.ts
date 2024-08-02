@@ -11,7 +11,7 @@ import { union } from "./op/union";
 import { xor } from "./op/xor";
 
 export class Point implements Geometry {
-  static readonly ORIGIN = new Point(0, 0)
+  static readonly ORIGIN = new Point(0, 0);
   readonly x: number;
   readonly y: number;
   private bounds?: Rectangle;
@@ -21,8 +21,8 @@ export class Point implements Geometry {
     this.y = y;
   }
   static valueOf(x: number, y: number): Point {
-    if(x === 0 && y === 0){
-      return this.ORIGIN
+    if (x === 0 && y === 0) {
+      return this.ORIGIN;
     }
     const result = new Point(x, y);
     if (isNaNOrInfinite(x, y)) {
@@ -31,8 +31,8 @@ export class Point implements Geometry {
     return result;
   }
   static unsafeValueOf(x: number, y: number): Point {
-    if(x === 0 && y === 0){
-      return this.ORIGIN
+    if (x === 0 && y === 0) {
+      return this.ORIGIN;
     }
     return new Point(x, y);
   }

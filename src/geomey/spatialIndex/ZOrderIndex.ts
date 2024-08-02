@@ -1,6 +1,5 @@
 import { SpatialConsumer, SpatialIndex } from ".";
 import { Point, Rectangle } from "../geom";
-import { DISJOINT } from "../Relation";
 import { Tolerance } from "../Tolerance";
 
 export interface ZOrderIndexEntry<T> {
@@ -14,69 +13,72 @@ export interface ZOrderIndexEntry<T> {
 
 export class ZOrderIndex<T> implements SpatialIndex<T> {
   readonly tolerance: Tolerance;
-  readonly origin?: Point
+  readonly origin?: Point;
   private entries: ZOrderIndexEntry<T>[];
   private entriesByMax?: ZOrderIndexEntry<T>[];
-  private calculatedOrigin?: Point
+  private calculatedOrigin?: Point;
 
   constructor(tolerance: Tolerance, origin?: Point) {
     this.tolerance = tolerance;
     this.entries = [];
-    this.origin = origin
+    this.origin = origin;
   }
   add(rectangle: Rectangle, value: T) {
     this.entries.push({ rectangle, value });
     this.entriesByMax = null;
   }
-  private forEachEntry(rectangle: Rectangle, consumer: (entry: ZOrderIndexEntry<T>) => boolean) {
-    const { entries } = this
-    if(!entries.length){
-      return
+  private forEachEntry(
+    rectangle: Rectangle,
+    consumer: (entry: ZOrderIndexEntry<T>) => boolean,
+  ) {
+    const { entries } = this;
+    if (!entries.length) {
+      return;
     }
     this.prepareIndex();
-    const { tolerance, entriesByMax, calculatedOrigin } = this
+    const { entriesByMax, calculatedOrigin } = this;
     const minZ = calculateZOrder(
       Math.max(rectangle.minX, calculatedOrigin.x),
       Math.max(rectangle.minY, calculatedOrigin.y),
       calculatedOrigin,
-      this.tolerance.tolerance
+      this.tolerance.tolerance,
     );
-    const { length } = entries
-    const { maxX, maxY } = rectangle
-    let index = firstIndexOf(minZ, entriesByMax)
+    const { length } = entries;
+    const { maxX, maxY } = rectangle;
+    let index = firstIndexOf(minZ, entriesByMax);
     while (index < length) {
       const entry = entries[index++];
-      const entryRectangle = entry.rectangle
-      if (entryRectangle.minX > maxX && entryRectangle.minY > maxY){
-        return
+      const entryRectangle = entry.rectangle;
+      if (entryRectangle.minX > maxX && entryRectangle.minY > maxY) {
+        return;
       }
-      if (!rectangle.intersectsRectangle(entryRectangle)){
-        continue
+      if (!rectangle.intersectsRectangle(entryRectangle)) {
+        continue;
       }
-      if(consumer(entry) === false){
-        return false
+      if (consumer(entry) === false) {
+        return false;
       }
     }
   }
   remove(rectangle: Rectangle, matcher: (value: T) => boolean): boolean {
-    let found = false
+    let found = false;
     this.forEachEntry(rectangle, (entry) => {
       if (matcher(entry.value)) {
-        this.entries.splice(entry.minIndex, 1)
-        this.entriesByMax = null
-        found = true
+        this.entries.splice(entry.minIndex, 1);
+        this.entriesByMax = null;
+        found = true;
       }
-      return !found
-    })
-    return found
+      return !found;
+    });
+    return found;
   }
   findIntersecting(rectangle: Rectangle, consumer: SpatialConsumer<T>) {
     this.forEachEntry(rectangle, (entry) => {
       if (consumer(entry.value, entry.rectangle) === false) {
-        return false
+        return false;
       }
-      return true
-    })
+      return true;
+    });
   }
   findAll(consumer: SpatialConsumer<T>) {
     for (const entry of this.entries) {
@@ -86,51 +88,53 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
     }
   }
   private prepareIndex() {
-    let { entriesByMax } = this
-    if(entriesByMax){
-      return
+    let { entriesByMax } = this;
+    if (entriesByMax) {
+      return;
     }
-    const { entries, tolerance } = this
-    const t = tolerance.tolerance
-    
-    let origin = this.origin
-    let minX = Infinity
-    let minY = Infinity
+    const { entries, tolerance } = this;
+    const t = tolerance.tolerance;
+
+    let origin = this.origin;
+    let minX = Infinity;
+    let minY = Infinity;
     if (!origin) {
-      for(const entry of entries){
-        const { rectangle } = entry
-        minX = Math.min(minX, rectangle.minX)
-        minY = Math.min(minY, rectangle.minY)
+      for (const entry of entries) {
+        const { rectangle } = entry;
+        minX = Math.min(minX, rectangle.minX);
+        minY = Math.min(minY, rectangle.minY);
       }
-      minX -= t
-      minY -= t
-      origin = Point.unsafeValueOf(minX, minY)
+      minX -= t;
+      minY -= t;
+      origin = Point.unsafeValueOf(minX, minY);
     }
-    this.calculatedOrigin = origin
+    this.calculatedOrigin = origin;
 
     entries.forEach((entry) => {
-      const { rectangle } = entry
+      const { rectangle } = entry;
       entry.minZ = calculateZOrder(
         rectangle.minX - t,
         rectangle.minY - t,
-        origin, t,
-      )
+        origin,
+        t,
+      );
       entry.maxZ = calculateZOrder(
         rectangle.maxX + t,
         rectangle.maxY + t,
-        origin, t,
-      )
-    })
+        origin,
+        t,
+      );
+    });
 
-    entries.sort(compareMin)
+    entries.sort(compareMin);
     entries.forEach((entry, index) => {
-      entry.minIndex = index
-    })
-    this.entriesByMax = entriesByMax = entries.slice()
-    entriesByMax.sort(compareMax)
+      entry.minIndex = index;
+    });
+    this.entriesByMax = entriesByMax = entries.slice();
+    entriesByMax.sort(compareMax);
     entriesByMax.forEach((entry, index) => {
-      entry.maxIndex = index
-    })
+      entry.maxIndex = index;
+    });
   }
 }
 
@@ -143,44 +147,52 @@ function compareMax<T>(a: ZOrderIndexEntry<T>, b: ZOrderIndexEntry<T>) {
 }
 
 function compareBigInt(a: bigint, b: bigint): number {
-  const result = a - b
+  const result = a - b;
   if (result < BigInt(0)) {
-    return -1
+    return -1;
   } else if (result > BigInt(0)) {
-    return 1
+    return 1;
   }
-  return 0
+  return 0;
 }
 
-export function binarySearch<T>(entries: ZOrderIndexEntry<T>[], compare: (entry: ZOrderIndexEntry<T>) => number): number {
+export function binarySearch<T>(
+  entries: ZOrderIndexEntry<T>[],
+  compare: (entry: ZOrderIndexEntry<T>) => number,
+): number {
   let min = 0;
   let max = entries.length - 1;
-  let i = 0
+  let i = 0;
   while (min < max) {
     const pivot = (min + max) >> 1;
     const entry = entries[pivot];
-    const result = compare(entry)
+    const result = compare(entry);
     if (result < 0) {
       max = pivot - 1;
-    } else if(result > 0) {
+    } else if (result > 0) {
       min = pivot + 1;
     } else {
-      return pivot
+      return pivot;
     }
-    if(i++ >= 100){
-      throw new Error("binarySearch:Runaway")
+    if (i++ >= 100) {
+      throw new Error("binarySearch:Runaway");
     }
   }
-  return min  // not found - approximate location...
+  return min; // not found - approximate location...
 }
 
-export function firstIndexOf<T>(z: bigint, entriesByMax: ZOrderIndexEntry<T>[]): number {
-  let index = binarySearch(entriesByMax, (entry) => compareBigInt(z, entry.maxZ))
+export function firstIndexOf<T>(
+  z: bigint,
+  entriesByMax: ZOrderIndexEntry<T>[],
+): number {
+  let index = binarySearch(entriesByMax, (entry) =>
+    compareBigInt(z, entry.maxZ),
+  );
   while (index && compareBigInt(z, entriesByMax[index].maxZ) <= 0) {
-    index--
+    index--;
   }
-  const result = entriesByMax[index].minIndex
-  return result
+  const result = entriesByMax[index].minIndex;
+  return result;
 }
 
 export function calculateZOrder(
@@ -189,23 +201,23 @@ export function calculateZOrder(
   origin: Point,
   tolerance: number,
 ): bigint {
-  x -= origin.x
-  y -= origin.y
-  if (x < 0 || y < 0){
-    throw new Error(`illegal_argument:${x}:${y}`)
+  x -= origin.x;
+  y -= origin.y;
+  if (x < 0 || y < 0) {
+    throw new Error(`illegal_argument:${x}:${y}`);
   }
   x = Math.round(x / tolerance);
   y = Math.round(y / tolerance);
   let result = BigInt(0);
   let shift = BigInt(0);
-  let i = 0
+  let i = 0;
   while ((x && x != -1) || (y && y != -1)) {
     result |= BigInt((x & 1) | ((y & 1) << 1)) << shift;
     shift += BigInt(2);
     x >>= 1;
     y >>= 1;
-    if(i++ >= 100){
-      throw new Error("calculateZOrder:Runaway")
+    if (i++ >= 100) {
+      throw new Error("calculateZOrder:Runaway");
     }
   }
   return result;
