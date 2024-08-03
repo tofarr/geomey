@@ -148,8 +148,7 @@ export class RTree<T> implements SpatialIndex<T> {
       return result;
     }
     const { leafBounds, leafValues } = node;
-    const { length } = leafBounds;
-    for (let i = 0; i < length; i++) {
+    for (let i = leafBounds.length; i-- > 0; ) {
       const leafBound = leafBounds[i];
       if (!leafBound.intersectsRectangle(rectangle)) {
         continue;

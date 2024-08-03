@@ -1,6 +1,5 @@
 import {
   angle,
-  appendChanged,
   comparePointsForSort,
   coordinateEqual,
   forEachLineSegmentCoordinates,
@@ -153,10 +152,10 @@ export class Mesh {
           toRemove.push(jax, jay, jbx, jby);
           toAdd.push(jax, jay, ix, iy, ix, iy, jbx, jby);
         }
-        appendChanged(ix, iy, tolerance, intersections);
+        intersections.push(ix, iy)
       }
     });
-    appendChanged(bx, by, tolerance, intersections);
+    intersections.push(bx, by)
     let i = 0;
     while (i < toRemove.length) {
       this.removeLink(
@@ -170,9 +169,19 @@ export class Mesh {
     while (i < toAdd.length) {
       this.addLinkInternal(toAdd[i++], toAdd[i++], toAdd[i++], toAdd[i++]);
     }
-    forEachLineSegmentCoordinates(intersections, (ax, ay, bx, by) => {
-      this.addLinkInternal(ax, ay, bx, by);
-    });
+    sortCoordinates(intersections)
+    let iax = intersections[0]
+    let iay = intersections[1]
+    i = 2
+    while(i < intersections.length){
+      const ibx = intersections[i++]
+      const iby = intersections[i++]
+      if (!(tolerance.match(iax, ibx) && tolerance.match(iay, iby))) {
+        this.addLinkInternal(iax, iay, ibx, iby)
+        iax = ibx
+        iay = iby
+      }
+    }
     return (intersections.length >> 1) - 1;
   }
   private addLinkInternal(ax: number, ay: number, bx: number, by: number) {
@@ -251,13 +260,21 @@ export class Mesh {
     if (!vertex) {
       return false;
     }
-    for (const otherVertex of vertex.links) {
+    const { links } = vertex
+    for (let i = links.length; i-- > 0;) {
+      const otherVertex = links[i]
       this.removeLink(x, y, otherVertex.x, otherVertex.y);
     }
     this.vertices.delete(key);
     return true;
   }
   removeLink(ax: number, ay: number, bx: number, by: number): boolean {
+    const compare = comparePointsForSort(ax, ay, bx, by);
+    if (compare == 0) {
+      return false; // Can't link to self!
+    } else if (compare > 0) {
+      [bx, by, ax, ay] = [ax, ay, bx, by];
+    }
     const { tolerance } = this;
     const { tolerance: t } = tolerance;
 

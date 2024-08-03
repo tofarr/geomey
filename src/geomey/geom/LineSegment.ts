@@ -286,7 +286,7 @@ export function intersectionLineSegment(
 
   // point of intersection
   const x = ui * (ibx - iax) + iax;
-  const y = ui * (ibx - iax) + iax;
+  const y = ui * (iby - iay) + iay;
 
   if (coordinateMatch(x, y, iax, iay, tolerance)) {
     if (
