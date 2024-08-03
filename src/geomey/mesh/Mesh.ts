@@ -308,12 +308,39 @@ export class Mesh {
       }
     }
   }
+  getVertices() {
+    const results = Array.from(this.vertices.values());
+    results.sort((a, b) => comparePointsForSort(a.x, a.y, b.x, b.y))
+    return results;
+  }
+  getCoordinates(): number[] {
+    const results = []
+    this.forEachVertex(({x, y}) => { results.push(x, y) })
+    sortCoordinates(results)
+    return results
+  }
   forEachLink(consumer: SpatialConsumer<Link>, rectangle?: Rectangle) {
     if (rectangle) {
       this.links.findIntersecting(rectangle, consumer);
     } else {
       this.links.findAll(consumer);
     }
+  }
+  getLinks(): Link[] {
+    const results: Link[] = []
+    this.forEachLink(link => { results.push(link) })
+    results.sort((i, j) => {
+      return (
+        comparePointsForSort(i.a.x, i.a.y, j.a.x, j.a.y) ||
+        comparePointsForSort(i.b.x, i.b.y, j.b.x, j.b.y)
+      )
+    });
+    return results
+  }
+  getLinkCoordinates(): [number, number, number, number][] {
+    return this.getLinks().map(link => [
+      link.a.x, link.a.y, link.b.x, link.b.y
+    ])
   }
   forEachLineString(consumer: LineStringCoordinatesConsumer) {
     const tolerance = this.tolerance.tolerance;
@@ -348,6 +375,12 @@ export class Mesh {
         }
       }
     }
+  }
+  getLineStrings(): [number, number, number, number][] {
+    const results = []
+    this.forEachLineString(lineString => { results.push(lineString) })
+    results.sort(coordinateComparator)
+    return results
   }
   /**
    * Note: The rings produced by this will not allow for XOR style functionality.
@@ -390,9 +423,11 @@ export class Mesh {
       }
     }
   }
-  getVertices() {
-    const result = Array.from(this.vertices.values());
-    return result;
+  getLinearRings(): number[][] {
+    const results = []
+    this.forEachLinearRing(lineString => { results.push(lineString) })
+    results.sort(coordinateComparator)
+    return results
   }
   clone() {
     const result = new Mesh(this.tolerance);
@@ -523,6 +558,7 @@ function followLinearRing(
     }
     const c = links[index]
     if (c == origin) {
+      processed.add(calculateLinkKey(b, c, tolerance));
       return coordinates;
     }
     a = b;
@@ -545,4 +581,11 @@ function calculateLinkKey(a: Vertex, b: Vertex, tolerance: number) {
 
 function calculateKey(x: number, y: number, tolerance: number): string {
   return `${Math.round(x / tolerance)}:${Math.round(y / tolerance)}`;
+}
+
+function coordinateComparator(i: number[], j: number[]) {
+  return (
+    comparePointsForSort(i[0], i[1], j[0], j[1]) ||
+    comparePointsForSort(i[2], i[3], j[2], j[3])
+  )
 }
