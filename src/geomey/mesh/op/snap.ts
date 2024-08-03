@@ -6,7 +6,7 @@ import { Vertex } from "../Vertex";
 export function snap(mesh: Mesh, tolerance: Tolerance) {
   const vertices = mesh.getVertices();
   vertices.sort((a, b) => {
-    return comparePointsForSort(a.x, a.y, b.x, b.y)
+    return comparePointsForSort(a.x, a.y, b.x, b.y);
   });
   const { length } = vertices;
   let startIndex = 0;

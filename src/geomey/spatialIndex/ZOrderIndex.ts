@@ -162,7 +162,6 @@ export function binarySearch<T>(
 ): number {
   let min = 0;
   let max = entries.length - 1;
-  let i = 0;
   while (min < max) {
     const pivot = (min + max) >> 1;
     const entry = entries[pivot];
@@ -173,9 +172,6 @@ export function binarySearch<T>(
       min = pivot + 1;
     } else {
       return pivot;
-    }
-    if (i++ >= 100) {
-      throw new Error("binarySearch:Runaway");
     }
   }
   return min; // not found - approximate location...
@@ -210,15 +206,11 @@ export function calculateZOrder(
   y = Math.round(y / tolerance);
   let result = BigInt(0);
   let shift = BigInt(0);
-  let i = 0;
   while ((x && x != -1) || (y && y != -1)) {
     result |= BigInt((x & 1) | ((y & 1) << 1)) << shift;
     shift += BigInt(2);
     x >>= 1;
     y >>= 1;
-    if (i++ >= 100) {
-      throw new Error("calculateZOrder:Runaway");
-    }
   }
   return result;
 }

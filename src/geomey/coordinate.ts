@@ -102,13 +102,14 @@ export type Comparator = (
 ) => number;
 
 function swap(coordinates: number[], i: number, j: number) {
-  for (let n = 0; n < 1; n++) {
-    const tmp = coordinates[i];
-    coordinates[i] = coordinates[j];
-    coordinates[j] = tmp;
-    i++;
-    j++;
-  }
+  let tmp = coordinates[i];
+  coordinates[i] = coordinates[j];
+  coordinates[j] = tmp;
+  i++;
+  j++;
+  tmp = coordinates[i];
+  coordinates[i] = coordinates[j];
+  coordinates[j] = tmp;
 }
 
 function partition(
@@ -119,18 +120,17 @@ function partition(
 ): number {
   const pivotX = coordinates[high];
   const pivotY = coordinates[high + 1];
-  let i = low - 2;
-  let j = low;
-  while (j < high) {
-    const jx = coordinates[j++];
-    const jy = coordinates[j++];
-    if (comparator(jx, jy, pivotX, pivotY) < 0) {
-      i += 2;
-      swap(coordinates, i, j);
+  let index = high;
+  while (index > low) {
+    const testY = coordinates[--index];
+    const testX = coordinates[--index];
+    if (comparator(testX, testY, pivotX, pivotY) > 0) {
+      swap(coordinates, index, high - 2);
+      swap(coordinates, high - 2, high);
+      high -= 2;
     }
   }
-  swap(coordinates, i + 2, high);
-  return i + 1;
+  return high;
 }
 
 function quicksort(
@@ -170,10 +170,12 @@ export function appendChanged(
     return;
   }
   const { length } = coordinates;
-  if (!(
-    tolerance.match(x, coordinates[length - 2]) &&
-    tolerance.match(y, coordinates[length - 1])
-  )) {
+  if (
+    !(
+      tolerance.match(x, coordinates[length - 2]) &&
+      tolerance.match(y, coordinates[length - 1])
+    )
+  ) {
     coordinates.push(x, y);
   }
 }
@@ -273,4 +275,12 @@ export function isConvex(
   cy: number,
 ) {
   return crossProduct(ax, ay, bx, by, cx, cy) >= 0;
+}
+
+export function angle(ax: number, ay: number, bx: number, by: number) {
+  let result = Math.atan2(by - ay, bx - ax) + Math.PI / 2
+  if (result < 0){
+    result += Math.PI * 2
+  }
+  return result
 }

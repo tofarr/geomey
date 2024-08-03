@@ -1,4 +1,5 @@
 import {
+  angle,
   appendChanged,
   comparePointsForSort,
   coordinateEqual,
@@ -19,8 +20,6 @@ import { MeshError } from "./MeshError";
 import { Vertex } from "./Vertex";
 import { DISJOINT } from "../Relation";
 import { SpatialConsumer } from "../spatialIndex";
-import { removeNonRingVertices } from "./op/removeNonRingVertices";
-import { popLinearRing } from "./op/popLinearRing";
 import { RTree } from "../spatialIndex/RTree";
 
 /**
@@ -66,10 +65,13 @@ export class Mesh {
       ({ a, b }) => {
         const { x: ax, y: ay } = a;
         const { x: bx, y: by } = b;
+        if ((x == ax && y == ay) || (x == bx && y == by)) {
+          return;
+        }
         if (pointTouchesLineSegment(x, y, ax, ay, bx, by, tolerance)) {
           this.removeLink(ax, ay, bx, by);
-          this.addLink(ax, ay, x, y);
-          this.addLink(bx, by, x, y);
+          this.addLinkInternal(ax, ay, x, y);
+          this.addLinkInternal(bx, by, x, y);
           return false;
         }
       },
@@ -123,9 +125,9 @@ export class Mesh {
     }
 
     // check if the link intersects any existing links
-    const toRemove = []
-    const toAdd = []
-    const intersections = [ax, ay]
+    const toRemove = [];
+    const toAdd = [];
+    const intersections = [ax, ay];
     this.links.findIntersecting(Rectangle.valueOf([ax, ay, bx, by]), (link) => {
       const { x: jax, y: jay } = link.a;
       const { x: jbx, y: jby } = link.b;
@@ -148,35 +150,40 @@ export class Mesh {
             coordinateEqual(jbx, jby, ix, iy)
           )
         ) {
-          toRemove.push(jax, jay, jbx, jby)
-          toAdd.push(jax, jay, ix, iy, ix, iy, jbx, jby)
+          toRemove.push(jax, jay, jbx, jby);
+          toAdd.push(jax, jay, ix, iy, ix, iy, jbx, jby);
         }
-        appendChanged(ix, iy, tolerance, intersections)
+        appendChanged(ix, iy, tolerance, intersections);
       }
-    })
-    appendChanged(bx, by, tolerance, intersections)
-    let i = 0
-    while(i < toRemove.length) {
-      this.removeLink(toRemove[i++], toRemove[i++], toRemove[i++], toRemove[i++]) 
+    });
+    appendChanged(bx, by, tolerance, intersections);
+    let i = 0;
+    while (i < toRemove.length) {
+      this.removeLink(
+        toRemove[i++],
+        toRemove[i++],
+        toRemove[i++],
+        toRemove[i++],
+      );
     }
-    i = 0
-    while(i < toAdd.length) {
-      this.addLinkInternal(toAdd[i++], toAdd[i++], toAdd[i++], toAdd[i++])
+    i = 0;
+    while (i < toAdd.length) {
+      this.addLinkInternal(toAdd[i++], toAdd[i++], toAdd[i++], toAdd[i++]);
     }
     forEachLineSegmentCoordinates(intersections, (ax, ay, bx, by) => {
-      this.addLinkInternal(ax, ay, bx, by)
-    })
+      this.addLinkInternal(ax, ay, bx, by);
+    });
     return (intersections.length >> 1) - 1;
   }
   private addLinkInternal(ax: number, ay: number, bx: number, by: number) {
-    const a = this.addVertex(ax, ay)
-    const b = this.addVertex(bx, by)
+    const a = this.addVertex(ax, ay);
+    const b = this.addVertex(bx, by);
     const aLinks = a.links as Vertex[];
     aLinks.push(b);
-    aLinks.sort((u, v) => comparePointsForSort(u.x, u.y, v.x, v.y));
+    aLinks.sort((u, v) => angle(a.x, a.y, u.x, u.y) - angle(a.x, a.y, v.x, v.y))
     const bLinks = b.links as Vertex[];
     bLinks.push(a);
-    bLinks.sort((u, v) => comparePointsForSort(u.x, u.y, v.x, v.y));
+    bLinks.sort((u, v) => angle(b.x, b.y, u.x, u.y) - angle(b.x, b.y, v.x, v.y))
     this.links.add(Rectangle.valueOf([ax, ay, bx, by]), { a, b });
   }
   getIntersections(ax: number, ay: number, bx: number, by: number): number[] {
@@ -309,28 +316,36 @@ export class Mesh {
     }
   }
   forEachLineString(consumer: LineStringCoordinatesConsumer) {
-    const spikes = new Map<string, Vertex>();
+    const tolerance = this.tolerance.tolerance;
     const processed = new Set<string>();
-    for (const vertex of this.vertices.values()) {
-      const { links, key } = vertex;
-      if (processed.has(key)) {
+    const vertices = []
+    this.forEachVertex(vertex => { vertices.push(vertex) })
+    vertices.sort((a, b) => comparePointsForSort(a.x, a.y, b.x, b.y))
+    for (const a of vertices) {
+      if (a.links.length !== 1) {
         continue;
       }
-      if (links.length == 2) {
-        spikes.set(key, vertex);
-        continue;
-      }
-      if (
-        processLineStringNexus(vertex, spikes, processed, consumer) === false
-      ) {
-        return;
+      for (const b of a.links) {
+        const key = calculateLinkKey(a, b, tolerance);
+        if (processed.has(key)) {
+          continue;
+        }
+        const coordinates = followLineString(a, b, tolerance, processed);
+        if (consumer(coordinates) === false) {
+          continue;
+        }
       }
     }
-    for (const vertex of Array.from(spikes.values())) {
-      if (
-        processLineStringNexus(vertex, spikes, processed, consumer) === false
-      ) {
-        return;
+    for (const a of vertices) {
+      for (const b of a.links) {
+        const key = calculateLinkKey(a, b, tolerance);
+        if (processed.has(key)) {
+          continue;
+        }
+        const coordinates = followSimpleLinearRing(a, b, tolerance, processed);
+        if (consumer(coordinates) === false) {
+          return;
+        }
       }
     }
   }
@@ -342,16 +357,36 @@ export class Mesh {
    *  -----      ---     ---
    */
   forEachLinearRing(consumer: LinearRingCoordinatesConsumer) {
-    const mesh = this.clone();
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      removeNonRingVertices(mesh);
-      const ring = popLinearRing(mesh);
-      if (ring == null) {
-        return;
+    const tolerance = this.tolerance.tolerance;
+    const processed = new Set<string>();
+    const vertices = [];
+    this.forEachVertex((vertex) => {
+      vertices.push(vertex);
+    });
+    vertices.sort((a, b) => comparePointsForSort(a.x, a.y, b.x, b.y));
+
+    // First we process anything that is a trailing line string
+    for (const a of vertices) {
+      if (a.links.length == 1) {
+        const b = a.links[0];
+        const key = calculateLinkKey(a, b, tolerance);
+        if (!processed.has(key)) {
+          followLineString(a, b, tolerance, processed);
+        }
       }
-      if (consumer(ring) === false) {
-        return;
+    }
+
+    // Anything remaining which is unprocessed is part of a ring!
+    for (const a of vertices) {
+      for (const b of a.links) {
+        const key = calculateLinkKey(a, b, tolerance);
+        if (processed.has(key)) {
+          continue;
+        }
+        const coordinates = followLinearRing(a, b, tolerance, processed);
+        if (consumer(coordinates) === false) {
+          return;
+        }
       }
     }
   }
@@ -423,52 +458,89 @@ export class Mesh {
   }
 }
 
-export function processLineStringNexus(
-  nexus: Vertex,
-  spikes: Map<string, Vertex>,
-  processed: Set<string>,
-  consumer: LineStringCoordinatesConsumer,
-): boolean {
-  for (const link of nexus.links) {
-    if (processed.has(link.key)) {
-      continue;
-    }
-    const coordinates = followLineString(nexus, link, spikes, processed);
-    if (!consumer(coordinates)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-export function followLineString(
+function followLineString(
   origin: Vertex,
   b: Vertex,
-  spikes: Map<string, Vertex>,
+  tolerance: number,
   processed: Set<string>,
 ): number[] {
   let a = origin;
-  const coordinates = [a.x, a.y, b.x, b.y];
-  processLineStringVertex(a, spikes, processed);
-  processLineStringVertex(b, spikes, processed);
-  while (b.links.length == 2 && b != origin) {
-    const c = b.links[b[0] == a ? 1 : 0];
-    coordinates.push(c.x, c.y);
-    processLineStringVertex(c, spikes, processed);
+  const coordinates = [a.x, a.y];
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const key = calculateLinkKey(a, b, tolerance);
+    processed.add(key);
+    coordinates.push(b.x, b.y);
+    const { links } = b
+    if (links.length != 2) {
+      return coordinates;
+    }
+    const c = links[links[0] == a ? 1 : 0];
     a = b;
     b = c;
   }
-  return coordinates;
 }
 
-function processLineStringVertex(
-  vertex: Vertex,
-  spikes: Map<string, Vertex>,
+function followSimpleLinearRing(
+  a: Vertex,
+  b: Vertex,
+  tolerance: number,
   processed: Set<string>,
-) {
-  const { key } = vertex;
-  spikes.delete(key);
-  processed.add(key);
+): number[] {
+  const origin = a;
+  const coordinates = [a.x, a.y, b.x, b.y];
+  processed.add(calculateLinkKey(a, b, tolerance));
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { links } = b;
+    const c = links[links[0] == a ? 1 : 0];
+    coordinates.push(c.x, c.y);
+    processed.add(calculateLinkKey(b, c, tolerance));
+    if (c == origin) {
+      return coordinates;
+    }
+    a = b;
+    b = c;
+  }
+}
+
+function followLinearRing(
+  a: Vertex,
+  b: Vertex,
+  tolerance: number,
+  processed: Set<string>,
+): number[] {
+  const origin = a;
+  const coordinates = [a.x, a.y];
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    coordinates.push(b.x, b.y);
+    processed.add(calculateLinkKey(a, b, tolerance));
+    const { links } = b
+    let index = links.indexOf(a) - 1
+    if (index < 0){
+      index += links.length
+    }
+    const c = links[index]
+    if (c == origin) {
+      return coordinates;
+    }
+    a = b;
+    b = c;
+  }
+}
+
+function calculateLinkKey(a: Vertex, b: Vertex, tolerance: number) {
+  let { x: ax, y: ay } = a;
+  let { x: bx, y: by } = b;
+  if (comparePointsForSort(ax, ay, bx, by) > 0) {
+    [ax, ay, bx, by] = [bx, by, ax, ay];
+  }
+  return `${calculateKey(ax, ay, tolerance)}:${calculateKey(
+    bx,
+    by,
+    tolerance,
+  )}`;
 }
 
 function calculateKey(x: number, y: number, tolerance: number): string {
