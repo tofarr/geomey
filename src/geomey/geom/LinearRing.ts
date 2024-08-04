@@ -160,7 +160,7 @@ export function forEachRingCoordinate(
   reverse: boolean = false,
 ): number {
   if (!reverse) {
-    return forEachCoordinate(shell, consumer, 0, shell.length >> (1 + 1));
+    return forEachCoordinate(shell, consumer, 0, (shell.length >> 1) + 1);
   }
   if (consumer(shell[0], shell[1]) === false) {
     return 0;
@@ -228,7 +228,7 @@ export function ringToWkt(
 ) {
   result.push("(");
   forEachRingCoordinate(
-    this.coordinates,
+    coordinates,
     (x, y) => {
       result.push(numberFormatter(x), " ", numberFormatter(y), ", ");
     },

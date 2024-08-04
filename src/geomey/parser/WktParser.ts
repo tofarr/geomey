@@ -91,7 +91,7 @@ interface TypeParsers {
     position: number,
     tolerance: Tolerance,
   ): [Geometry, number];
-  multigeometry(
+  geometrycollection(
     input: string,
     position: number,
     tolerance: Tolerance,
@@ -148,7 +148,7 @@ const validatingTypeParsers: TypeParsers = {
   ): [Geometry, number] {
     const mesh = new Mesh(tolerance);
     while (input[position] == "(") {
-      const [coordinates, next] = parseCoordinates(input, position);
+      const [coordinates, next] = parseCoordinates(input, position + 1);
       forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
         mesh.addLink(ax, ay, bx, by);
       });
@@ -186,7 +186,7 @@ const validatingTypeParsers: TypeParsers = {
     ).simplify();
     return [result, position + 1];
   },
-  multigeometry(
+  geometrycollection(
     input: string,
     position: number,
     tolerance: Tolerance,
@@ -236,7 +236,8 @@ const unsafeTypeParsers: TypeParsers = {
   polygon(input: string, position: number): [Geometry, number] {
     const rings = [];
     while (input[position] == "(") {
-      const [coordinates, next] = parseCoordinates(input, position);
+      const [coordinates, next] = parseCoordinates(input, position + 1);
+      coordinates.length = coordinates.length - 2;
       rings.push(LinearRing.unsafeValueOf(coordinates));
       position = next;
     }
@@ -257,7 +258,7 @@ const unsafeTypeParsers: TypeParsers = {
     ).simplify();
     return [result, position + 1];
   },
-  multigeometry(input: string, position: number): [Geometry, number] {
+  geometrycollection(input: string, position: number): [Geometry, number] {
     const coordinates = [];
     const lineStrings = [];
     const polygons = [];

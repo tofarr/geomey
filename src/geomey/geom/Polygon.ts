@@ -88,16 +88,14 @@ export class Polygon extends AbstractGeometry {
     reverse: boolean,
     result: string[],
   ) {
-    result.push("(");
     ringToWkt(this.shell.coordinates, numberFormatter, reverse, result);
     for (const child of this.children) {
       result.push(", ");
       child.ringsToWkt(numberFormatter, !reverse, result);
     }
-    result.push(")");
   }
   toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
-    const result = ["POLYGON("];
+    const result = ["POLYGON ("];
     this.ringsToWkt(numberFormatter, false, result);
     result.push(")");
     return result.join("");

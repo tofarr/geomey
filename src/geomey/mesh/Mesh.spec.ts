@@ -84,7 +84,7 @@ export const meshSpec = () => {
       mesh.getVertex(15, 15),
       mesh.getVertex(30, 0),
       mesh.getVertex(30, 30),
-      mesh.getVertex(40, 30)
+      mesh.getVertex(40, 30),
     ]);
   });
   it("getLinkCoordinates gets all links", () => {
@@ -109,13 +109,13 @@ export const meshSpec = () => {
     mesh.addLink(30, 0, 0, 30);
     mesh.addLink(30, 30, 45, 15);
     mesh.addLink(45, 15, 30, 0);
-    mesh.addLink(50, 0, 60, 0)
-    mesh.addLink(60, 10, 60, 0)
-    mesh.addLink(50, 10, 60, 10)
-    mesh.addLink(70, 0, 80, 0)
-    mesh.addLink(80, 0, 80, 10)
-    mesh.addLink(70, 10, 80, 10)
-    mesh.addLink(70, 0, 70, 10)
+    mesh.addLink(50, 0, 60, 0);
+    mesh.addLink(60, 10, 60, 0);
+    mesh.addLink(50, 10, 60, 10);
+    mesh.addLink(70, 0, 80, 0);
+    mesh.addLink(80, 0, 80, 10);
+    mesh.addLink(70, 10, 80, 10);
+    mesh.addLink(70, 0, 70, 10);
     const lineStrings = mesh.getLineStrings();
     expect(lineStrings).to.eql([
       [0, 0, 15, 15],
@@ -131,13 +131,13 @@ export const meshSpec = () => {
     mesh.addLink(30, 0, 0, 30);
     mesh.addLink(30, 30, 45, 15);
     mesh.addLink(45, 15, 30, 0);
-    mesh.addLink(50, 0, 60, 0)
-    mesh.addLink(60, 10, 60, 0)
-    mesh.addLink(50, 10, 60, 10)
-    mesh.addLink(70, 0, 80, 0)
-    mesh.addLink(80, 0, 80, 10)
-    mesh.addLink(70, 10, 80, 10)
-    mesh.addLink(70, 0, 70, 10)
+    mesh.addLink(50, 0, 60, 0);
+    mesh.addLink(60, 10, 60, 0);
+    mesh.addLink(50, 10, 60, 10);
+    mesh.addLink(70, 0, 80, 0);
+    mesh.addLink(80, 0, 80, 10);
+    mesh.addLink(70, 10, 80, 10);
+    mesh.addLink(70, 0, 70, 10);
     const linearRings = mesh.getLinearRings();
     expect(linearRings).to.eql([
       [15, 15, 30, 0, 45, 15, 30, 30],
@@ -149,18 +149,18 @@ export const meshSpec = () => {
     mesh.addLink(0, 0, 30, 30);
     mesh.addLink(30, 0, 0, 30);
     mesh.addLink(30, 0, 30, 30);
-    mesh.cullLinks(() => true)
-    expect(mesh.getVertices().length).to.eql(5)
-    expect(mesh.getLinkCoordinates()).to.eql([])
+    mesh.cullLinks(() => true);
+    expect(mesh.getVertices().length).to.eql(5);
+    expect(mesh.getLinkCoordinates()).to.eql([]);
   });
   it("cullVertices removes vertices and attached links", () => {
     const mesh = new Mesh(new Tolerance(0.05));
     mesh.addLink(0, 0, 30, 30);
     mesh.addLink(30, 0, 0, 30);
     mesh.addLink(30, 0, 30, 30);
-    mesh.cullVertices((x, y) => x == 15 && y == 15)
-    expect(mesh.getVertices().length).to.eql(4)
-    expect(mesh.getLinkCoordinates()).to.eql([[30, 0, 30, 30]])
+    mesh.cullVertices((x, y) => x == 15 && y == 15);
+    expect(mesh.getVertices().length).to.eql(4);
+    expect(mesh.getLinkCoordinates()).to.eql([[30, 0, 30, 30]]);
   });
 };
 

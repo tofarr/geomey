@@ -240,14 +240,13 @@ export function forEachCoordinate(
   fromIndexInclusive?: number,
   toIndexExclusive?: number,
 ) {
+  const { length } = coordinates;
   fromIndexInclusive = fromIndexInclusive == null ? 0 : fromIndexInclusive << 1;
-  toIndexExclusive =
-    toIndexExclusive == null ? coordinates.length : toIndexExclusive << 1;
+  toIndexExclusive = toIndexExclusive == null ? length : toIndexExclusive << 1;
   while (fromIndexInclusive < toIndexExclusive) {
-    const result = consumer(
-      coordinates[fromIndexInclusive++],
-      coordinates[fromIndexInclusive++],
-    );
+    const index = fromIndexInclusive % length;
+    const result = consumer(coordinates[index], coordinates[index + 1]);
+    fromIndexInclusive += 2;
     if (result === false) {
       break;
     }
@@ -278,9 +277,9 @@ export function isConvex(
 }
 
 export function angle(ax: number, ay: number, bx: number, by: number) {
-  let result = Math.atan2(by - ay, bx - ax) + Math.PI / 2
-  if (result < 0){
-    result += Math.PI * 2
+  let result = Math.atan2(by - ay, bx - ax) + Math.PI / 2;
+  if (result < 0) {
+    result += Math.PI * 2;
   }
-  return result
+  return result;
 }

@@ -124,7 +124,7 @@ export class MultiGeometry extends AbstractGeometry {
       if (lineStrings.length == 1) {
         return lineStrings[0].toWkt(numberFormatter);
       }
-      const result = ["MULTILINESTRING("];
+      const result = ["MULTILINESTRING ("];
       for (const lineString of lineStrings) {
         coordinatesToWkt(lineString.coordinates, numberFormatter, result);
         result.push(", ");
@@ -137,7 +137,7 @@ export class MultiGeometry extends AbstractGeometry {
       if (polygons.length == 1) {
         return polygons[0].toWkt(numberFormatter);
       }
-      const result = ["MULTIPOLYGON("];
+      const result = ["MULTIPOLYGON ("];
       for (const polygon of polygons) {
         polygon.ringsToWkt(numberFormatter, false, result);
         result.push(", ");
@@ -146,7 +146,7 @@ export class MultiGeometry extends AbstractGeometry {
       result.push(")");
       return result.join("");
     }
-    const result = ["GEOMETRYCOLLECTION("];
+    const result = ["GEOMETRYCOLLECTION ("];
     for (const polygon of polygons) {
       polygon.toWkt(numberFormatter);
       result.push(", ");

@@ -117,5 +117,5 @@ export function pointToWkt(
   y: number,
   numberFormatter: NumberFormatter = NUMBER_FORMATTER,
 ): string {
-  return `POINT (${numberFormatter(this.x)} ${numberFormatter(this.y)})`;
+  return `POINT (${numberFormatter(x)} ${numberFormatter(y)})`;
 }
