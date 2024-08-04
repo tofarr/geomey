@@ -30,7 +30,11 @@ export class MeshPathWalker implements PathWalker {
         this.linesAndPoints.addVertex(coordinates[0], coordinates[1]);
       } else {
         forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
-          this.linesAndPoints.addLink(ax, ay, bx, by);
+          if (ax == bx && ay == by) {
+            this.linesAndPoints.addVertex(ax, ay)
+          } else {
+            this.linesAndPoints.addLink(ax, ay, bx, by);
+          }
         });
       }
     }

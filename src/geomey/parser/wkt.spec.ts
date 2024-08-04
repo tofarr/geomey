@@ -58,9 +58,11 @@ export const wktSpec = () => {
   });
 
   it("parses and renders a geometry collection", () => {
-    const wkt = "GEOMETRYCOLLECTION (POLYGON(0 0, 100 0, 0 100, 0 0), POINT(100 100), LINESTRING(200 0, 200 100, 300 100))";
+    const wkt = "GEOMETRYCOLLECTION (POLYGON((0 0, 100 0, 0 100, 0 0)), POINT(100 100), LINESTRING(200 0, 200 100, 300 100))";
     const parsed = parseWkt(wkt, new Tolerance(0.05));
     const rendered = parsed.toWkt();
-    expect(rendered).to.equal("MULTIPOLYGON ((0 0, 100 0, 50 50, 0 0), (0 100, 50 50, 100 100, 0 100))");
+    expect(rendered).to.equal("GEOMETRYCOLLECTION (POLYGON ((0 0, 100 0, 0 100, 0 0)), LINESTRING (200 0, 200 100, 300 100), POINT (100 100))");
   });
+
+  foo = "Need to test with missing ( and ) or an uneven number of coordinates or a NaN"
 };

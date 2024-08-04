@@ -148,17 +148,15 @@ export class MultiGeometry extends AbstractGeometry {
     }
     const result = ["GEOMETRYCOLLECTION ("];
     for (const polygon of polygons) {
-      polygon.toWkt(numberFormatter);
-      result.push(", ");
+      result.push(polygon.toWkt(numberFormatter), ", ")
     }
     for (const lineString of lineStrings) {
-      lineString.toWkt(numberFormatter);
-      result.push(", ");
+      result.push(lineString.toWkt(numberFormatter), ", ");
     }
     forEachCoordinate(points, (x, y) => {
-      result.push(pointToWkt(x, y, numberFormatter));
-      result.push(", ");
+      result.push(pointToWkt(x, y, numberFormatter), ", ");
     });
+    result.pop();
     result.push(")");
     return result.join("");
   }

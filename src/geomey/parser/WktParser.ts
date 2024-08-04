@@ -52,7 +52,7 @@ function parseType(input: string, position: number): [string, number] {
 
 function parseCoordinates(input: string, position: number): [number[], number] {
   const coordinates = [];
-  const end = input.indexOf(")");
+  const end = input.indexOf(")", position);
   while (position < end) {
     let next = input.indexOf(" ", position);
     if (next < 0 || next > end) {
@@ -100,7 +100,7 @@ interface TypeParsers {
 
 const validatingTypeParsers: TypeParsers = {
   point(input: string, position: number): [Geometry, number] {
-    let mid = input.indexOf(" ");
+    let mid = input.indexOf(" ", position);
     const x = parseFloat(input.substring(position, mid).trim());
     mid++;
     const end = input.indexOf(")", mid);
@@ -194,7 +194,7 @@ const validatingTypeParsers: TypeParsers = {
     const walker = MeshPathWalker.valueOf(tolerance);
     while (input[position] != ")") {
       const [type, start] = parseType(input, position);
-      const [geometry, end] = validatingTypeParsers[type](
+      const [geometry, end] = unsafeTypeParsers[type](
         input,
         start + 1,
         tolerance,
@@ -209,7 +209,7 @@ const validatingTypeParsers: TypeParsers = {
 
 const unsafeTypeParsers: TypeParsers = {
   point(input: string, position: number): [Geometry, number] {
-    let mid = input.indexOf(" ");
+    let mid = input.indexOf(" ", position);
     const x = parseFloat(input.substring(position, mid).trim());
     mid++;
     const end = input.indexOf(")", mid);
