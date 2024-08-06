@@ -1,9 +1,11 @@
 import { NumberFormatter } from "../formatter";
+import { GeoJsonGeometry } from "../geoJson";
+import { MeshPathWalker } from "../mesh/MeshPathWalker";
 import { PathWalker } from "../path/PathWalker";
 import { DISJOINT, Relation } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
-import { Geometry, MultiGeometry } from "./";
+import { Geometry, GeometryCollection } from "./";
 import { intersection } from "./op/intersection";
 import { less } from "./op/less";
 import { relate } from "./op/relate";
@@ -15,7 +17,9 @@ import { Rectangle } from "./Rectangle";
 export abstract class AbstractGeometry implements Geometry {
   protected centroid?: Point;
   protected bounds?: Rectangle;
-  protected multiGeometry?: MultiGeometry;
+  protected geometryCollection?: GeometryCollection;
+  protected normalized?: Geometry;
+
   getCentroid(): Point {
     let { centroid } = this;
     if (!centroid) {
@@ -32,12 +36,22 @@ export abstract class AbstractGeometry implements Geometry {
     return bounds;
   }
   protected abstract calculateBounds(): Rectangle;
+  isNormalized(): boolean {
+    return this.normalize() === this;
+  }
+  normalize(): Geometry {
+    let { normalized } = this;
+    if (!normalized) {
+      this.normalized = normalized = this.calculateNormalized();
+    }
+    return normalized;
+  }
+  protected abstract calculateNormalized(): Geometry;
   abstract walkPath(pathWalker: PathWalker): void;
   abstract toWkt(numberFormatter?: NumberFormatter): string;
-  // TODO: Add typescript bindings for GeoJson
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  abstract toGeoJson(): any;
-  abstract transform(transformer: Transformer, tolerance: Tolerance): Geometry;
+  abstract toGeoJson(): GeoJsonGeometry;
+  abstract isValid(tolerance: Tolerance): boolean;
+  abstract transform(transformer: Transformer): Geometry;
   abstract generalize(tolerance: Tolerance): Geometry;
   abstract relatePoint(x: number, y: number, tolerance: Tolerance): Relation;
   relate(other: Geometry, tolerance: Tolerance): Relation {

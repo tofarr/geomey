@@ -6,6 +6,8 @@ import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry, ringToWkt, Point, Rectangle } from "./";
 import { signedPerpendicularDistance } from "./LineSegment";
+import { GeoJsonPolygon } from "../geoJson";
+import { comparePointsForSort } from "../coordinate";
 
 export class Triangle extends AbstractGeometry {
   readonly ax: number;
@@ -52,7 +54,7 @@ export class Triangle extends AbstractGeometry {
     return new Triangle(ax, ay, bx, by, cx, cy);
   }
   calculateCentroid(): Point {
-    return Point.unsafeValueOf(
+    return Point.valueOf(
       (this.ax + this.bx + this.cx) / 3,
       (this.ay + this.by + this.cy) / 3,
     );
@@ -80,17 +82,33 @@ export class Triangle extends AbstractGeometry {
     result.push(")");
     return result.join("");
   }
-  toGeoJson() {
+  toGeoJson(): GeoJsonPolygon {
     const { ax, ay, bx, by, cx, cy } = this;
     return {
-      type: "POLYGON",
+      type: "Polygon",
       coordinates: [
-        [ax, ay],
-        [bx, by],
-        [cx, cy],
-        [ax, ay],
+        [
+          [ax, ay],
+          [bx, by],
+          [cx, cy],
+          [ax, ay],
+        ],
       ],
     };
+  }
+  calculateNormalized(): Triangle {
+    let { ax, ay, bx, by, cx, cy } = this;
+    let updated = false;
+    while (
+      comparePointsForSort(ax, ay, bx, by) > 0 ||
+      comparePointsForSort(ax, ay, cx, cy) > 0
+    ) {
+      [ax, ay, bx, by, cx, cy] = [bx, by, cx, cy, ax, ay];
+    }
+    return updated ? new Triangle(ax, ay, bx, by, cx, cy) : this;
+  }
+  isValid(): boolean {
+    return this.isNormalized();
   }
   transform(transformer: Transformer): Geometry {
     const { ax, ay, bx, by, cx, cy } = this;

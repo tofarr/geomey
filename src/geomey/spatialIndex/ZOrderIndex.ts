@@ -30,10 +30,10 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
   private forEachEntry(
     rectangle: Rectangle,
     consumer: (entry: ZOrderIndexEntry<T>) => boolean,
-  ) {
+  ): boolean {
     const { entries } = this;
     if (!entries.length) {
-      return;
+      return true;
     }
     this.prepareIndex();
     const { entriesByMax, calculatedOrigin } = this;
@@ -50,7 +50,7 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
       const entry = entries[index++];
       const entryRectangle = entry.rectangle;
       if (entryRectangle.minX > maxX && entryRectangle.minY > maxY) {
-        return;
+        return true;
       }
       if (!rectangle.intersectsRectangle(entryRectangle)) {
         continue;
@@ -72,20 +72,24 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
     });
     return found;
   }
-  findIntersecting(rectangle: Rectangle, consumer: SpatialConsumer<T>) {
-    this.forEachEntry(rectangle, (entry) => {
+  findIntersecting(
+    rectangle: Rectangle,
+    consumer: SpatialConsumer<T>,
+  ): boolean {
+    return this.forEachEntry(rectangle, (entry) => {
       if (consumer(entry.value, entry.rectangle) === false) {
         return false;
       }
       return true;
     });
   }
-  findAll(consumer: SpatialConsumer<T>) {
+  findAll(consumer: SpatialConsumer<T>): boolean {
     for (const entry of this.entries) {
       if (consumer(entry.value, entry.rectangle) === false) {
-        return;
+        return false;
       }
     }
+    return true;
   }
   private prepareIndex() {
     let { entriesByMax } = this;
@@ -106,7 +110,7 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
       }
       minX -= t;
       minY -= t;
-      origin = Point.unsafeValueOf(minX, minY);
+      origin = Point.valueOf(minX, minY);
     }
     this.calculatedOrigin = origin;
 

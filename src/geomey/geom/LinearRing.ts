@@ -1,14 +1,16 @@
 import {
+  compareCoordinatesForSort,
+  comparePointsForSort,
   CoordinateConsumer,
   crossProduct,
   forEachCoordinate,
   forEachLineSegmentCoordinates,
   forEachPointCoordinate,
   LineSegmentCoordinatesConsumer,
+  reverse,
 } from "../coordinate";
 import { NumberFormatter } from "../formatter";
 import { Mesh } from "../mesh/Mesh";
-import { popLinearRing } from "../mesh/op/popLinearRing";
 import { PathWalker } from "../path/PathWalker";
 import {
   A_OUTSIDE_B,
@@ -21,10 +23,13 @@ import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry } from "./Geometry";
-import { pointTouchesLineSegment } from "./LineSegment";
+import {
+  intersectionLineSegment,
+  pointTouchesLineSegment,
+} from "./LineSegment";
 import { douglasPeucker, walkPath } from "./LineString";
-import { MultiGeometry } from "./MultiGeometry";
-import { Point, Polygon, Rectangle } from "./";
+import { GeometryCollection, Point, Polygon, Rectangle } from "./";
+import { GeoJsonPolygon } from "../geoJson";
 
 /**
  * A linear is a non self intersecting closed line string. The first coordinate is not
@@ -36,30 +41,19 @@ export class LinearRing extends AbstractGeometry {
   private convexRings: ReadonlyArray<LinearRing>;
   private area?: number;
 
-  private constructor(coordiantes: ReadonlyArray<number>) {
+  private constructor(coordinates: ReadonlyArray<number>) {
     super();
-    this.coordinates = coordiantes;
+    this.coordinates = coordinates;
   }
-  static valueOf(
-    coordinates: ReadonlyArray<number>,
-    tolerance: Tolerance,
-  ): LinearRing[] {
-    const mesh = new Mesh(tolerance);
-    forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
-      mesh.addLink(ax, ay, bx, by);
-    });
-    const rings = [];
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const ring = popLinearRing(mesh);
-      if (ring == null) {
-        return rings;
-      }
-      rings.push(ring);
-    }
-  }
-  static unsafeValueOf(coordinates: ReadonlyArray<number>): LinearRing {
+  static valueOf(coordinates: ReadonlyArray<number>): LinearRing {
     return new LinearRing(coordinates);
+  }
+  static fromMesh(mesh: Mesh): LinearRing[] {
+    const results = [];
+    mesh.forEachLinearRing((coordinates) => {
+      results.push(new LinearRing(coordinates));
+    });
+    return results;
   }
   protected calculateCentroid(): Point {
     return calculateCentroid(this.coordinates);
@@ -83,12 +77,15 @@ export class LinearRing extends AbstractGeometry {
     pathWalker.closePath();
   }
   toWkt(numberFormatter?: NumberFormatter): string {
+    if (!this.coordinates.length) {
+      return "EMPTY";
+    }
     const result = ["POLYGON("];
     ringToWkt(this.coordinates, numberFormatter, false, result);
     result.push(")");
     return result.join("");
   }
-  toGeoJson() {
+  toGeoJson(): GeoJsonPolygon {
     const coordinates = [];
     forEachRingCoordinate(this.coordinates, (x, y) => {
       coordinates.push([x, y]);
@@ -122,21 +119,86 @@ export class LinearRing extends AbstractGeometry {
   getPolygon(): Polygon {
     let { polygon } = this;
     if (!polygon) {
-      this.polygon = polygon = Polygon.unsafeValueOf(this);
+      this.polygon = polygon = Polygon.valueOf(this);
     }
     return polygon;
   }
-  transform(transformer: Transformer, tolerance: Tolerance): Geometry {
-    const coordinates = transformer.transformAll(this.coordinates);
-    const rings = LinearRing.valueOf(coordinates, tolerance);
-    if (rings.length === 1) {
-      const [ring] = rings;
-      if (ring.getBounds().isCollapsible(tolerance)) {
-        return ring.getCentroid();
+  private getMinIndex(): number {
+    const { coordinates } = this;
+    let minX = Infinity;
+    let minY = Infinity;
+    let minIndex = null;
+    let i = coordinates.length;
+    while (i) {
+      const y = coordinates[--i];
+      const x = coordinates[--i];
+      if (comparePointsForSort(x, y, minX, minY) < 0) {
+        minX = x;
+        minY = y;
+        minIndex = i;
       }
-      return ring;
     }
-    return MultiGeometry.valueOf(tolerance, null, null, rings);
+    return minIndex >> 1;
+  }
+  isValid(tolerance: Tolerance): boolean {
+    if (this.getBounds().isCollapsible(tolerance)) {
+      return true;
+    }
+    // A ring is valid if it does not self intersect.
+    const { coordinates } = this;
+    let startIndex = 2;
+    let numberOfLineSegments = coordinates.length >> 1;
+    return forEachLineSegmentCoordinates(coordinates, (iax, iay, ibx, iby) => {
+      return forEachLineSegmentCoordinates(
+        coordinates,
+        (jax, jay, jbx, jby) => {
+          const intersection = intersectionLineSegment(
+            iax,
+            iay,
+            ibx,
+            iby,
+            jax,
+            jay,
+            jbx,
+            jby,
+            tolerance,
+          );
+          return !intersection;
+        },
+        startIndex++,
+        numberOfLineSegments--,
+      );
+    });
+  }
+  isNormalized(): boolean {
+    if (this.getArea() <= 0) {
+      return false;
+    }
+    if (this.getMinIndex()) {
+      return false;
+    }
+    return true;
+  }
+  calculateNormalized(): LinearRing {
+    let { coordinates } = this;
+    const minIndex = this.getMinIndex();
+    if (minIndex) {
+      const c = coordinates.slice(minIndex);
+      c.push.apply(c, coordinates.slice(0, minIndex));
+      coordinates = c;
+    }
+    const area = this.getArea();
+    if (area <= 0) {
+      coordinates = reverse(coordinates);
+    }
+    if (coordinates === this.coordinates) {
+      return this;
+    }
+    return new LinearRing(coordinates);
+  }
+  transform(transformer: Transformer): LinearRing {
+    const coordinates = transformer.transformAll(this.coordinates);
+    return new LinearRing(coordinates).normalize() as LinearRing;
   }
   generalize(tolerance: Tolerance): Geometry {
     if (this.getBounds().isCollapsible(tolerance)) {
@@ -418,10 +480,6 @@ export function walkPathReverse(
   }
 }
 
-export function createLinearRings(mesh: Mesh): LinearRing[] {
-  const results = [];
-  mesh.forEachLinearRing((coordinates) => {
-    results.push(LinearRing.unsafeValueOf(coordinates));
-  });
-  return results;
+export function compareLinearRingsForSort(a: LinearRing, b: LinearRing) {
+  return compareCoordinatesForSort(a.coordinates, b.coordinates);
 }

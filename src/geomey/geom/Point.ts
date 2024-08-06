@@ -1,12 +1,16 @@
 import { DISJOINT, Relation, TOUCH, flipAB } from "../Relation";
 import { Tolerance } from "../Tolerance";
-import { coordinateMatch, isNaNOrInfinite } from "../coordinate";
+import {
+  coordinateMatch,
+  isNaNOrInfinite,
+  validateCoordinates,
+} from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { GeoJsonPoint } from "../geoJson";
 import { Mesh } from "../mesh/Mesh";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry, Rectangle } from "./";
-import { InvalidGeometryError } from "./InvalidGeometryError";
 import { union } from "./op/union";
 import { xor } from "./op/xor";
 
@@ -24,16 +28,7 @@ export class Point implements Geometry {
     if (x === 0 && y === 0) {
       return this.ORIGIN;
     }
-    const result = new Point(x, y);
-    if (isNaNOrInfinite(x, y)) {
-      throw new InvalidGeometryError(result);
-    }
-    return result;
-  }
-  static unsafeValueOf(x: number, y: number): Point {
-    if (x === 0 && y === 0) {
-      return this.ORIGIN;
-    }
+    validateCoordinates(x, y);
     return new Point(x, y);
   }
   getCentroid(): Point {
@@ -43,7 +38,7 @@ export class Point implements Geometry {
     let { bounds } = this;
     if (!bounds) {
       const { x, y } = this;
-      bounds = this.bounds = Rectangle.unsafeValueOf(x, y, x, y);
+      bounds = this.bounds = new Rectangle(x, y, x, y);
     }
     return bounds;
   }
@@ -55,11 +50,20 @@ export class Point implements Geometry {
   toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
     return pointToWkt(this.x, this.y, numberFormatter);
   }
-  toGeoJson() {
+  toGeoJson(): GeoJsonPoint {
     return {
       type: "Point",
       coordinates: [this.x, this.y],
     };
+  }
+  isValid(): boolean {
+    return true;
+  }
+  isNormalized(): boolean {
+    return true;
+  }
+  normalize(): Point {
+    return this;
   }
   transform(transformer: Transformer): Point {
     const [x, y] = transformer.transform(this.x, this.y);

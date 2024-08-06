@@ -1,5 +1,13 @@
 import { Tolerance } from "./Tolerance";
 
+export class InvalidCoordinateError extends Error {
+  constructor(coordinates: Coordinates) {
+    super(coordinates.join(" "));
+  }
+}
+
+export type Coordinates = ReadonlyArray<number>;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type PointCoordinatesConsumer = (x: number, y: number) => any;
 
@@ -12,21 +20,21 @@ export type LineSegmentCoordinatesConsumer = (
 ) => any;
 
 export type LineStringCoordinatesConsumer = (
-  coordinates: ReadonlyArray<number>,
+  coordinates: Coordinates,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ) => any;
 
 export type LinearRingCoordinatesConsumer = (
-  coordinates: ReadonlyArray<number>,
+  coordinates: Coordinates,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ) => any;
 
 export function forEachPointCoordinate(
-  coordinates: ReadonlyArray<number>,
+  coordinates: Coordinates,
   consumer: PointCoordinatesConsumer,
   startIndexInclusive?: number,
   numberOfPoints?: number,
-) {
+): boolean {
   if (startIndexInclusive == null) {
     startIndexInclusive = 0;
   }
@@ -44,17 +52,18 @@ export function forEachPointCoordinate(
         coordinates[startIndexInclusive++],
       ) === false
     ) {
-      break;
+      return false;
     }
   }
+  return true;
 }
 
 export function forEachLineSegmentCoordinates(
-  coordinates: ReadonlyArray<number>,
+  coordinates: Coordinates,
   consumer: LineSegmentCoordinatesConsumer,
   startIndexInclusive?: number,
   numberOfLineSegments?: number,
-): boolean | void {
+): boolean {
   if (startIndexInclusive == null) {
     startIndexInclusive = 0;
   }
@@ -74,15 +83,22 @@ export function forEachLineSegmentCoordinates(
       return false;
     }
   }
+  return true;
 }
 
-export function isNaNOrInfinite(...coordinates: ReadonlyArray<number>) {
+export function isNaNOrInfinite(...coordinates: Coordinates) {
   for (const n of coordinates) {
     if (Number.isNaN(n) || !Number.isFinite(n)) {
       return true;
     }
   }
   return false;
+}
+
+export function validateCoordinates(...coordinates: Coordinates) {
+  if (isNaNOrInfinite(...coordinates)) {
+    throw new InvalidCoordinateError(coordinates);
+  }
 }
 
 export function comparePointsForSort(
@@ -191,8 +207,8 @@ export function coordinateMatch(
 }
 
 export function coordinatesMatch(
-  i: ReadonlyArray<number>,
-  j: ReadonlyArray<number>,
+  i: Coordinates,
+  j: Coordinates,
   tolerance: Tolerance,
 ) {
   if (i.length !== j.length) {
@@ -216,10 +232,7 @@ export function coordinateEqual(
   return ax === bx && ay === by;
 }
 
-export function coordinatesEqual(
-  i: ReadonlyArray<number>,
-  j: ReadonlyArray<number>,
-) {
+export function coordinatesEqual(i: Coordinates, j: Coordinates) {
   if (i.length !== j.length) {
     return false;
   }
@@ -235,7 +248,7 @@ export function coordinatesEqual(
 export type CoordinateConsumer = (x: number, y: number) => boolean | void;
 
 export function forEachCoordinate(
-  coordinates: ReadonlyArray<number>,
+  coordinates: Coordinates,
   consumer: CoordinateConsumer,
   fromIndexInclusive?: number,
   toIndexExclusive?: number,
@@ -282,4 +295,28 @@ export function angle(ax: number, ay: number, bx: number, by: number) {
     result += Math.PI * 2;
   }
   return result;
+}
+
+export function reverse(coordinates: Coordinates): number[] {
+  const { length } = coordinates;
+  const reversed = [];
+  let i = coordinates.length;
+  while (i) {
+    const y = coordinates[--i];
+    const x = coordinates[--i];
+    reversed.push(x, y);
+  }
+  return reversed;
+}
+
+export function compareCoordinatesForSort(a: Coordinates, b: Coordinates) {
+  const length = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < length) {
+    const compare = comparePointsForSort(a[i], a[i + 1], b[i++], b[i++]);
+    if (compare) {
+      return compare;
+    }
+  }
+  return a.length - b.length;
 }

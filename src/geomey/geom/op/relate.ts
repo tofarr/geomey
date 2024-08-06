@@ -1,5 +1,4 @@
 import { createMeshes } from "../../mesh/MeshPathWalker";
-import { popLinearRing } from "../../mesh/op/popLinearRing";
 import {
   A_INSIDE_B,
   ALL,
@@ -27,14 +26,8 @@ export function relate(
   let result = UNKNOWN;
   const meshes = createMeshes(tolerance, a, b);
   for (const mesh of meshes) {
-    mesh.forEachVertex(({ x, y }) => {
+    mesh.forEachVertexAndLinkCentroid((x, y) => {
       result |= relatePoint(x, y, a, b, tolerance);
-      return !!(result & ALL);
-    });
-    mesh.forEachLink((link) => {
-      const { x: ax, y: ay } = link.a;
-      const { x: bx, y: by } = link.b;
-      result |= relateLineSegment(ax, ay, bx, by, a, b, tolerance);
       return !!(result & ALL);
     });
   }
@@ -46,10 +39,10 @@ export function relate(
       b.relatePoint(x, y, tolerance) | B_OUTSIDE_A
     );
   });
-  const ring = popLinearRing(rings);
-  if (ring != null) {
+  rings.forEachLinearRing(() => {
     result |= A_INSIDE_B | B_INSIDE_A;
-  }
+    return false;
+  });
   return result;
 }
 
@@ -63,16 +56,4 @@ function relatePoint(
   const relationA = a.relatePoint(x, y, tolerance);
   const relationB = b.relatePoint(x, y, tolerance);
   return (relationA | flipAB(relationB)) as Relation;
-}
-
-function relateLineSegment(
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number,
-  a: Geometry,
-  b: Geometry,
-  tolerance: Tolerance,
-): Relation {
-  return relatePoint((ax + bx) / 2, (ay + by) / 2, a, b, tolerance);
 }

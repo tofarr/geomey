@@ -8,12 +8,16 @@ import {
 import { Tolerance } from "../Tolerance";
 import {
   appendChanged,
+  compareCoordinatesForSort,
+  comparePointsForSort,
   CoordinateConsumer,
   coordinateMatch,
   forEachCoordinate,
   forEachLineSegmentCoordinates,
+  InvalidCoordinateError,
   isNaNOrInfinite,
   LineSegmentCoordinatesConsumer,
+  reverse,
   sortCoordinates,
 } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
@@ -22,7 +26,6 @@ import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
 import { Geometry, Point, Rectangle } from "./";
-import { InvalidGeometryError } from "./InvalidGeometryError";
 import {
   getLength,
   intersectionLineSegment,
@@ -32,6 +35,7 @@ import {
   relateLineSegments,
 } from "./LineSegment";
 import { relate } from "./op/relate";
+import { GeoJsonLineString } from "../geoJson";
 
 /**
  * A line string describes a series of line segments which may or may not self intersect.
@@ -39,24 +43,19 @@ import { relate } from "./op/relate";
 export class LineString extends AbstractGeometry {
   readonly coordinates: ReadonlyArray<number>;
 
-  private constructor(coordinates: ReadonlyArray<number>) {
+  constructor(coordinates: ReadonlyArray<number>) {
     super();
+    if (isNaNOrInfinite(...coordinates) || coordinates.length < 4) {
+      throw new InvalidCoordinateError(coordinates);
+    }
     this.coordinates = coordinates;
   }
-  static valueOf(coordinates: ReadonlyArray<number>): LineString {
-    const lineString = new LineString(coordinates);
-    if (isNaNOrInfinite(...coordinates) || coordinates.length < 4) {
-      throw new InvalidGeometryError(lineString);
-    }
-    forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
-      if (ax == bx && ay == by) {
-        throw new InvalidGeometryError(lineString);
-      }
+  static fromMesh(mesh: Mesh): LineString[] {
+    const results = [];
+    mesh.forEachLineString((coordinates) => {
+      results.push(new LineString(coordinates));
     });
-    return lineString;
-  }
-  static unsafeValueOf(coordinates: ReadonlyArray<number>): LineString {
-    return new LineString(coordinates);
+    return results;
   }
   forEachCoordinate(consumer: CoordinateConsumer): number {
     return forEachCoordinate(this.coordinates, consumer);
@@ -81,11 +80,14 @@ export class LineString extends AbstractGeometry {
     walkPath(this.coordinates, pathWalker);
   }
   toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
+    if (!this.coordinates.length) {
+      return "EMPTY";
+    }
     const result = ["LINESTRING "];
     coordinatesToWkt(this.coordinates, numberFormatter, result);
     return result.join("");
   }
-  toGeoJson() {
+  toGeoJson(): GeoJsonLineString {
     const coordinates = [];
     forEachCoordinate(this.coordinates, (x, y) => {
       coordinates.push(x, y);
@@ -95,8 +97,42 @@ export class LineString extends AbstractGeometry {
       coordinates,
     };
   }
-  transform(transformer: Transformer): Geometry {
-    return LineString.valueOf(transformer.transformAll(this.coordinates));
+  isValid(tolerance: Tolerance): boolean {
+    if (this.getBounds().isCollapsible(tolerance)) {
+      return true;
+    }
+    return forEachLineSegmentCoordinates(this.coordinates, (ax, ay, bx, by) => {
+      !(tolerance.match(ax, bx) && tolerance.match(ay, by));
+    });
+  }
+  isNormalized(): boolean {
+    const { coordinates } = this;
+    const { length } = coordinates;
+    const compare =
+      comparePointsForSort(
+        coordinates[0],
+        coordinates[1],
+        coordinates[length - 2],
+        coordinates[length - 1],
+      ) ||
+      comparePointsForSort(
+        coordinates[2],
+        coordinates[3],
+        coordinates[length - 4],
+        coordinates[length - 3],
+      );
+    return compare < 0;
+  }
+  calculateNormalized() {
+    if (this.isNormalized()) {
+      return this;
+    }
+    return new LineString(reverse(this.coordinates));
+  }
+  transform(transformer: Transformer): LineString {
+    return new LineString(
+      transformer.transformAll(this.coordinates),
+    ).normalize() as LineString;
   }
   generalize(tolerance: Tolerance): Geometry {
     if (this.getBounds().isCollapsible(tolerance)) {
@@ -144,7 +180,7 @@ export function getCentroid(coordinates: ReadonlyArray<number>) {
     y += coordinates[--offset];
     x += coordinates[--offset];
   }
-  return Point.unsafeValueOf(x / length, y / length);
+  return Point.valueOf(x / length, y / length);
 }
 
 function partition(
@@ -393,10 +429,9 @@ export function coordinatesToWkt(
   result.push(")");
 }
 
-export function createLineStrings(mesh: Mesh): LineString[] {
-  const results = [];
-  mesh.forEachLineString((coordinates) => {
-    results.push(LineString.unsafeValueOf(coordinates));
-  });
-  return results;
+export function compareLineStringsForSort(
+  a: LineString,
+  b: LineString,
+): number {
+  return compareCoordinatesForSort(a.coordinates, b.coordinates);
 }

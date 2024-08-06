@@ -2,7 +2,7 @@ import { createMeshes } from "../../mesh/MeshPathWalker";
 import { addExplicitPointsOfIntersection } from "../../mesh/op/addExplicitPointsOfIntersection";
 import { B_OUTSIDE_A } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
-import { createMultiGeometry, Geometry } from "../";
+import { Geometry, GeometryCollection } from "../";
 
 export function intersection(
   a: Geometry,
@@ -20,5 +20,5 @@ export function intersection(
       );
     });
   }
-  return createMultiGeometry(rings, linesAndPoints).simplify();
+  return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
 }

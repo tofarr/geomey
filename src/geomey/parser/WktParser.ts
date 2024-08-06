@@ -1,10 +1,10 @@
 import { forEachLineSegmentCoordinates } from "../coordinate";
 import {
-  createMultiGeometry,
+  createGeometryCollection,
   Geometry,
   LinearRing,
   LineString,
-  MultiGeometry,
+  GeometryCollection,
   Point,
   createPolygons,
   Polygon,
@@ -12,6 +12,12 @@ import {
 import { Mesh } from "../mesh/Mesh";
 import { MeshPathWalker } from "../mesh/MeshPathWalker";
 import { Tolerance } from "../Tolerance";
+
+export class InvalidWktError extends Error {
+  constructor(wkt: string) {
+    super(wkt);
+  }
+}
 
 export function parseWkt(input: string, tolerance?: Tolerance) {
   const typeParsers = tolerance ? validatingTypeParsers : unsafeTypeParsers;
@@ -100,12 +106,15 @@ interface TypeParsers {
 
 const validatingTypeParsers: TypeParsers = {
   point(input: string, position: number): [Geometry, number] {
-    let mid = input.indexOf(" ", position);
-    const x = parseFloat(input.substring(position, mid).trim());
-    mid++;
-    const end = input.indexOf(")", mid);
-    const y = parseFloat(input.substring(mid, end).trim());
-    return [Point.valueOf(x, y), end + 1];
+    const end = input.indexOf(")", position);
+    const coordinates = input
+      .substring(position, end)
+      .split(" ")
+      .map((s) => parseFloat(s));
+    if (coordinates.length != 2) {
+      throw new InvalidWktError(input);
+    }
+    return [Point.valueOf.apply(Point, coordinates), end + 1];
   },
   multipoint(
     input: string,
@@ -113,12 +122,12 @@ const validatingTypeParsers: TypeParsers = {
     tolerance: Tolerance,
   ): [Geometry, number] {
     const [coordinates, next] = parseCoordinates(input, position);
-    return [MultiGeometry.valueOf(tolerance, coordinates), next];
+    return [GeometryCollection.valueOf(tolerance, coordinates), next];
   },
   linestring(input: string, position: number, tolerance): [Geometry, number] {
     const [coordinates, next] = parseCoordinates(input, position);
     const lineStrings = [LineString.unsafeValueOf(coordinates)];
-    const geometry = MultiGeometry.valueOf(
+    const geometry = GeometryCollection.valueOf(
       tolerance,
       undefined,
       lineStrings,
@@ -137,7 +146,7 @@ const validatingTypeParsers: TypeParsers = {
       position = next;
     }
     return [
-      MultiGeometry.valueOf(tolerance, undefined, lineStrings),
+      GeometryCollection.valueOf(tolerance, undefined, lineStrings),
       position + 1,
     ];
   },
@@ -155,7 +164,7 @@ const validatingTypeParsers: TypeParsers = {
       position = next;
     }
     const polygons = createPolygons(mesh);
-    const result = MultiGeometry.unsafeValueOf(
+    const result = GeometryCollection.unsafeValueOf(
       undefined,
       undefined,
       polygons,
@@ -179,7 +188,7 @@ const validatingTypeParsers: TypeParsers = {
       }
     }
     const polygons = createPolygons(mesh);
-    const result = MultiGeometry.unsafeValueOf(
+    const result = GeometryCollection.unsafeValueOf(
       undefined,
       undefined,
       polygons,
@@ -203,7 +212,7 @@ const validatingTypeParsers: TypeParsers = {
       position = end;
     }
     const [rings, linesAndPoints] = walker.getMeshes();
-    return [createMultiGeometry(rings, linesAndPoints), position + 1];
+    return [createGeometryCollection(rings, linesAndPoints), position + 1];
   },
 };
 
@@ -214,11 +223,11 @@ const unsafeTypeParsers: TypeParsers = {
     mid++;
     const end = input.indexOf(")", mid);
     const y = parseFloat(input.substring(mid, end).trim());
-    return [Point.unsafeValueOf(x, y), end + 1];
+    return [Point.valueOf(x, y), end + 1];
   },
   multipoint(input: string, position: number): [Geometry, number] {
     const [coordinates, next] = parseCoordinates(input, position);
-    return [MultiGeometry.unsafeValueOf(coordinates), next];
+    return [GeometryCollection.unsafeValueOf(coordinates), next];
   },
   linestring(input: string, position: number): [Geometry, number] {
     const [coordinates, next] = parseCoordinates(input, position);
@@ -231,7 +240,10 @@ const unsafeTypeParsers: TypeParsers = {
       lineStrings.push(LineString.unsafeValueOf(coordinates));
       position = next;
     }
-    return [MultiGeometry.unsafeValueOf(undefined, lineStrings), position + 1];
+    return [
+      GeometryCollection.unsafeValueOf(undefined, lineStrings),
+      position + 1,
+    ];
   },
   polygon(input: string, position: number): [Geometry, number] {
     const rings = [];
@@ -251,7 +263,7 @@ const unsafeTypeParsers: TypeParsers = {
       const polygon = unsafeTypeParsers.polygon(input, position, null);
       polygons.push(polygon);
     }
-    const result = MultiGeometry.unsafeValueOf(
+    const result = GeometryCollection.unsafeValueOf(
       undefined,
       undefined,
       polygons,
@@ -275,7 +287,7 @@ const unsafeTypeParsers: TypeParsers = {
       position = end;
     }
     return [
-      MultiGeometry.unsafeValueOf(coordinates, lineStrings, polygons),
+      GeometryCollection.unsafeValueOf(coordinates, lineStrings, polygons),
       position + 1,
     ];
   },

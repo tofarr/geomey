@@ -10,9 +10,11 @@ import { Tolerance } from "../Tolerance";
 import {
   comparePointsForSort,
   coordinateMatch,
+  InvalidCoordinateError,
   isNaNOrInfinite,
 } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { GeoJsonLineString } from "../geoJson";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import {
@@ -22,7 +24,6 @@ import {
   Point,
   Rectangle,
 } from "./";
-import { InvalidGeometryError } from "./InvalidGeometryError";
 import { intersection } from "./op/intersection";
 import { less } from "./op/less";
 import { relate } from "./op/relate";
@@ -44,27 +45,18 @@ export class LineSegment implements Geometry {
     this.by = by;
   }
   static valueOf(ax: number, ay: number, bx: number, by: number): LineSegment {
-    const result = new LineSegment(ax, ay, bx, by);
     if (
       isNaNOrInfinite(ax, ay, bx, by) ||
       !comparePointsForSort(ax, ay, bx, by)
     ) {
-      throw new InvalidGeometryError(result);
+      throw new InvalidCoordinateError([ax, ay, bx, by]);
     }
-    return result;
-  }
-  static unsafeValueOf(
-    ax: number,
-    ay: number,
-    bx: number,
-    by: number,
-  ): LineSegment {
     return new LineSegment(ax, ay, bx, by);
   }
   getCentroid(): Point {
     let { centroid } = this;
     if (!centroid) {
-      centroid = this.centroid = Point.unsafeValueOf(
+      centroid = this.centroid = Point.valueOf(
         (this.ax + this.bx) / 2,
         (this.ay + this.by, 2),
       );
@@ -107,7 +99,7 @@ export class LineSegment implements Geometry {
       this.by,
     )})`;
   }
-  toGeoJson() {
+  toGeoJson(): GeoJsonLineString {
     return {
       type: "LineString",
       coordinates: [
@@ -115,6 +107,25 @@ export class LineSegment implements Geometry {
         [this.bx, this.by],
       ],
     };
+  }
+  isNormalized(): boolean {
+    const { ax, ay, bx, by } = this;
+    return comparePointsForSort(ax, ay, bx, by) < 0;
+  }
+  isValid(tolerance: Tolerance): boolean {
+    const { ax, ay, bx, by } = this;
+    return !(tolerance.match(ax, bx) && tolerance.match(ay, by));
+  }
+  normalize(): LineSegment | Point {
+    const { ax, ay, bx, by } = this;
+    const compare = comparePointsForSort(ax, ay, bx, by);
+    if (compare < 0) {
+      return this;
+    }
+    if (compare > 0) {
+      return new LineSegment(bx, by, ax, ay);
+    }
+    return this.getCentroid();
   }
   transform(transformer: Transformer): LineSegment | Point {
     const [ax, ay, bx, by] = transformer.transformAll([

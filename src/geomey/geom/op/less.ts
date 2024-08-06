@@ -2,7 +2,7 @@ import { createMeshes } from "../../mesh/MeshPathWalker";
 import { addExplicitPointsOfIntersection } from "../../mesh/op/addExplicitPointsOfIntersection";
 import { B_INSIDE_A, DISJOINT } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
-import { createMultiGeometry, Geometry } from "../";
+import { Geometry, GeometryCollection } from "../";
 
 export function less(a: Geometry, b: Geometry, tolerance: Tolerance): Geometry {
   const meshes = createMeshes(tolerance, a, b);
@@ -14,5 +14,5 @@ export function less(a: Geometry, b: Geometry, tolerance: Tolerance): Geometry {
   linesAndPoints.cull((x, y) => {
     return b.relatePoint(x, y, tolerance) !== DISJOINT;
   });
-  return createMultiGeometry(rings, linesAndPoints).simplify();
+  return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
 }

@@ -2,7 +2,7 @@ import { createMeshes } from "../../mesh/MeshPathWalker";
 import { generalize } from "../../mesh/op/generalize";
 import { DISJOINT } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
-import { createMultiGeometry, Geometry } from "../";
+import { Geometry, GeometryCollection } from "../";
 
 export function generalizeAgainst(
   geometry: Geometry,
@@ -17,5 +17,5 @@ export function generalizeAgainst(
       return geometry.relatePoint(x, y, generalizeTolerance) === DISJOINT;
     });
   }
-  return createMultiGeometry(...meshes).simplify();
+  return GeometryCollection.fromMeshes(...meshes).normalize();
 }

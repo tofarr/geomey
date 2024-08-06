@@ -9,6 +9,6 @@ export interface SpatialIndex<T> {
   findIntersecting: (
     rectangle: Rectangle,
     consumer: SpatialConsumer<T>,
-  ) => void;
-  findAll: (consumer: SpatialConsumer<T>) => void;
+  ) => boolean;
+  findAll: (consumer: SpatialConsumer<T>) => boolean;
 }

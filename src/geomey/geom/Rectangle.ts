@@ -9,11 +9,11 @@ import {
   UNKNOWN,
 } from "../Relation";
 import { Tolerance } from "../Tolerance";
-import { isNaNOrInfinite } from "../coordinate";
+import { validateCoordinates } from "../coordinate";
 import { NumberFormatter } from "../formatter";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
-import { Geometry, InvalidGeometryError, LinearRing, Point, Polygon } from "./";
+import { Geometry, LinearRing, LineSegment, Point, Polygon } from "./";
 
 export interface IRectangle {
   minX: number;
@@ -30,7 +30,8 @@ export class Rectangle implements Geometry {
   private centroid?: Point;
   private polygon?: Polygon;
 
-  private constructor(minX: number, minY: number, maxX: number, maxY: number) {
+  constructor(minX: number, minY: number, maxX: number, maxY: number) {
+    validateCoordinates(minX, minY, maxX, maxY);
     this.minX = minX;
     this.minY = minY;
     this.maxX = maxX;
@@ -53,24 +54,12 @@ export class Rectangle implements Geometry {
       maxX = Math.max(maxX, x);
       maxY = Math.max(maxY, y);
     }
-    const result = new Rectangle(minX, minY, maxX, maxY);
-    if (isNaNOrInfinite(minX, minY, maxX, maxY)) {
-      throw new InvalidGeometryError(result);
-    }
-    return result;
-  }
-  static unsafeValueOf(
-    minX: number,
-    minY: number,
-    maxX: number,
-    maxY: number,
-  ): Rectangle {
     return new Rectangle(minX, minY, maxX, maxY);
   }
   getCentroid(): Point {
     let { centroid } = this;
     if (!centroid) {
-      centroid = this.centroid = Point.unsafeValueOf(
+      centroid = this.centroid = Point.valueOf(
         (this.minX + this.maxX) / 2,
         (this.minY + this.maxY, 2),
       );
@@ -115,10 +104,29 @@ export class Rectangle implements Geometry {
   getPolygon(): Polygon {
     let { polygon } = this;
     if (!polygon) {
-      const linearRing = LinearRing.unsafeValueOf(this.toCoordinates());
-      this.polygon = polygon = Polygon.unsafeValueOf(linearRing);
+      const linearRing = LinearRing.valueOf(this.toCoordinates());
+      this.polygon = polygon = Polygon.valueOf(linearRing);
     }
     return polygon;
+  }
+  isValid(tolerance: Tolerance): boolean {
+    return true;
+  }
+  isNormalized(): boolean {
+    return true;
+  }
+  normalize(): Rectangle | Point | LineSegment {
+    const { minX, minY, maxX, maxY } = this;
+    if (minX === maxX) {
+      if (minY === maxY) {
+        return this.getCentroid();
+      }
+      return LineSegment.valueOf(minX, minY, minX, maxY);
+    }
+    if (minY === maxY) {
+      return LineSegment.valueOf(minX, minY, maxX, maxY);
+    }
+    return this;
   }
   transform(transformer: Transformer): Geometry {
     return Rectangle.valueOf(transformer.transformAll(this.toCoordinates()));

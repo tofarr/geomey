@@ -1,7 +1,9 @@
 import {
   angle,
   comparePointsForSort,
+  CoordinateConsumer,
   coordinateEqual,
+  Coordinates,
   isNaNOrInfinite,
   LinearRingCoordinatesConsumer,
   LineStringCoordinatesConsumer,
@@ -308,7 +310,7 @@ export class Mesh {
   forEachVertex(
     consumer: (vertex: Vertex) => boolean | void,
     rectangle?: Rectangle,
-  ) {
+  ): boolean {
     if (rectangle) {
       for (const vertex of this.vertices.values()) {
         if (
@@ -317,16 +319,17 @@ export class Mesh {
           continue;
         }
         if (consumer(vertex) === false) {
-          return;
+          return false;
         }
       }
     } else {
       for (const vertex of this.vertices.values()) {
         if (consumer(vertex) === false) {
-          return;
+          return false;
         }
       }
     }
+    return true;
   }
   getVertices() {
     const results = Array.from(this.vertices.values());
@@ -341,11 +344,11 @@ export class Mesh {
     sortCoordinates(results);
     return results;
   }
-  forEachLink(consumer: SpatialConsumer<Link>, rectangle?: Rectangle) {
+  forEachLink(consumer: SpatialConsumer<Link>, rectangle?: Rectangle): boolean {
     if (rectangle) {
-      this.links.findIntersecting(rectangle, consumer);
+      return this.links.findIntersecting(rectangle, consumer);
     } else {
-      this.links.findAll(consumer);
+      return this.links.findAll(consumer);
     }
   }
   getLinks(): Link[] {
@@ -369,7 +372,18 @@ export class Mesh {
       link.b.y,
     ]);
   }
-  forEachLineString(consumer: LineStringCoordinatesConsumer) {
+  forEachVertexAndLinkCentroid(consumer: CoordinateConsumer): boolean {
+    if (!this.forEachVertex(({ x, y }) => consumer(x, y))) {
+      return false;
+    }
+    const { tolerance } = this;
+    return this.forEachLink(({ a, b }) => {
+      const x = tolerance.normalize((a.x + b.x) / 2);
+      const y = tolerance.normalize((a.y + b.y) / 2);
+      return consumer(x, y);
+    });
+  }
+  forEachLineString(consumer: LineStringCoordinatesConsumer): boolean {
     const tolerance = this.tolerance.tolerance;
     const processed = new Set<string>();
     const vertices = [];
@@ -388,7 +402,7 @@ export class Mesh {
         }
         const coordinates = followLineString(a, b, tolerance, processed);
         if (consumer(coordinates) === false) {
-          continue;
+          return false;
         }
       }
     }
@@ -400,12 +414,13 @@ export class Mesh {
         }
         const coordinates = followSimpleLinearRing(a, b, tolerance, processed);
         if (consumer(coordinates) === false) {
-          return;
+          return false;
         }
       }
     }
+    return true;
   }
-  getLineStrings(): [number, number, number, number][] {
+  getLineStrings(): Coordinates[] {
     const results = [];
     this.forEachLineString((lineString) => {
       results.push(lineString);
@@ -420,7 +435,7 @@ export class Mesh {
    *  | | |  =>  | |  +  | |
    *  -----      ---     ---
    */
-  forEachLinearRing(consumer: LinearRingCoordinatesConsumer) {
+  forEachLinearRing(consumer: LinearRingCoordinatesConsumer): boolean {
     const tolerance = this.tolerance.tolerance;
     const processed = new Set<string>();
     const vertices = [];
@@ -449,10 +464,11 @@ export class Mesh {
         }
         const coordinates = followLinearRing(a, b, tolerance, processed);
         if (consumer(coordinates) === false) {
-          return;
+          return false;
         }
       }
     }
+    return true;
   }
   getLinearRings(): number[][] {
     const results = [];

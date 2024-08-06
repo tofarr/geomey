@@ -2,32 +2,37 @@ import {
   A_INSIDE_B,
   B_INSIDE_A,
   B_OUTSIDE_A,
+  DISJOINT,
   Relation,
   TOUCH,
 } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { GeoJsonPolygon } from "../geoJson";
 import { Mesh } from "../mesh/Mesh";
 import { MeshPathWalker } from "../mesh/MeshPathWalker";
+import { generalize } from "../mesh/op/generalize";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import {
   AbstractGeometry,
-  createLinearRings,
   forEachRingCoordinate,
-  forEachRingLineSegmentCoordinates,
   LinearRing,
   ringToWkt,
   Geometry,
   LineSegment,
   LineString,
-  MultiGeometry,
+  GeometryCollection,
   Point,
   Rectangle,
+  compareLinearRingsForSort,
+  douglasPeucker,
+  forEachRingLineSegmentCoordinates,
+  MultiPolygon,
 } from "./";
 import { PolygonBuilder } from "./builder/PolygonBuilder";
 
-const NO_CHILDREN: ReadonlyArray<Polygon> = [];
+const NO_HOLES: ReadonlyArray<LinearRing> = [];
 
 /**
  * A polygon is a non self intersecting linear ring of coordinates. Unlike WKT, the first coordinate is not
@@ -38,30 +43,31 @@ const NO_CHILDREN: ReadonlyArray<Polygon> = [];
  */
 export class Polygon extends AbstractGeometry {
   readonly shell: LinearRing;
-  readonly children: ReadonlyArray<Polygon>;
+  readonly holes: ReadonlyArray<LinearRing>;
 
-  private constructor(shell: LinearRing, children: ReadonlyArray<Polygon>) {
+  private constructor(shell: LinearRing, holes?: ReadonlyArray<LinearRing>) {
     super();
     this.shell = shell;
-    this.children = children || NO_CHILDREN;
+    this.holes = holes || NO_HOLES;
   }
   static valueOf(
-    rings: ReadonlyArray<LinearRing>,
-    tolerance: Tolerance,
-  ): Polygon[] {
-    const mesh = new Mesh(tolerance);
-    for (const ring of rings) {
-      forEachRingLineSegmentCoordinates(ring.coordinates, (ax, ay, bx, by) => {
-        mesh.addLink(ax, ay, bx, by);
-      });
-    }
-    return createPolygons(mesh);
-  }
-  static unsafeValueOf(
     shell: LinearRing,
-    children?: ReadonlyArray<Polygon>,
+    holes?: ReadonlyArray<LinearRing>,
   ): Polygon {
-    return new Polygon(shell, children);
+    return new Polygon(shell, holes);
+  }
+  static fromMesh(mesh: Mesh): Polygon[] {
+    const rings = LinearRing.fromMesh(mesh);
+    const builders = [];
+    const { tolerance } = mesh;
+    for (const ring of rings) {
+      addRing(ring, tolerance, builders);
+    }
+    const results = [];
+    for (const builder of builders) {
+      createPolygon(builder, results);
+    }
+    return results;
   }
   protected calculateCentroid(): Point {
     return this.shell.getCentroid();
@@ -72,107 +78,137 @@ export class Polygon extends AbstractGeometry {
   walkPath(pathWalker: PathWalker): void {
     // Walk in reverse
     this.shell.walkPath(pathWalker);
-    const { children } = this;
-    for (const child of children) {
-      child.walkPathReverse(pathWalker);
-    }
-  }
-  walkPathReverse(pathWalker: PathWalker): void {
-    this.shell.walkPathReverse(pathWalker);
-    for (const child of this.children) {
-      child.walkPath(pathWalker);
-    }
-  }
-  ringsToWkt(
-    numberFormatter: NumberFormatter,
-    reverse: boolean,
-    result: string[],
-  ) {
-    ringToWkt(this.shell.coordinates, numberFormatter, reverse, result);
-    for (const child of this.children) {
-      result.push(", ");
-      child.ringsToWkt(numberFormatter, !reverse, result);
+    const { holes } = this;
+    for (const hole of holes) {
+      hole.walkPathReverse(pathWalker);
     }
   }
   toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
     const result = ["POLYGON ("];
-    this.ringsToWkt(numberFormatter, false, result);
+    ringToWkt(this.shell.coordinates, numberFormatter, false, result);
+    for (const hole of this.holes) {
+      result.push(", ");
+      ringToWkt(this.shell.coordinates, numberFormatter, false, result);
+    }
     result.push(")");
     return result.join("");
   }
-  protected ringsToGeoJson(reverse: boolean, result: number[][]) {
+  toGeoJson(): GeoJsonPolygon {
+    const coordinates = [];
     const shell = [];
     forEachRingCoordinate(
       this.shell.coordinates,
       (x, y) => {
         shell.push([x, y]);
       },
-      reverse,
+      false,
     );
-    result.push(shell);
-    const { children } = this;
-    for (const child of children) {
-      child.ringsToGeoJson(!reverse, result);
+    coordinates.push(shell);
+    for (const hole of this.holes) {
+      const holeCoordinates = [];
+      forEachRingCoordinate(
+        hole.coordinates,
+        (x, y) => {
+          holeCoordinates.push([x, y]);
+        },
+        true,
+      );
+      coordinates.push(holeCoordinates);
     }
-  }
-  toGeoJson() {
-    const coordinates = [];
-    this.ringsToGeoJson(false, coordinates);
     return {
       type: "Polygon",
       coordinates,
     };
+  }
+  calculateMesh(tolerance: Tolerance): Mesh {
+    const mesh = new Mesh(tolerance);
+    forEachRingLineSegmentCoordinates(
+      this.shell.coordinates,
+      (ax, ay, bx, by) => {
+        mesh.addLink(ax, ay, bx, by);
+      },
+    );
+    for (const hole of this.holes) {
+      forEachRingLineSegmentCoordinates(hole.coordinates, (ax, ay, bx, by) => {
+        mesh.addLink(ax, ay, bx, by);
+      });
+    }
+    return mesh;
+  }
+  isValid(tolerance: Tolerance): boolean {
+    if (this.getBounds().isCollapsible(tolerance)) {
+      return true;
+    }
+    const { shell, holes } = this;
+    if (!shell.isValid(tolerance)) {
+      return false;
+    }
+    if (holes.find((hole) => !hole.isValid(tolerance))) {
+      return false;
+    }
+    const mesh = this.calculateMesh(tolerance);
+    mesh.forEachVertexAndLinkCentroid((x, y) => {
+      if (shell.relatePoint(x, y, tolerance) === DISJOINT) {
+        return false;
+      }
+      if (
+        holes.find((hole) => hole.relatePoint(x, y, tolerance) | B_INSIDE_A)
+      ) {
+        return false; // Inside implies that holes overlap
+      }
+      return true;
+    });
+    return true;
+  }
+  isNormalized(): boolean {
+    if (!this.shell.isNormalized()) {
+      return false;
+    }
+    const { holes } = this;
+    if (!holes.find((hole) => !hole.isNormalized())) {
+      return false;
+    }
+    if (holes.length) {
+      for (let h = 1; h < holes.length; h++) {
+        if (compareLinearRingsForSort(holes[h - 1], holes[h]) > 0) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+  calculateNormalized(): Polygon {
+    if (this.isNormalized()) {
+      return this;
+    }
+    const shell = this.shell.normalize() as LinearRing;
+    const holes = this.holes.map((hole) => hole.normalize() as LinearRing);
+    holes.sort(compareLinearRingsForSort);
+    return new Polygon(shell, holes);
   }
   generalize(tolerance: Tolerance): Geometry {
     let shell: Geometry = this.shell;
     if (shell.getBounds().isCollapsible(tolerance)) {
       return this.getCentroid();
     }
-    shell = shell.generalize(tolerance);
-    if (!(shell instanceof LinearRing)) {
-      return shell;
-    }
-    const { children } = this;
-    if (!children.length) {
-      return Polygon.unsafeValueOf(shell);
-    }
+
     const walker = MeshPathWalker.valueOf(tolerance);
-    shell.walkPath(walker);
-    for (const child of children) {
-      child.generalize(tolerance).walkPath(walker);
-    }
-    const [rings] = walker.getMeshes();
-    const polygons = createPolygons(rings);
-    if (polygons.length == 1) {
-      return polygons[0];
-    }
-    return MultiGeometry.unsafeValueOf(undefined, undefined, polygons);
+    this.walkPath(walker);
+    const [rings, linesAndPoints] = walker.getMeshes();
+    generalize(rings, tolerance);
+    return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
   }
-  protected transformRings(
-    transformer: Transformer,
-    tolerance: Tolerance,
-    result: Geometry[],
-  ) {
-    result.push(this.shell.transform(transformer, tolerance));
-    for (const child of this.children) {
-      child.transformRings(transformer, tolerance, result);
-    }
-  }
-  transform(transformer: Transformer, tolerance: Tolerance): Geometry {
-    const rings = [];
-    this.transformRings(transformer, tolerance, rings);
-    const polygons = Polygon.valueOf(rings, tolerance);
-    if (polygons.length === 1) {
-      return polygons[0];
-    }
-    return MultiGeometry.unsafeValueOf(undefined, undefined, polygons);
+  transform(transformer: Transformer): Polygon {
+    const shell = this.shell.transform(transformer);
+    const holes = this.holes.map((hole) => hole.transform(transformer));
+    return new Polygon(shell, holes).normalize() as Polygon;
   }
   relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
     const relation = this.shell.relatePoint(x, y, tolerance);
     if (relation !== B_INSIDE_A) {
       return relation;
     }
-    for (const child of this.children) {
+    for (const child of this.holes) {
       const childRelation = child.relatePoint(x, y, tolerance);
       if (childRelation === TOUCH) {
         return TOUCH;
@@ -188,7 +224,7 @@ export class Polygon extends AbstractGeometry {
       other instanceof Point ||
       other instanceof LineSegment ||
       other instanceof LineString ||
-      (other instanceof MultiGeometry && !other.polygons.length)
+      (other instanceof GeometryCollection && !other.polygons.polygons.length)
     ) {
       return this;
     }
@@ -196,14 +232,19 @@ export class Polygon extends AbstractGeometry {
   }
 }
 
-export function createPolygons(mesh: Mesh): Polygon[] {
-  const rings = createLinearRings(mesh);
-  const builders = [];
-  const { tolerance } = mesh;
-  for (const ring of rings) {
-    addRing(ring, tolerance, builders);
+function createPolygon(builder: PolygonBuilder, results: Polygon[]) {
+  const { children } = builder;
+  results.push(
+    Polygon.valueOf(
+      builder.shell,
+      children.map((c) => c.shell),
+    ),
+  );
+  for (const child of children) {
+    for (const grandchild of child.children) {
+      createPolygon(grandchild, results);
+    }
   }
-  return builders.map(buildPolygon);
 }
 
 function addRing(
@@ -214,28 +255,37 @@ function addRing(
   for (const builder of builders) {
     const relation = ring.relate(builder.shell, tolerance);
     if (relation & A_INSIDE_B) {
-      addRing(ring, tolerance, builder.holes);
+      addRing(ring, tolerance, builder.children);
       return;
     } else if (relation & B_INSIDE_A) {
-      const hole = {
+      const child = {
         shell: builder.shell,
-        holes: builder.holes,
+        children: builder.children,
       };
       builder.shell = ring;
-      builder.holes = [hole];
+      builder.children = [child];
       return;
     }
   }
   builders.push({
     shell: ring,
-    holes: [],
+    children: [],
   });
 }
 
-function buildPolygon(builder: PolygonBuilder) {
-  const children = builder.holes.map((h) => buildPolygon(h));
-  return Polygon.unsafeValueOf(
-    builder.shell,
-    children.length ? children : undefined,
-  );
+export function comparePolygonsForSort(a: Polygon, b: Polygon): number {
+  let compare = compareLinearRingsForSort(a.shell, b.shell);
+  if (compare) {
+    return compare;
+  }
+  const ha = a.holes;
+  const hb = b.holes;
+  const length = Math.min(ha.length, hb.length);
+  for (let i = 0; i < length; i++) {
+    compare = compareLinearRingsForSort(ha[i], hb[i]);
+    if (compare) {
+      return compare;
+    }
+  }
+  return ha.length - hb.length;
 }

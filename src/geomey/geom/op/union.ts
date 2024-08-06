@@ -1,7 +1,7 @@
 import { createMeshes } from "../../mesh/MeshPathWalker";
 import { B_INSIDE_A } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
-import { createMultiGeometry, Geometry } from "../";
+import { Geometry, GeometryCollection } from "../";
 
 export function union(
   a: Geometry,
@@ -15,5 +15,5 @@ export function union(
       b.relatePoint(x, y, tolerance) | B_INSIDE_A
     );
   });
-  return createMultiGeometry(rings, linesAndPoints).simplify();
+  return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
 }

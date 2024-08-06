@@ -162,8 +162,11 @@ export class RTree<T> implements SpatialIndex<T> {
     }
     return false;
   }
-  findIntersecting(rectangle: Rectangle, consumer: SpatialConsumer<T>) {
-    this.findIntersectingNode(this.root, rectangle, consumer);
+  findIntersecting(
+    rectangle: Rectangle,
+    consumer: SpatialConsumer<T>,
+  ): boolean {
+    return this.findIntersectingNode(this.root, rectangle, consumer);
   }
   private findIntersectingNode(
     node: Node<T>,
@@ -193,7 +196,7 @@ export class RTree<T> implements SpatialIndex<T> {
     return true;
   }
   findAll(consumer: SpatialConsumer<T>) {
-    this.findAllNode(this.root, consumer);
+    return this.findAllNode(this.root, consumer);
   }
   private findAllNode(node: Node<T>, consumer: SpatialConsumer<T>): boolean {
     if (node.a) {
