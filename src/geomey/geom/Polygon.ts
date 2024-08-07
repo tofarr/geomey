@@ -1,5 +1,6 @@
 import {
   A_INSIDE_B,
+  A_OUTSIDE_B,
   B_INSIDE_A,
   B_OUTSIDE_A,
   DISJOINT,
@@ -200,13 +201,13 @@ export class Polygon extends AbstractGeometry {
     if (relation !== B_INSIDE_A) {
       return relation;
     }
-    for (const child of this.holes) {
-      const childRelation = child.relatePoint(x, y, tolerance);
-      if (childRelation === TOUCH) {
-        return TOUCH;
+    for (const hole of this.holes) {
+      const holeRelation = hole.relatePoint(x, y, tolerance);
+      if (holeRelation & TOUCH) {
+        return (TOUCH | A_OUTSIDE_B) as Relation;
       }
-      if (childRelation == B_INSIDE_A) {
-        return B_OUTSIDE_A; // inside a hole is outside!
+      if (holeRelation == B_INSIDE_A) {
+        return (A_OUTSIDE_B | B_OUTSIDE_A) as Relation; // inside a hole is outside!
       }
     }
     return relation;

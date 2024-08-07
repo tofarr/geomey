@@ -345,21 +345,17 @@ export function relatePointToLineString(
   coordinates: ReadonlyArray<number>,
   tolerance: Tolerance,
 ): Relation {
-  let result = UNKNOWN;
+  let result = A_OUTSIDE_B;
   forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
     if (pointTouchesLineSegment(x, y, ax, ay, bx, by, tolerance)) {
       result |= TOUCH;
+      return false;
     }
-    if (
-      !(
-        coordinateMatch(ax, ay, x, y, tolerance) &&
-        coordinateMatch(bx, by, x, y, tolerance)
-      )
-    ) {
-      result |= A_OUTSIDE_B;
-    }
-    return result !== (TOUCH | A_OUTSIDE_B);
+    return true;
   });
+  if (result == A_OUTSIDE_B) {
+    result |= B_OUTSIDE_A
+  }
   return result;
 }
 

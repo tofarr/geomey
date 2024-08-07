@@ -6,7 +6,6 @@ import {
   B_INSIDE_A,
   B_OUTSIDE_A,
   DISJOINT,
-  flipAB,
   Relation,
   TOUCH,
   UNKNOWN,
@@ -33,12 +32,15 @@ export function relate(
       return !!(result & ALL);
     });
   }
+  if (result === ALL){
+    return result
+  }
 
   const [rings] = meshes;
   rings.cull((x, y) => {
     return !!(
-      a.relatePoint(x, y, tolerance) | B_OUTSIDE_A ||
-      b.relatePoint(x, y, tolerance) | B_OUTSIDE_A
+      a.relatePoint(x, y, tolerance) & B_OUTSIDE_A ||
+      b.relatePoint(x, y, tolerance) & B_OUTSIDE_A
     );
   });
   rings.forEachLinearRing(() => {
