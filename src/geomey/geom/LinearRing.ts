@@ -5,7 +5,6 @@ import {
   crossProduct,
   forEachCoordinate,
   forEachLineSegmentCoordinates,
-  forEachPointCoordinate,
   InvalidCoordinateError,
   LineSegmentCoordinatesConsumer,
   reverse,
@@ -107,7 +106,9 @@ export class LinearRing extends AbstractGeometry {
         convexRings = [this];
       } else {
         convexRings = convexRingsCoordinates.map((coordinates) => {
-          const convexRing = new LinearRing(coordinates);
+          const convexRing = new LinearRing(
+            coordinates,
+          ).normalize() as LinearRing;
           convexRing.convexRings = [convexRing];
           return convexRing;
         });
@@ -138,7 +139,7 @@ export class LinearRing extends AbstractGeometry {
         minIndex = i;
       }
     }
-    return minIndex >> 1;
+    return minIndex;
   }
   isValid(tolerance: Tolerance): boolean {
     if (this.getBounds().isCollapsible(tolerance)) {
@@ -220,12 +221,12 @@ export function forEachRingCoordinate(
   shell: ReadonlyArray<number>,
   consumer: CoordinateConsumer,
   reverse: boolean = false,
-): number {
+): boolean {
   if (!reverse) {
     return forEachCoordinate(shell, consumer, 0, (shell.length >> 1) + 1);
   }
   if (consumer(shell[0], shell[1]) === false) {
-    return 0;
+    return false;
   }
   let index = shell.length;
   while (index) {
@@ -233,9 +234,10 @@ export function forEachRingCoordinate(
     const x = shell[--index];
     const result = consumer(x, y);
     if (result === false) {
-      return index;
+      return false;
     }
   }
+  return true;
 }
 
 export function forEachRingLineSegmentCoordinates(
@@ -336,7 +338,7 @@ export function relateRingToPoint(
   if (touch) {
     return (TOUCH | A_OUTSIDE_B) as Relation;
   }
-  return inside ? (B_INSIDE_A | A_OUTSIDE_B) as Relation : DISJOINT;
+  return inside ? ((B_INSIDE_A | A_OUTSIDE_B) as Relation) : DISJOINT;
 }
 
 export function forEachAngle(
@@ -399,10 +401,17 @@ export function splitToConvex(
     result.push(coordinates);
     return;
   }
-  const splitEnd = getSplitEnd(coordinates, splitStart);
-  const a = coordinates.slice(0, splitStart.index + 2);
-  const b = coordinates.slice(splitStart.index, splitEnd + 2);
-  a.push.apply(coordinates.slice(splitEnd));
+  let end = getSplitEnd(coordinates, splitStart);
+  let start = splitStart.index;
+  if (end < start) {
+    [end, start] = [start, end];
+  }
+  const a = coordinates.slice(0, start + 2);
+  const b = coordinates.slice(start, end + 2);
+  if (end == coordinates.length) {
+    b.push(coordinates[0], coordinates[1]);
+  }
+  a.push(...coordinates.slice(end));
   splitToConvex(a, result);
   splitToConvex(b, result);
 }
@@ -439,7 +448,7 @@ function getSplitEnd(
   let minDistSq = Infinity;
   let minIndex = undefined;
   let index = splitStart.index + 2;
-  forEachPointCoordinate(
+  forEachCoordinate(
     coordinates,
     (x, y) => {
       if (crossProduct(ax, ay, bx, by, x, y) >= 0) {
@@ -448,8 +457,8 @@ function getSplitEnd(
           minDistSq = distSq;
           minIndex = index;
         }
-        index += 2;
       }
+      index += 2;
     },
     index,
     coordinates.length - index,

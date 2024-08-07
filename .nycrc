@@ -9,6 +9,8 @@
     "build/*",
     "coverage/*",
     "scripts/*",
-    "*.js"
+    "*.js",
+    "**/*.spec.ts",
+    "**/*.d.ts"
   ]
 }

@@ -111,7 +111,7 @@ export class LineSegment implements Geometry {
   }
   isValid(tolerance: Tolerance): boolean {
     const { ax, ay, bx, by } = this;
-    return !(tolerance.match(ax, bx) && tolerance.match(ay, by));
+    return !coordinateMatch(ax, ay, bx, by, tolerance);
   }
   normalize(): LineSegment | Point {
     const { ax, ay, bx, by } = this;
@@ -387,7 +387,7 @@ export function pointTouchesLineSegment(
   by: number,
   tolerance: Tolerance,
 ) {
-  if (perpendicularDistance(x, y, ax, ay, bx, by) > tolerance.tolerance) {
+  if (tolerance.outside(perpendicularDistance(x, y, ax, ay, bx, by))) {
     return false;
   }
 

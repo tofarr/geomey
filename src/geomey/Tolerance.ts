@@ -18,16 +18,12 @@ export class Tolerance {
     return Math.abs(value) <= this.tolerance;
   }
 
+  outside(value: number): boolean {
+    return Math.abs(value) > this.tolerance;
+  }
+
   match(a: number, b: number): boolean {
-    return Math.abs(a - b) <= this.tolerance;
-  }
-
-  gt(a: number, b: number): boolean {
-    return a - this.tolerance > b;
-  }
-
-  lt(a: number, b: number): boolean {
-    return a + this.tolerance < b;
+    return this.within(a - b);
   }
 
   normalize(value: number): number {

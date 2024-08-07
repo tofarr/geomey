@@ -9,7 +9,7 @@ export class InvalidCoordinateError extends Error {
 export type Coordinates = ReadonlyArray<number>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type PointCoordinatesConsumer = (x: number, y: number) => any;
+export type CoordinateConsumer = (x: number, y: number) => any;
 
 export type LineSegmentCoordinatesConsumer = (
   ax: number,
@@ -29,29 +29,21 @@ export type LinearRingCoordinatesConsumer = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ) => any;
 
-export function forEachPointCoordinate(
+export function forEachCoordinate(
   coordinates: Coordinates,
-  consumer: PointCoordinatesConsumer,
+  consumer: CoordinateConsumer,
   startIndexInclusive?: number,
   numberOfPoints?: number,
 ): boolean {
-  if (startIndexInclusive == null) {
-    startIndexInclusive = 0;
-  }
   const { length } = coordinates;
-  if (numberOfPoints == null) {
-    numberOfPoints = length >> 1;
-  }
-  while (--numberOfPoints >= 0) {
-    if (startIndexInclusive === length) {
-      startIndexInclusive = 0;
-    }
-    if (
-      consumer(
-        coordinates[startIndexInclusive++],
-        coordinates[startIndexInclusive++],
-      ) === false
-    ) {
+  startIndexInclusive =
+    startIndexInclusive == null ? 0 : startIndexInclusive << 1;
+  numberOfPoints = numberOfPoints == null ? length >> 1 : numberOfPoints;
+  while (numberOfPoints-- > 0) {
+    const index = startIndexInclusive % length;
+    const result = consumer(coordinates[index], coordinates[index + 1]);
+    startIndexInclusive += 2;
+    if (result === false) {
       return false;
     }
   }
@@ -230,41 +222,6 @@ export function coordinateEqual(
   by: number,
 ) {
   return ax === bx && ay === by;
-}
-
-export function coordinatesEqual(i: Coordinates, j: Coordinates) {
-  if (i.length !== j.length) {
-    return false;
-  }
-  let n = i.length;
-  while (--n) {
-    if (i[n] != j[n]) {
-      return false;
-    }
-  }
-  return true;
-}
-
-export type CoordinateConsumer = (x: number, y: number) => boolean | void;
-
-export function forEachCoordinate(
-  coordinates: Coordinates,
-  consumer: CoordinateConsumer,
-  fromIndexInclusive?: number,
-  toIndexExclusive?: number,
-) {
-  const { length } = coordinates;
-  fromIndexInclusive = fromIndexInclusive == null ? 0 : fromIndexInclusive << 1;
-  toIndexExclusive = toIndexExclusive == null ? length : toIndexExclusive << 1;
-  while (fromIndexInclusive < toIndexExclusive) {
-    const index = fromIndexInclusive % length;
-    const result = consumer(coordinates[index], coordinates[index + 1]);
-    fromIndexInclusive += 2;
-    if (result === false) {
-      break;
-    }
-  }
-  return fromIndexInclusive >> 1;
 }
 
 export function crossProduct(

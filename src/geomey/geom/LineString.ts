@@ -58,11 +58,13 @@ export class LineString extends AbstractGeometry {
     });
     return results;
   }
-  forEachCoordinate(consumer: CoordinateConsumer): number {
+  forEachCoordinate(consumer: CoordinateConsumer): boolean {
     return forEachCoordinate(this.coordinates, consumer);
   }
-  forEachLineSegmentCoordinates(consumer: LineSegmentCoordinatesConsumer) {
-    forEachLineSegmentCoordinates(this.coordinates, consumer);
+  forEachLineSegmentCoordinates(
+    consumer: LineSegmentCoordinatesConsumer,
+  ): boolean {
+    return forEachLineSegmentCoordinates(this.coordinates, consumer);
   }
   protected calculateCentroid(): Point {
     return getCentroid(this.coordinates);
@@ -103,7 +105,7 @@ export class LineString extends AbstractGeometry {
       return true;
     }
     return forEachLineSegmentCoordinates(this.coordinates, (ax, ay, bx, by) => {
-      !(tolerance.match(ax, bx) && tolerance.match(ay, by));
+      !coordinateMatch(ax, ay, bx, by, tolerance);
     });
   }
   isNormalized(): boolean {
@@ -354,7 +356,7 @@ export function relatePointToLineString(
     return true;
   });
   if (result == A_OUTSIDE_B) {
-    result |= B_OUTSIDE_A
+    result |= B_OUTSIDE_A;
   }
   return result;
 }

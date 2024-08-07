@@ -3,6 +3,7 @@ import {
   comparePointsForSort,
   CoordinateConsumer,
   coordinateEqual,
+  coordinateMatch,
   Coordinates,
   isNaNOrInfinite,
   LinearRingCoordinatesConsumer,
@@ -174,7 +175,7 @@ export class Mesh {
     while (i < intersections.length) {
       const ibx = intersections[i++];
       const iby = intersections[i++];
-      if (!(tolerance.match(iax, ibx) && tolerance.match(iay, iby))) {
+      if (!coordinateMatch(iax, iay, ibx, iby, tolerance)) {
         this.addLinkInternal(iax, iay, ibx, iby);
         iax = ibx;
         iay = iby;

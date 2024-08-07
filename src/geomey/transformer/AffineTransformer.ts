@@ -13,12 +13,12 @@ const SHEAR = 4;
  */
 export class AffineTransformer implements Transformer {
   static readonly IDENTITY = new AffineTransformer(1, 0, 0, 0, 1, 0);
-  readonly m00: number
-  readonly m10: number
-  readonly m20: number
-  readonly m01: number
-  readonly m11: number
-  readonly m21: number
+  readonly m00: number;
+  readonly m10: number;
+  readonly m20: number;
+  readonly m01: number;
+  readonly m11: number;
+  readonly m21: number;
 
   constructor(
     m00: number,
@@ -28,9 +28,7 @@ export class AffineTransformer implements Transformer {
     m11: number,
     m21: number,
   ) {
-    if (
-      isNaNOrInfinite(m00, m10, m20, m01, m11, m21)
-    ) {
+    if (isNaNOrInfinite(m00, m10, m20, m01, m11, m21)) {
       throw new Error(
         `Invalid transform (${m00}, ${m10}, ${m20}, ${m01}, ${m11}, ${m21})`,
       );
@@ -43,7 +41,7 @@ export class AffineTransformer implements Transformer {
     this.m21 = m21;
   }
   getInverse(): AffineTransformer {
-    const { m00, m10, m20, m01, m11, m21 } = this
+    const { m00, m10, m20, m01, m11, m21 } = this;
     const det = m00 * m11 - m10 * m01;
     return new AffineTransformer(
       m11 / det,
@@ -58,16 +56,13 @@ export class AffineTransformer implements Transformer {
     return this.transformAll([x, y]) as [number, number];
   }
   transformAll(coordinates: ReadonlyArray<number>): ReadonlyArray<number> {
-    const { m00, m10, m20, m01, m11, m21 } = this
-      this;
+    const { m00, m10, m20, m01, m11, m21 } = this;
+    this;
     const result = [];
     forEachCoordinate(coordinates, (x, y) => {
-      result.push(
-        m00 * x + m10 * y + m20,
-        m01 * x + m11 * y + m21,
-      );
+      result.push(m00 * x + m10 * y + m20, m01 * x + m11 * y + m21);
     });
-    return result
+    return result;
   }
   add(
     n00: number,
@@ -77,7 +72,7 @@ export class AffineTransformer implements Transformer {
     n11: number,
     n21: number,
   ): AffineTransformer {
-    const { m00, m10, m20, m01, m11, m21 } = this
+    const { m00, m10, m20, m01, m11, m21 } = this;
     return new AffineTransformer(
       n00 * m00 + n10 * m01 + n20 * m20,
       n00 * m10 + n10 * m11,
@@ -85,7 +80,7 @@ export class AffineTransformer implements Transformer {
       n01 * m00 + n11 * m01 + n21 * m20,
       n01 * m10 + n11 * m11,
       n01 * m20 + n11 * m21 + n21,
-    )
+    );
   }
   scale(scaleX: number, scaleY?: number): AffineTransformer {
     if (scaleY == null) {

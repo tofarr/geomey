@@ -9,6 +9,7 @@ import {
 import {
   appendChanged,
   comparePointsForSort,
+  coordinateMatch,
   Coordinates,
   forEachCoordinate,
   forEachLineSegmentCoordinates,
@@ -103,7 +104,7 @@ export class MultiPoint extends AbstractGeometry {
     return forEachLineSegmentCoordinates(
       multiPoint.coordinates,
       (ax, ay, bx, by) => {
-        return !(tolerance.match(ax, bx) && tolerance.match(ay, by));
+        return !coordinateMatch(ax, ay, bx, by, tolerance);
       },
     );
   }
