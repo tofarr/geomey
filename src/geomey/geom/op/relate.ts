@@ -58,19 +58,19 @@ function relatePoint(
   const relationA = a.relatePoint(x, y, tolerance);
   const relationB = b.relatePoint(x, y, tolerance);
   let relation = UNKNOWN
-  if (relationA | B_INSIDE_A) {
+  if (relationA & B_INSIDE_A) {
     relation |= B_INSIDE_A
   }
   if (relationA == DISJOINT) {
     relation |= B_OUTSIDE_A
   }
-  if (relationB | B_INSIDE_A) {
+  if (relationB & B_INSIDE_A) {
     relation |= A_INSIDE_B
   }
   if (relationB == DISJOINT) {
     relation |= A_OUTSIDE_B
   }
-  if ((relationA | TOUCH) || (relationB | TOUCH)) {
+  if (relationA & relationB & TOUCH) {
     relation |= TOUCH
   }
   return relation

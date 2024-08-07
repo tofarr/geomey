@@ -77,7 +77,7 @@ export class MultiPolygon extends AbstractGeometry {
       result.push("(");
       ringToWkt(polygon.shell.coordinates, numberFormatter, false, result);
       for (const hole of polygon.holes) {
-        result.push(", ");
+        result.push(",");
         ringToWkt(hole.coordinates, numberFormatter, true, result);
       }
       result.push("),");

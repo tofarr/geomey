@@ -79,7 +79,7 @@ export class Polygon extends AbstractGeometry {
     const result = ["POLYGON("];
     ringToWkt(this.shell.coordinates, numberFormatter, false, result);
     for (const hole of this.holes) {
-      result.push(", ");
+      result.push(",");
       ringToWkt(hole.coordinates, numberFormatter, true, result);
     }
     result.push(")");
