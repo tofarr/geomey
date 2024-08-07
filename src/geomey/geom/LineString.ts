@@ -15,10 +15,10 @@ import {
   forEachCoordinate,
   forEachLineSegmentCoordinates,
   InvalidCoordinateError,
-  isNaNOrInfinite,
   LineSegmentCoordinatesConsumer,
   reverse,
   sortCoordinates,
+  validateCoordinates,
 } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { Mesh } from "../mesh/Mesh";
@@ -45,9 +45,10 @@ export class LineString extends AbstractGeometry {
 
   constructor(coordinates: ReadonlyArray<number>) {
     super();
-    if (isNaNOrInfinite(...coordinates) || coordinates.length < 4) {
+    if (coordinates.length < 4) {
       throw new InvalidCoordinateError(coordinates);
     }
+    validateCoordinates(...coordinates);
     this.coordinates = coordinates;
   }
   static fromMesh(mesh: Mesh): LineString[] {
@@ -83,7 +84,7 @@ export class LineString extends AbstractGeometry {
     if (!this.coordinates.length) {
       return "EMPTY";
     }
-    const result = ["LINESTRING "];
+    const result = ["LINESTRING"];
     coordinatesToWkt(this.coordinates, numberFormatter, result);
     return result.join("");
   }

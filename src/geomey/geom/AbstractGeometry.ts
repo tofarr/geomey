@@ -1,6 +1,5 @@
 import { NumberFormatter } from "../formatter";
 import { GeoJsonGeometry } from "../geoJson";
-import { MeshPathWalker } from "../mesh/MeshPathWalker";
 import { PathWalker } from "../path/PathWalker";
 import { DISJOINT, Relation } from "../Relation";
 import { Tolerance } from "../Tolerance";

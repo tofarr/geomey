@@ -1,16 +1,7 @@
-import { forEachLineSegmentCoordinates } from "../coordinate";
-import {
-  createGeometryCollection,
-  Geometry,
-  LinearRing,
-  LineString,
-  GeometryCollection,
-  Point,
-  createPolygons,
-  Polygon,
-} from "../geom/";
-import { Mesh } from "../mesh/Mesh";
-import { MeshPathWalker } from "../mesh/MeshPathWalker";
+import { Geometry } from "../geom";
+import { GeometryFactory } from "../geom/factory";
+import { DefaultGeometryFactory } from "../geom/factory/DefaultGeometryFactory";
+import { SanitizingGeometryFactory } from "../geom/factory/SanitizingGeometryFactory";
 import { Tolerance } from "../Tolerance";
 
 export class InvalidWktError extends Error {
@@ -20,20 +11,121 @@ export class InvalidWktError extends Error {
 }
 
 export function parseWkt(input: string, tolerance?: Tolerance) {
-  const typeParsers = tolerance ? validatingTypeParsers : unsafeTypeParsers;
-  const parsed = doParseWkt(input, tolerance, 0, typeParsers);
-  return parsed[0];
+  const parser = new WktParser(
+    tolerance
+      ? new SanitizingGeometryFactory(tolerance)
+      : new DefaultGeometryFactory(),
+  );
+  return parser.parse(input);
 }
 
-export function doParseWkt(
-  input: string,
-  tolerance: Tolerance,
-  position: number,
-  typeParsers: TypeParsers,
-) {
-  input = normalizeWkt(input);
-  const [type, start] = parseType(input, position);
-  return typeParsers[type](input, start + 1, tolerance);
+export class WktParser {
+  private factory: GeometryFactory;
+
+  constructor(factory?: GeometryFactory) {
+    this.factory = factory || new DefaultGeometryFactory();
+  }
+  parse(input: string): Geometry {
+    input = normalizeWkt(input);
+    const parsed = this.parseInternal(input, 0);
+    return parsed[0];
+  }
+  parseInternal(input: string, position: number): [Geometry, number] {
+    const [type, start] = parseType(input, position);
+    switch (type) {
+      case "point":
+        return this.parsePoint(input, start);
+      case "multipoint":
+        return this.parseMultiPoint(input, start);
+      case "linestring":
+        return this.parseLineString(input, start);
+      case "multilinestring":
+        return this.parseMultiLineString(input, start);
+      case "polygon":
+        return this.parsePolygon(input, start);
+      case "multipolygon":
+        return this.parseMultiPolygon(input, start);
+      case "geometrycollection":
+        return this.parseGeometryCollection(input, start);
+      default:
+        throw new InvalidWktError(input);
+    }
+  }
+  parsePoint(input: string, position: number): [Geometry, number] {
+    const [coordinates, end] = parseCoordinates(input, position);
+    if (coordinates.length != 2) {
+      throw new InvalidWktError(input);
+    }
+    return [this.factory.createPoint(coordinates[0], coordinates[1]), end];
+  }
+  parseMultiPoint(input: string, position: number): [Geometry, number] {
+    const [coordinates, end] = parseCoordinates(input, position);
+    return [this.factory.createMultiPoint(coordinates), end];
+  }
+  parseLineString(input: string, position: number): [Geometry, number] {
+    const [coordinates, end] = parseCoordinates(input, position);
+    return [this.factory.createLineString(coordinates), end];
+  }
+  parseMultiLineString(input: string, position: number): [Geometry, number] {
+    const [coordinateLists, end] = parseCoordinateLists(input, position);
+    return [this.factory.createMultiLineString(coordinateLists), end];
+  }
+  parsePolygon(input: string, position: number): [Geometry, number] {
+    const [coordinateLists, end] = parseCoordinateLists(input, position);
+    return [
+      this.factory.createPolygon(coordinateLists[0], coordinateLists.slice(1)),
+      end,
+    ];
+  }
+  parseMultiPolygon(input: string, position: number): [Geometry, number] {
+    const nestedCoordinateLists = [];
+    while (input[position] != ")") {
+      const [coordinateLists, end] = parseCoordinateLists(input, position);
+      nestedCoordinateLists.push(coordinateLists);
+      position = end;
+    }
+    return [
+      this.factory.createMultiPolygon(nestedCoordinateLists),
+      position + 1,
+    ];
+  }
+  parseGeometryCollection(input: string, position: number): [Geometry, number] {
+    const points = [];
+    const lineStrings = [];
+    const polygons = [];
+    while (input[position] != ")") {
+      const [type, start] = parseType(input, position);
+      switch (type) {
+        case "point": {
+          const [coordinates, end] = parseCoordinates(input, start);
+          if (coordinates.length != 2) {
+            throw new InvalidWktError(input);
+          }
+          points.push(...coordinates);
+          position = end;
+          break;
+        }
+        case "linestring": {
+          const [coordinates, end] = parseCoordinates(input, start);
+          lineStrings.push(coordinates);
+          position = end;
+          break;
+        }
+        case "polygon": {
+          const [coordinateLists, end] = parseCoordinateLists(input, start);
+          polygons.push(coordinateLists);
+          position = end;
+          break;
+        }
+        default:
+          throw new InvalidWktError(input);
+      }
+    }
+    return [
+      this.factory.createGeometryCollection(points, lineStrings, polygons),
+      position + 1,
+    ];
+  }
 }
 
 /**
@@ -51,244 +143,36 @@ function normalizeWkt(input: string) {
     .trim();
 }
 
+function parseCoordinates(input: string, position: number): [number[], number] {
+  const end = input.indexOf(")", position);
+  const coordinates = input
+    .substring(position, end)
+    .split(" ")
+    .map((n) => parseFloat(n));
+  if (coordinates.length & 1) {
+    throw new InvalidWktError(input)
+  }
+  return [coordinates, end + 1];
+}
+
+function parseCoordinateLists(
+  input: string,
+  position: number,
+): [number[][], number] {
+  const coordinateLists = [];
+  while (input[position] === "(") {
+    position++;
+    const [coordinates, end] = parseCoordinates(input, position);
+    coordinateLists.push(coordinates);
+    position = end;
+  }
+  return [coordinateLists, position + 1];
+}
+
 function parseType(input: string, position: number): [string, number] {
   const newPosition = input.indexOf("(", position);
-  return [input.substring(position, newPosition).toLowerCase(), newPosition];
+  return [
+    input.substring(position, newPosition).toLowerCase(),
+    newPosition + 1,
+  ];
 }
-
-function parseCoordinates(input: string, position: number): [number[], number] {
-  const coordinates = [];
-  const end = input.indexOf(")", position);
-  while (position < end) {
-    let next = input.indexOf(" ", position);
-    if (next < 0 || next > end) {
-      next = end;
-    }
-    coordinates.push(parseFloat(input.substring(position, next)));
-    position = next + 1;
-  }
-  return [coordinates, position];
-}
-
-interface TypeParsers {
-  point(input: string, position: number): [Geometry, number];
-  multipoint(
-    input: string,
-    position: number,
-    tolerance: Tolerance,
-  ): [Geometry, number];
-  linestring(
-    input: string,
-    position: number,
-    tolerance: Tolerance,
-  ): [Geometry, number];
-  multilinestring(
-    input: string,
-    position: number,
-    tolerance: Tolerance,
-  ): [Geometry, number];
-  polygon(
-    input: string,
-    position: number,
-    tolerance: Tolerance,
-  ): [Geometry, number];
-  multipolygon(
-    input: string,
-    position: number,
-    tolerance: Tolerance,
-  ): [Geometry, number];
-  geometrycollection(
-    input: string,
-    position: number,
-    tolerance: Tolerance,
-  ): [Geometry, number];
-}
-
-const validatingTypeParsers: TypeParsers = {
-  point(input: string, position: number): [Geometry, number] {
-    const end = input.indexOf(")", position);
-    const coordinates = input
-      .substring(position, end)
-      .split(" ")
-      .map((s) => parseFloat(s));
-    if (coordinates.length != 2) {
-      throw new InvalidWktError(input);
-    }
-    return [Point.valueOf.apply(Point, coordinates), end + 1];
-  },
-  multipoint(
-    input: string,
-    position: number,
-    tolerance: Tolerance,
-  ): [Geometry, number] {
-    const [coordinates, next] = parseCoordinates(input, position);
-    return [GeometryCollection.valueOf(tolerance, coordinates), next];
-  },
-  linestring(input: string, position: number, tolerance): [Geometry, number] {
-    const [coordinates, next] = parseCoordinates(input, position);
-    const lineStrings = [LineString.unsafeValueOf(coordinates)];
-    const geometry = GeometryCollection.valueOf(
-      tolerance,
-      undefined,
-      lineStrings,
-    ).simplify();
-    return [geometry, next];
-  },
-  multilinestring(
-    input: string,
-    position: number,
-    tolerance: Tolerance,
-  ): [Geometry, number] {
-    const lineStrings = [];
-    while (input[position] == "(") {
-      const [coordinates, next] = parseCoordinates(input, position);
-      lineStrings.push(LineString.valueOf(coordinates));
-      position = next;
-    }
-    return [
-      GeometryCollection.valueOf(tolerance, undefined, lineStrings),
-      position + 1,
-    ];
-  },
-  polygon(
-    input: string,
-    position: number,
-    tolerance: Tolerance,
-  ): [Geometry, number] {
-    const mesh = new Mesh(tolerance);
-    while (input[position] == "(") {
-      const [coordinates, next] = parseCoordinates(input, position + 1);
-      forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
-        mesh.addLink(ax, ay, bx, by);
-      });
-      position = next;
-    }
-    const polygons = createPolygons(mesh);
-    const result = GeometryCollection.unsafeValueOf(
-      undefined,
-      undefined,
-      polygons,
-    ).simplify();
-    return [result, position + 1];
-  },
-  multipolygon(
-    input: string,
-    position: number,
-    tolerance: Tolerance,
-  ): [Geometry, number] {
-    const mesh = new Mesh(tolerance);
-    while (input[position] == "(") {
-      position++;
-      while (input[position] == "(") {
-        const [coordinates, next] = parseCoordinates(input, position);
-        forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
-          mesh.addLink(ax, ay, bx, by);
-        });
-        position = next;
-      }
-    }
-    const polygons = createPolygons(mesh);
-    const result = GeometryCollection.unsafeValueOf(
-      undefined,
-      undefined,
-      polygons,
-    ).simplify();
-    return [result, position + 1];
-  },
-  geometrycollection(
-    input: string,
-    position: number,
-    tolerance: Tolerance,
-  ): [Geometry, number] {
-    const walker = MeshPathWalker.valueOf(tolerance);
-    while (input[position] != ")") {
-      const [type, start] = parseType(input, position);
-      const [geometry, end] = unsafeTypeParsers[type](
-        input,
-        start + 1,
-        tolerance,
-      );
-      geometry.walkPath(walker);
-      position = end;
-    }
-    const [rings, linesAndPoints] = walker.getMeshes();
-    return [createGeometryCollection(rings, linesAndPoints), position + 1];
-  },
-};
-
-const unsafeTypeParsers: TypeParsers = {
-  point(input: string, position: number): [Geometry, number] {
-    let mid = input.indexOf(" ", position);
-    const x = parseFloat(input.substring(position, mid).trim());
-    mid++;
-    const end = input.indexOf(")", mid);
-    const y = parseFloat(input.substring(mid, end).trim());
-    return [Point.valueOf(x, y), end + 1];
-  },
-  multipoint(input: string, position: number): [Geometry, number] {
-    const [coordinates, next] = parseCoordinates(input, position);
-    return [GeometryCollection.unsafeValueOf(coordinates), next];
-  },
-  linestring(input: string, position: number): [Geometry, number] {
-    const [coordinates, next] = parseCoordinates(input, position);
-    return [LineString.unsafeValueOf(coordinates), next];
-  },
-  multilinestring(input: string, position: number): [Geometry, number] {
-    const lineStrings = [];
-    while (input[position] == "(") {
-      const [coordinates, next] = parseCoordinates(input, position);
-      lineStrings.push(LineString.unsafeValueOf(coordinates));
-      position = next;
-    }
-    return [
-      GeometryCollection.unsafeValueOf(undefined, lineStrings),
-      position + 1,
-    ];
-  },
-  polygon(input: string, position: number): [Geometry, number] {
-    const rings = [];
-    while (input[position] == "(") {
-      const [coordinates, next] = parseCoordinates(input, position + 1);
-      coordinates.length = coordinates.length - 2;
-      rings.push(LinearRing.unsafeValueOf(coordinates));
-      position = next;
-    }
-    const result = Polygon.unsafeValueOf(rings[0], rings.slice(1));
-    return [result, position + 1];
-  },
-  multipolygon(input: string, position: number): [Geometry, number] {
-    const polygons = [];
-    while (input[position] == "(") {
-      position++;
-      const polygon = unsafeTypeParsers.polygon(input, position, null);
-      polygons.push(polygon);
-    }
-    const result = GeometryCollection.unsafeValueOf(
-      undefined,
-      undefined,
-      polygons,
-    ).simplify();
-    return [result, position + 1];
-  },
-  geometrycollection(input: string, position: number): [Geometry, number] {
-    const coordinates = [];
-    const lineStrings = [];
-    const polygons = [];
-    while (input[position] != ")") {
-      const [type, start] = parseType(input, position);
-      const [geometry, end] = unsafeTypeParsers[type](input, start + 1, null);
-      if (geometry instanceof Point) {
-        coordinates.push(geometry.x, geometry.y);
-      } else if (geometry instanceof LineString) {
-        lineStrings.push(geometry);
-      } else if (geometry instanceof Polygon) {
-        polygons.push(geometry);
-      }
-      position = end;
-    }
-    return [
-      GeometryCollection.unsafeValueOf(coordinates, lineStrings, polygons),
-      position + 1,
-    ];
-  },
-};

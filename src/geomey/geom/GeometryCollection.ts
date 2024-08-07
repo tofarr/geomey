@@ -1,4 +1,4 @@
-import { DISJOINT, Relation, TOUCH, UNKNOWN } from "../Relation";
+import { DISJOINT, Relation, UNKNOWN } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { forEachCoordinate } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
@@ -57,7 +57,7 @@ export class GeometryCollection extends AbstractGeometry {
     return this.getBounds().getCentroid();
   }
   protected calculateBounds(): Rectangle {
-    let { points, lineStrings, polygons } = this;
+    const { points, lineStrings, polygons } = this;
     const builder = new RectangleBuilder();
     if (points) {
       builder.unionRectangle(points.getBounds());
@@ -71,7 +71,7 @@ export class GeometryCollection extends AbstractGeometry {
     return builder.build() as Rectangle;
   }
   walkPath(pathWalker: PathWalker): void {
-    let { points, lineStrings, polygons } = this;
+    const { points, lineStrings, polygons } = this;
     if (polygons) {
       polygons.walkPath(pathWalker);
     }
@@ -84,19 +84,19 @@ export class GeometryCollection extends AbstractGeometry {
   }
   toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
     const { points, lineStrings, polygons } = this;
-    const results = ["GEOMETRYCOLLECTION ("];
+    const results = ["GEOMETRYCOLLECTION("];
     if (polygons) {
       for (const polygon of polygons.polygons) {
-        results.push(polygon.toWkt(numberFormatter));
+        results.push(polygon.toWkt(numberFormatter), ",");
       }
     }
     if (lineStrings) {
       for (const lineString of lineStrings.lineStrings) {
-        results.push(lineString.toWkt(numberFormatter));
+        results.push(lineString.toWkt(numberFormatter), ",");
       }
     }
     forEachCoordinate(points.coordinates, (x, y) => {
-      results.push(pointToWkt(x, y, numberFormatter), ", ");
+      results.push(pointToWkt(x, y, numberFormatter), ",");
     });
     results.pop();
     results.push(")");
@@ -152,7 +152,7 @@ export class GeometryCollection extends AbstractGeometry {
     return new GeometryCollection(points, lineStrings, polygons);
   }
   isValid(tolerance: Tolerance): boolean {
-    let { points, lineStrings, polygons } = this;
+    const { points, lineStrings, polygons } = this;
     if (points && !points.isValid(tolerance)) {
       return false;
     }
@@ -189,7 +189,7 @@ export class GeometryCollection extends AbstractGeometry {
     if (this.getBounds().relatePoint(x, y, tolerance) == DISJOINT) {
       return DISJOINT;
     }
-    let { points, lineStrings, polygons } = this;
+    const { points, lineStrings, polygons } = this;
     let relation = UNKNOWN;
     if (points) {
       relation = points.relatePoint(x, y, tolerance);

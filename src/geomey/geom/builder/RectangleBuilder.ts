@@ -74,6 +74,6 @@ export class RectangleBuilder {
     if (minX > maxX && minY > maxY) {
       return null;
     }
-    return Rectangle.unsafeValueOf(minX, minY, maxX, maxY);
+    return new Rectangle(minX, minY, maxX, maxY);
   }
 }

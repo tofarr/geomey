@@ -6,10 +6,12 @@ import {
   forEachCoordinate,
   forEachLineSegmentCoordinates,
   forEachPointCoordinate,
+  InvalidCoordinateError,
   LineSegmentCoordinatesConsumer,
   reverse,
+  validateCoordinates,
 } from "../coordinate";
-import { NumberFormatter } from "../formatter";
+import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { Mesh } from "../mesh/Mesh";
 import { PathWalker } from "../path/PathWalker";
 import {
@@ -28,7 +30,7 @@ import {
   pointTouchesLineSegment,
 } from "./LineSegment";
 import { douglasPeucker, walkPath } from "./LineString";
-import { GeometryCollection, Point, Polygon, Rectangle } from "./";
+import { Point, Polygon, Rectangle } from "./";
 import { GeoJsonPolygon } from "../geoJson";
 
 /**
@@ -41,12 +43,13 @@ export class LinearRing extends AbstractGeometry {
   private convexRings: ReadonlyArray<LinearRing>;
   private area?: number;
 
-  private constructor(coordinates: ReadonlyArray<number>) {
+  constructor(coordinates: ReadonlyArray<number>) {
     super();
+    if (coordinates.length < 6) {
+      throw new InvalidCoordinateError(coordinates);
+    }
+    validateCoordinates(...coordinates);
     this.coordinates = coordinates;
-  }
-  static valueOf(coordinates: ReadonlyArray<number>): LinearRing {
-    return new LinearRing(coordinates);
   }
   static fromMesh(mesh: Mesh): LinearRing[] {
     const results = [];
@@ -76,10 +79,7 @@ export class LinearRing extends AbstractGeometry {
     walkPathReverse(this.coordinates, pathWalker);
     pathWalker.closePath();
   }
-  toWkt(numberFormatter?: NumberFormatter): string {
-    if (!this.coordinates.length) {
-      return "EMPTY";
-    }
+  toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
     const result = ["POLYGON("];
     ringToWkt(this.coordinates, numberFormatter, false, result);
     result.push(")");
@@ -119,7 +119,7 @@ export class LinearRing extends AbstractGeometry {
   getPolygon(): Polygon {
     let { polygon } = this;
     if (!polygon) {
-      this.polygon = polygon = Polygon.valueOf(this);
+      this.polygon = polygon = new Polygon(this);
     }
     return polygon;
   }
@@ -184,7 +184,7 @@ export class LinearRing extends AbstractGeometry {
     const minIndex = this.getMinIndex();
     if (minIndex) {
       const c = coordinates.slice(minIndex);
-      c.push.apply(c, coordinates.slice(0, minIndex));
+      c.push(...coordinates.slice(0, minIndex));
       coordinates = c;
     }
     const area = this.getArea();

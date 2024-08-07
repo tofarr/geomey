@@ -95,7 +95,7 @@ export class LineSegment implements Geometry {
     pathWalker.lineTo(this.bx, this.by);
   }
   toWkt(f: NumberFormatter = NUMBER_FORMATTER): string {
-    return `LINESTRING (${f(this.ax)} ${f(this.ay)}, ${f(this.bx)} ${f(
+    return `LINESTRING(${f(this.ax)} ${f(this.ay)}, ${f(this.bx)} ${f(
       this.by,
     )})`;
   }

@@ -7,17 +7,24 @@ import {
 import { Mesh } from "../../mesh/Mesh";
 import { Tolerance } from "../../Tolerance";
 import {
-  createGeometryCollection,
-  createPolygons,
   Geometry,
   GeometryCollection,
   LineString,
+  MultiLineString,
+  MultiPoint,
   Point,
-} from "../";
+} from "..";
+import { MeshPathWalker } from "../../mesh/MeshPathWalker";
+import { DefaultGeometryFactory } from "./DefaultGeometryFactory";
 
-export class ValidatingGeometryFactory implements GeometryFactory {
+export class SanitizingGeometryFactory implements GeometryFactory {
   readonly tolerance: Tolerance;
+  readonly factory: GeometryFactory;
 
+  constructor(tolerance: Tolerance, factory?: GeometryFactory) {
+    this.tolerance = tolerance;
+    this.factory = factory || new DefaultGeometryFactory();
+  }
   createPoint(x: number, y: number): Point {
     const { tolerance } = this;
     return Point.valueOf(tolerance.normalize(x), tolerance.normalize(y));
@@ -28,77 +35,55 @@ export class ValidatingGeometryFactory implements GeometryFactory {
       mesh.addVertex(x, y);
     });
     const coordinates = mesh.getCoordinates();
-    return GeometryCollection.unsafeValueOf(coordinates).simplify();
+    return new MultiPoint(coordinates).normalize();
   }
   createLineString(coordinates: Coordinates): Geometry {
     const mesh = new Mesh(this.tolerance);
     addLineStringToMesh(coordinates, mesh);
     const lineStrings = mesh
       .getLineStrings()
-      .map((coordinates) => LineString.unsafeValueOf(coordinates));
-    return GeometryCollection.unsafeValueOf(undefined, lineStrings).simplify();
+      .map((coordinates) => new LineString(coordinates));
+    return new MultiLineString(lineStrings).normalize();
   }
   createMultiLineString(lineStrings: ReadonlyArray<Coordinates>): Geometry {
     const mesh = new Mesh(this.tolerance);
     addLineStringsToMesh(lineStrings, mesh);
     const normalizedLineStrings = mesh
       .getLineStrings()
-      .map((coordinates) => LineString.unsafeValueOf(coordinates));
-    return GeometryCollection.unsafeValueOf(
-      undefined,
-      normalizedLineStrings,
-    ).simplify();
+      .map((coordinates) => new LineString(coordinates));
+    return new MultiLineString(normalizedLineStrings).normalize();
   }
   createPolygon(
     shell: Coordinates,
     holes?: ReadonlyArray<Coordinates>,
   ): Geometry {
-    const mesh = new Mesh(this.tolerance);
-    addLineStringToMesh(shell, mesh);
-    if (holes) {
-      addLineStringsToMesh(holes, mesh);
-    }
-    const polygons = createPolygons(mesh);
-    return GeometryCollection.unsafeValueOf([], [], polygons).simplify();
+    const unsanitized = this.factory.createPolygon(shell, holes);
+    return this.sanitize(unsanitized);
   }
   createMultiPolygon(
     polygons: ReadonlyArray<ReadonlyArray<Coordinates>>,
   ): Geometry {
-    const mesh = new Mesh(this.tolerance);
-    for (const polygon of polygons) {
-      addLineStringsToMesh(polygon, mesh);
-    }
-    const normalizedPolygons = createPolygons(mesh);
-    return GeometryCollection.unsafeValueOf(
-      [],
-      [],
-      normalizedPolygons,
-    ).simplify();
+    const unsanitized = this.factory.createMultiPolygon(polygons);
+    return this.sanitize(unsanitized);
   }
   createGeometryCollection(
     points?: Coordinates,
     lineStrings?: ReadonlyArray<Coordinates>,
     polygons?: ReadonlyArray<ReadonlyArray<Coordinates>>,
   ): Geometry {
-    const linesAndPoints = new Mesh(this.tolerance);
-    if (points) {
-      forEachCoordinate(points, (x, y) => {
-        linesAndPoints.addVertex(x, y);
-      });
-    }
-    if (lineStrings) {
-      addLineStringsToMesh(lineStrings, linesAndPoints);
-    }
-    if (polygons) {
-      for (const polygon of polygons) {
-        addLineStringsToMesh(polygon, linesAndPoints);
-      }
-    }
-    const rings = new Mesh(this.tolerance);
-    for (const polygon of polygons) {
-      addLineStringsToMesh(polygon, rings);
-    }
-    return createGeometryCollection(rings, linesAndPoints).simplify();
+    const unsanitized = this.factory.createGeometryCollection(
+      points,
+      lineStrings,
+      polygons,
+    );
+    return this.sanitize(unsanitized);
+  }
+
+  sanitize(unsanitized: Geometry): Geometry {
+    const pathWalker = MeshPathWalker.valueOf(this.tolerance);
+    unsanitized.walkPath(pathWalker);
+    const [rings, linesAndPoints] = pathWalker.getMeshes();
+    return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
   }
 }
 

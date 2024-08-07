@@ -60,22 +60,19 @@ export class Mesh {
     this.vertices.set(key, vertex);
 
     // If the vertex lies on an existing link, break the link and add the vertex in the middle
-    this.links.findIntersecting(
-      Rectangle.unsafeValueOf(x, y, x, y),
-      ({ a, b }) => {
-        const { x: ax, y: ay } = a;
-        const { x: bx, y: by } = b;
-        if ((x == ax && y == ay) || (x == bx && y == by)) {
-          return;
-        }
-        if (pointTouchesLineSegment(x, y, ax, ay, bx, by, tolerance)) {
-          this.removeLink(ax, ay, bx, by);
-          this.addLinkInternal(ax, ay, x, y);
-          this.addLinkInternal(bx, by, x, y);
-          return false;
-        }
-      },
-    );
+    this.links.findIntersecting(new Rectangle(x, y, x, y), ({ a, b }) => {
+      const { x: ax, y: ay } = a;
+      const { x: bx, y: by } = b;
+      if ((x == ax && y == ay) || (x == bx && y == by)) {
+        return;
+      }
+      if (pointTouchesLineSegment(x, y, ax, ay, bx, by, tolerance)) {
+        this.removeLink(ax, ay, bx, by);
+        this.addLinkInternal(ax, ay, x, y);
+        this.addLinkInternal(bx, by, x, y);
+        return false;
+      }
+    });
     return vertex;
   }
   getVertex(x: number, y: number): Vertex | null {
@@ -386,11 +383,7 @@ export class Mesh {
   forEachLineString(consumer: LineStringCoordinatesConsumer): boolean {
     const tolerance = this.tolerance.tolerance;
     const processed = new Set<string>();
-    const vertices = [];
-    this.forEachVertex((vertex) => {
-      vertices.push(vertex);
-    });
-    vertices.sort((a, b) => comparePointsForSort(a.x, a.y, b.x, b.y));
+    const vertices = this.getVertices();
     for (const a of vertices) {
       if (a.links.length !== 1) {
         continue;

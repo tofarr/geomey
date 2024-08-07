@@ -298,7 +298,6 @@ export function angle(ax: number, ay: number, bx: number, by: number) {
 }
 
 export function reverse(coordinates: Coordinates): number[] {
-  const { length } = coordinates;
   const reversed = [];
   let i = coordinates.length;
   while (i) {

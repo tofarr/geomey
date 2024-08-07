@@ -8,7 +8,7 @@ import {
   Rectangle,
   ringToWkt,
 } from ".";
-import { NumberFormatter } from "../formatter";
+import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { GeoJsonMultiPolygon } from "../geoJson";
 import { Mesh } from "../mesh/Mesh";
 import { MeshPathWalker } from "../mesh/MeshPathWalker";
@@ -42,7 +42,7 @@ export class MultiPolygon extends AbstractGeometry {
     if (polygons.find((polygon) => !polygon.isNormalized())) {
       return false;
     }
-    for (let i = polygons.length - 2; i; i--) {
+    for (let i = polygons.length - 2; i >= 0; i--) {
       if (comparePolygonsForSort(polygons[i], polygons[i + 1]) > 0) {
         return false;
       }
@@ -71,8 +71,8 @@ export class MultiPolygon extends AbstractGeometry {
       polygon.walkPath(pathWalker);
     }
   }
-  toWkt(numberFormatter?: NumberFormatter): string {
-    const result = ["MULTIPOLYGON ("];
+  toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
+    const result = ["MULTIPOLYGON("];
     for (const polygon of this.polygons) {
       result.push("(");
       ringToWkt(polygon.shell.coordinates, numberFormatter, false, result);

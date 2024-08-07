@@ -26,9 +26,7 @@ import {
   Point,
   Rectangle,
   compareLinearRingsForSort,
-  douglasPeucker,
   forEachRingLineSegmentCoordinates,
-  MultiPolygon,
 } from "./";
 import { PolygonBuilder } from "./builder/PolygonBuilder";
 
@@ -45,16 +43,10 @@ export class Polygon extends AbstractGeometry {
   readonly shell: LinearRing;
   readonly holes: ReadonlyArray<LinearRing>;
 
-  private constructor(shell: LinearRing, holes?: ReadonlyArray<LinearRing>) {
+  constructor(shell: LinearRing, holes?: ReadonlyArray<LinearRing>) {
     super();
     this.shell = shell;
     this.holes = holes || NO_HOLES;
-  }
-  static valueOf(
-    shell: LinearRing,
-    holes?: ReadonlyArray<LinearRing>,
-  ): Polygon {
-    return new Polygon(shell, holes);
   }
   static fromMesh(mesh: Mesh): Polygon[] {
     const rings = LinearRing.fromMesh(mesh);
@@ -84,11 +76,11 @@ export class Polygon extends AbstractGeometry {
     }
   }
   toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
-    const result = ["POLYGON ("];
+    const result = ["POLYGON("];
     ringToWkt(this.shell.coordinates, numberFormatter, false, result);
     for (const hole of this.holes) {
       result.push(", ");
-      ringToWkt(this.shell.coordinates, numberFormatter, false, result);
+      ringToWkt(hole.coordinates, numberFormatter, true, result);
     }
     result.push(")");
     return result.join("");
@@ -187,7 +179,7 @@ export class Polygon extends AbstractGeometry {
     return new Polygon(shell, holes);
   }
   generalize(tolerance: Tolerance): Geometry {
-    let shell: Geometry = this.shell;
+    const shell: Geometry = this.shell;
     if (shell.getBounds().isCollapsible(tolerance)) {
       return this.getCentroid();
     }
@@ -235,7 +227,7 @@ export class Polygon extends AbstractGeometry {
 function createPolygon(builder: PolygonBuilder, results: Polygon[]) {
   const { children } = builder;
   results.push(
-    Polygon.valueOf(
+    new Polygon(
       builder.shell,
       children.map((c) => c.shell),
     ),

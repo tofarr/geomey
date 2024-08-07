@@ -104,6 +104,7 @@ export class Triangle extends AbstractGeometry {
       comparePointsForSort(ax, ay, cx, cy) > 0
     ) {
       [ax, ay, bx, by, cx, cy] = [bx, by, cx, cy, ax, ay];
+      updated = true;
     }
     return updated ? new Triangle(ax, ay, bx, by, cx, cy) : this;
   }

@@ -8,7 +8,7 @@ import {
   Rectangle,
 } from ".";
 import { forEachCoordinate } from "../coordinate";
-import { NumberFormatter } from "../formatter";
+import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { GeoJsonMultiLineString } from "../geoJson";
 import { Mesh } from "../mesh/Mesh";
 import { MeshPathWalker } from "../mesh/MeshPathWalker";
@@ -49,7 +49,7 @@ export class MultiLineString extends AbstractGeometry {
     if (lineStrings.find((lineString) => !lineString.isNormalized())) {
       return false;
     }
-    for (let i = lineStrings.length - 2; i; i--) {
+    for (let i = lineStrings.length - 2; i >= 0; i--) {
       if (compareLineStringsForSort(lineStrings[i], lineStrings[i + 1]) > 0) {
         return false;
       }
@@ -74,11 +74,11 @@ export class MultiLineString extends AbstractGeometry {
       lineString.walkPath(pathWalker);
     }
   }
-  toWkt(numberFormatter?: NumberFormatter): string {
-    const result = ["MULTILINESTRING ("];
+  toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
+    const result = ["MULTILINESTRING("];
     for (const lineString of this.lineStrings) {
       coordinatesToWkt(lineString.coordinates, numberFormatter, result);
-      result.push(", ");
+      result.push(",");
     }
     result.pop();
     result.push(")");

@@ -104,12 +104,12 @@ export class Rectangle implements Geometry {
   getPolygon(): Polygon {
     let { polygon } = this;
     if (!polygon) {
-      const linearRing = LinearRing.valueOf(this.toCoordinates());
-      this.polygon = polygon = Polygon.valueOf(linearRing);
+      const linearRing = new LinearRing(this.toCoordinates());
+      this.polygon = polygon = new Polygon(linearRing);
     }
     return polygon;
   }
-  isValid(tolerance: Tolerance): boolean {
+  isValid(): boolean {
     return true;
   }
   isNormalized(): boolean {

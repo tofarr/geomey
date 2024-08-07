@@ -1,10 +1,6 @@
 import { DISJOINT, Relation, TOUCH, flipAB } from "../Relation";
 import { Tolerance } from "../Tolerance";
-import {
-  coordinateMatch,
-  isNaNOrInfinite,
-  validateCoordinates,
-} from "../coordinate";
+import { coordinateMatch, validateCoordinates } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { GeoJsonPoint } from "../geoJson";
 import { Mesh } from "../mesh/Mesh";
@@ -121,5 +117,5 @@ export function pointToWkt(
   y: number,
   numberFormatter: NumberFormatter = NUMBER_FORMATTER,
 ): string {
-  return `POINT (${numberFormatter(x)} ${numberFormatter(y)})`;
+  return `POINT(${numberFormatter(x)} ${numberFormatter(y)})`;
 }

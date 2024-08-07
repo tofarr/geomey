@@ -13,11 +13,10 @@ import {
   forEachCoordinate,
   forEachLineSegmentCoordinates,
   InvalidCoordinateError,
-  isNaNOrInfinite,
   sortCoordinates,
   validateCoordinates,
 } from "../coordinate";
-import { NumberFormatter } from "../formatter";
+import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { GeoJsonMultiPoint } from "../geoJson";
 import { Mesh } from "../mesh/Mesh";
 import { PathWalker } from "../path/PathWalker";
@@ -25,7 +24,6 @@ import {
   A_OUTSIDE_B,
   B_OUTSIDE_A,
   DISJOINT,
-  flipAB,
   Relation,
   TOUCH,
   UNKNOWN,
@@ -41,16 +39,16 @@ export class MultiPoint extends AbstractGeometry {
 
   constructor(coordinates: Coordinates) {
     super();
-    validateCoordinates(...coordinates);
     if (!coordinates.length) {
       throw new InvalidCoordinateError(coordinates);
     }
+    validateCoordinates(...coordinates);
     this.coordinates = coordinates;
   }
   static fromMesh(mesh: Mesh): MultiPoint | null {
     const coordinates = [];
     mesh.forEachVertex((vertex) => {
-      if (!vertex.links) {
+      if (!vertex.links.length) {
         coordinates.push(vertex.x, vertex.y);
       }
     });
@@ -68,7 +66,7 @@ export class MultiPoint extends AbstractGeometry {
       pathWalker.lineTo(x, y);
     });
   }
-  toWkt(numberFormatter?: NumberFormatter): string {
+  toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
     const result = ["MULTIPOINT"];
     coordinatesToWkt(this.coordinates, numberFormatter, result);
     return result.join("");
@@ -101,9 +99,6 @@ export class MultiPoint extends AbstractGeometry {
     return new MultiPoint(coordinates);
   }
   isValid(tolerance: Tolerance): boolean {
-    if (!this.coordinates.length) {
-      return true;
-    }
     const multiPoint = this.normalize() as MultiPoint;
     return forEachLineSegmentCoordinates(
       multiPoint.coordinates,
