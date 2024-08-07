@@ -1,10 +1,10 @@
 import {
   A_OUTSIDE_B,
+  B_OUTSIDE_A,
   DISJOINT,
   flipAB,
   Relation,
   TOUCH,
-  UNKNOWN,
 } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import {
@@ -38,20 +38,17 @@ export class LineSegment implements Geometry {
   private centroid?: Point;
   private bounds?: Rectangle;
 
-  private constructor(ax: number, ay: number, bx: number, by: number) {
-    this.ax = ax;
-    this.ay = ay;
-    this.bx = bx;
-    this.by = by;
-  }
-  static valueOf(ax: number, ay: number, bx: number, by: number): LineSegment {
+  constructor(ax: number, ay: number, bx: number, by: number) {
     if (
       isNaNOrInfinite(ax, ay, bx, by) ||
       !comparePointsForSort(ax, ay, bx, by)
     ) {
       throw new InvalidCoordinateError([ax, ay, bx, by]);
     }
-    return new LineSegment(ax, ay, bx, by);
+    this.ax = ax;
+    this.ay = ay;
+    this.bx = bx;
+    this.by = by;
   }
   getCentroid(): Point {
     let { centroid } = this;
@@ -137,7 +134,7 @@ export class LineSegment implements Geometry {
     if (ax == bx && ay == by) {
       return Point.valueOf(ax, ay);
     }
-    return LineSegment.valueOf(ax, ay, bx, by);
+    return new LineSegment(ax, ay, bx, by);
   }
   generalize(tolerance: Tolerance): LineSegment | Point {
     if (this.getBounds().isCollapsible(tolerance)) {
@@ -427,19 +424,13 @@ export function relatePointToLineSegment(
   by: number,
   tolerance: Tolerance,
 ): Relation {
-  let result = UNKNOWN;
+  let result = A_OUTSIDE_B;
   if (pointTouchesLineSegment(x, y, ax, ay, bx, by, tolerance)) {
     result |= TOUCH;
+  } else {
+    result |= B_OUTSIDE_A;
   }
-  if (
-    !(
-      coordinateMatch(ax, ay, x, y, tolerance) &&
-      coordinateMatch(bx, by, x, y, tolerance)
-    )
-  ) {
-    result |= A_OUTSIDE_B;
-  }
-  return result;
+  return result as Relation;
 }
 
 export function relateLineSegments(
@@ -453,7 +444,23 @@ export function relateLineSegments(
   jby: number,
   tolerance: Tolerance,
 ): Relation {
-  return ((intersectionLineSegment(
+  const iaj = relatePointToLineSegment(iax, iay, jax, jay, jbx, jby, tolerance);
+  const ibj = relatePointToLineSegment(ibx, iby, jax, jay, jbx, jby, tolerance);
+  const jai = relatePointToLineSegment(jax, jay, iax, iay, ibx, iby, tolerance);
+  const jbi = relatePointToLineSegment(jbx, jby, iax, iay, ibx, iby, tolerance);
+  if (iaj & TOUCH && ibj & TOUCH) {
+    if (jai & TOUCH && jbi & TOUCH) {
+      return TOUCH;
+    }
+    return (TOUCH | B_OUTSIDE_A) as Relation;
+  }
+  if (jai & TOUCH && jbi & TOUCH) {
+    return (TOUCH | A_OUTSIDE_B) as Relation;
+  }
+  if (iaj & TOUCH || ibj & TOUCH || jai & TOUCH || jbi & TOUCH) {
+    return (A_OUTSIDE_B | B_OUTSIDE_A | TOUCH) as Relation;
+  }
+  const intersection = intersectionLineSegment(
     iax,
     iay,
     ibx,
@@ -463,23 +470,11 @@ export function relateLineSegments(
     jbx,
     jby,
     tolerance,
-  )
-    ? TOUCH
-    : UNKNOWN) |
-    relatePointToLineSegment(iax, iay, jax, jay, jbx, jby, tolerance) |
-    relatePointToLineSegment(ibx, iby, jax, jay, jbx, jby, tolerance) |
-    flipAB(
-      (relatePointToLineSegment(jax, jay, iax, iay, ibx, iby, tolerance) |
-        relatePointToLineSegment(
-          jbx,
-          jby,
-          iax,
-          iay,
-          ibx,
-          iby,
-          tolerance,
-        )) as Relation,
-    )) as Relation;
+  );
+  if (!intersection) {
+    return DISJOINT;
+  }
+  return (A_OUTSIDE_B | B_OUTSIDE_A | TOUCH) as Relation;
 }
 
 export function getLength(ax: number, ay: number, bx: number, by: number) {

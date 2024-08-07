@@ -150,7 +150,7 @@ function parseCoordinates(input: string, position: number): [number[], number] {
     .split(" ")
     .map((n) => parseFloat(n));
   if (coordinates.length & 1) {
-    throw new InvalidWktError(input)
+    throw new InvalidWktError(input);
   }
   return [coordinates, end + 1];
 }

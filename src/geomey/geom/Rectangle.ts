@@ -121,10 +121,10 @@ export class Rectangle implements Geometry {
       if (minY === maxY) {
         return this.getCentroid();
       }
-      return LineSegment.valueOf(minX, minY, minX, maxY);
+      return new LineSegment(minX, minY, minX, maxY);
     }
     if (minY === maxY) {
-      return LineSegment.valueOf(minX, minY, maxX, maxY);
+      return new LineSegment(minX, minY, maxX, maxY);
     }
     return this;
   }
