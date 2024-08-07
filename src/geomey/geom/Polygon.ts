@@ -198,7 +198,7 @@ export class Polygon extends AbstractGeometry {
   }
   relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
     const relation = this.shell.relatePoint(x, y, tolerance);
-    if (relation !== B_INSIDE_A) {
+    if (!(relation & B_INSIDE_A)) {
       return relation;
     }
     for (const hole of this.holes) {
@@ -206,7 +206,7 @@ export class Polygon extends AbstractGeometry {
       if (holeRelation & TOUCH) {
         return (TOUCH | A_OUTSIDE_B) as Relation;
       }
-      if (holeRelation == B_INSIDE_A) {
+      if (holeRelation & B_INSIDE_A) {
         return (A_OUTSIDE_B | B_OUTSIDE_A) as Relation; // inside a hole is outside!
       }
     }

@@ -9,6 +9,8 @@ import { forEachCoordinate } from "../coordinate";
 import { MultiLineString } from "./MultiLineString";
 import { LinearRing } from "./LinearRing";
 import { Polygon } from "./Polygon";
+import { MultiPolygon } from "./MultiPolygon";
+import { AffineTransformer } from "../transformer/AffineTransformer";
 
 const expect = chai.expect;
 const TOLERANCE = new Tolerance(0.05);
@@ -323,4 +325,49 @@ export const relateSpec = () => {
     expect(a.relate(b, TOLERANCE)).to.equal(DISJOINT);
     expect(b.relate(a, TOLERANCE)).to.equal(DISJOINT);
   });
+
+  it("multipolygon relate Point", () => {
+    // nested donut
+    const a = new MultiPolygon([
+        new Polygon(
+            new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]),
+            [
+                new LinearRing([10, 10, 90, 10, 90, 90, 10, 90])
+            ]
+        ),
+        new Polygon(
+            new LinearRing([20, 20, 80, 20, 80, 80, 20, 80]),
+            [
+                new LinearRing([30, 30, 70, 30, 70, 70, 30, 70])
+            ]
+        )
+    ]);
+    const b = Point.valueOf(50, 50)
+    expect(a.relate(b, TOLERANCE)).to.equal(DISJOINT);
+    expect(b.relate(a, TOLERANCE)).to.equal(DISJOINT);
+    const c = Point.valueOf(5, 5)
+    expect(a.relate(c, TOLERANCE)).to.equal(A_OUTSIDE_B | B_INSIDE_A);
+    expect(c.relate(a, TOLERANCE)).to.equal(A_INSIDE_B | B_OUTSIDE_A);
+  })
+
+  it("multipolygon intersects multipolygon", () => {
+    // nested donut
+    const a = new MultiPolygon([
+        new Polygon(
+            new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]),
+            [
+                new LinearRing([10, 10, 90, 10, 90, 90, 10, 90])
+            ]
+        ),
+        new Polygon(
+            new LinearRing([20, 20, 80, 20, 80, 80, 20, 80]),
+            [
+                new LinearRing([30, 30, 70, 30, 70, 70, 30, 70])
+            ]
+        )
+    ]);
+    const b = a.transform(AffineTransformer.IDENTITY.translate(50, 50))
+    expect(a.relate(b, TOLERANCE)).to.equal(ALL);
+    expect(b.relate(a, TOLERANCE)).to.equal(ALL);
+  })
 };

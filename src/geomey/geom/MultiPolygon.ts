@@ -14,7 +14,7 @@ import { Mesh } from "../mesh/Mesh";
 import { MeshPathWalker } from "../mesh/MeshPathWalker";
 import { generalize } from "../mesh/op/generalize";
 import { PathWalker } from "../path/PathWalker";
-import { A_OUTSIDE_B, B_INSIDE_A, Relation, TOUCH } from "../Relation";
+import { A_OUTSIDE_B, B_INSIDE_A, DISJOINT, Relation, TOUCH } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
 import { RectangleBuilder } from "./builder/RectangleBuilder";
@@ -129,18 +129,12 @@ export class MultiPolygon extends AbstractGeometry {
     return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
   }
   relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
-    let inside = false;
-    let result = A_OUTSIDE_B;
     for (const polygon of this.polygons) {
       const relation = polygon.relatePoint(x, y, tolerance);
-      result |= relation & TOUCH;
-      if (relation & B_INSIDE_A) {
-        inside = !inside;
+      if (relation != DISJOINT) {
+        return relation
       }
     }
-    if (inside) {
-      result |= B_INSIDE_A;
-    }
-    return result;
+    return DISJOINT;
   }
 }

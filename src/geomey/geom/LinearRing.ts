@@ -336,7 +336,7 @@ export function relateRingToPoint(
   if (touch) {
     return (TOUCH | A_OUTSIDE_B) as Relation;
   }
-  return inside ? B_INSIDE_A : DISJOINT;
+  return inside ? (B_INSIDE_A | A_OUTSIDE_B) as Relation : DISJOINT;
 }
 
 export function forEachAngle(

@@ -7,163 +7,85 @@ const SCALE = 2;
 const SHEAR = 4;
 
 /**
- * Class representing an affine transfomrm. Different to the java affine
- * transform in that transforms are always applied in forward order, and
- * provides a fluent interface.
+ * Class representing an affine transfomrm.
  *
  * @author tofar
  */
 export class AffineTransformer implements Transformer {
-  private static identity: AffineTransformer;
-  readonly scaleX: number;
-  readonly shearX: number;
-  readonly shearY: number;
-  readonly scaleY: number;
-  readonly translateX: number;
-  readonly translateY: number;
-  readonly mode: number;
+  static readonly IDENTITY = new AffineTransformer(1, 0, 0, 0, 1, 0);
+  readonly m00: number
+  readonly m10: number
+  readonly m20: number
+  readonly m01: number
+  readonly m11: number
+  readonly m21: number
 
-  private constructor(
-    scaleX: number,
-    shearX: number,
-    shearY: number,
-    scaleY: number,
-    translateX: number,
-    translateY: number,
-    mode: number,
+  constructor(
+    m00: number,
+    m10: number,
+    m20: number,
+    m01: number,
+    m11: number,
+    m21: number,
   ) {
-    this.scaleX = scaleX;
-    this.shearX = shearX;
-    this.shearY = shearY;
-    this.scaleY = scaleY;
-    this.translateX = translateX;
-    this.translateY = translateY;
-    this.mode = mode;
-  }
-  static getIdentity(): AffineTransformer {
-    let { identity } = AffineTransformer;
-    if (!identity) {
-      AffineTransformer.identity = identity = new AffineTransformer(
-        1,
-        0,
-        0,
-        1,
-        0,
-        0,
-        NO_OP,
-      );
-    }
-    return identity;
-  }
-  static valueOf(
-    scaleX: number,
-    shearX: number,
-    shearY: number,
-    scaleY: number,
-    translateX: number,
-    translateY: number,
-  ): AffineTransformer {
     if (
-      isNaNOrInfinite(scaleX, shearX, translateX, shearY, scaleY, translateY)
+      isNaNOrInfinite(m00, m10, m20, m01, m11, m21)
     ) {
       throw new Error(
-        `Invalid transform (${scaleX}, ${shearX}, ${translateX}, ${shearY}, ${scaleY}, ${translateY})`,
+        `Invalid transform (${m00}, ${m10}, ${m20}, ${m01}, ${m11}, ${m21})`,
       );
     }
-    const mode = calculateMode(
-      scaleX,
-      shearX,
-      shearY,
-      scaleY,
-      translateX,
-      translateY,
-    );
-    return mode == NO_OP
-      ? this.getIdentity()
-      : new AffineTransformer(
-          scaleX,
-          shearX,
-          shearY,
-          scaleY,
-          translateX,
-          translateY,
-          mode,
-        );
+    this.m00 = m00;
+    this.m10 = m10;
+    this.m20 = m20;
+    this.m01 = m01;
+    this.m11 = m11;
+    this.m21 = m21;
   }
   getInverse(): AffineTransformer {
-    const { scaleX, scaleY, shearX, shearY, translateX, translateY, mode } =
-      this;
-    const det = scaleX * scaleY - shearX * shearY;
+    const { m00, m10, m20, m01, m11, m21 } = this
+    const det = m00 * m11 - m10 * m01;
     return new AffineTransformer(
-      scaleY / det,
-      -shearX / det,
-      -shearY / det,
-      scaleX / det,
-      (shearX * translateY - scaleY * translateX) / det,
-      (shearY * translateX - scaleX * translateY) / det,
-      mode,
+      m11 / det,
+      -m01 / det,
+      (m10 * m21 - m20 * m11) / det,
+      -m10 / det,
+      m00 / det,
+      (-m00 * m21 + m01 * m20) / det,
     );
   }
   transform(x: number, y: number): [number, number] {
     return this.transformAll([x, y]) as [number, number];
   }
   transformAll(coordinates: ReadonlyArray<number>): ReadonlyArray<number> {
-    const { scaleX, scaleY, shearX, shearY, translateX, translateY, mode } =
+    const { m00, m10, m20, m01, m11, m21 } = this
       this;
-    if (mode === NO_OP) {
-      return coordinates.slice();
-    }
     const result = [];
     forEachCoordinate(coordinates, (x, y) => {
-      switch (mode) {
-        case SCALE | SHEAR:
-          result.push(scaleX * x + shearX * y, shearY * x + scaleY * y);
-          break;
-        case SCALE | TRANSLATE:
-          result.push(scaleX * x + translateX, scaleY * y + translateY);
-          return;
-        case SCALE:
-          result.push(scaleX * x, scaleY * y);
-          return;
-        case SHEAR | TRANSLATE:
-          result.push(x + shearX * y + translateX, y + shearY * x + translateY);
-          return;
-        case SHEAR:
-          result.push(x + shearX * y, y + shearY * x);
-          return;
-        case TRANSLATE:
-          result.push(x + translateX, y + translateY);
-          return;
-        default: // apply all
-          result.push(
-            scaleX * x + shearX * y + translateX,
-            shearY * x + scaleY * y + translateY,
-          );
-      }
+      result.push(
+        m00 * x + m10 * y + m20,
+        m01 * x + m11 * y + m21,
+      );
     });
+    return result
   }
-  toArray(): number[] {
-    const { scaleX, scaleY, shearX, shearY, translateX, translateY } = this;
-    return [scaleX, shearX, shearY, scaleY, translateX, translateY];
-  }
-
   add(
-    nScaleX: number,
-    nShearX: number,
-    nShearY: number,
-    nScaleY: number,
-    nTranslateX: number,
-    nTranslateY: number,
+    n00: number,
+    n10: number,
+    n20: number,
+    n01: number,
+    n11: number,
+    n21: number,
   ): AffineTransformer {
-    const { scaleX, shearX, shearY, scaleY, translateX, translateY } = this;
-    return AffineTransformer.valueOf(
-      nScaleX * scaleX + nShearX * shearY,
-      nShearX * shearX + nShearX * scaleY,
-      nShearY * scaleX + scaleY * shearY,
-      nScaleY * shearX + scaleY * scaleY,
-      nTranslateX * translateX + nShearX * translateY + translateX,
-      nTranslateY * translateX + scaleY * translateY + translateY,
-    );
+    const { m00, m10, m20, m01, m11, m21 } = this
+    return new AffineTransformer(
+      n00 * m00 + n10 * m01 + n20 * m20,
+      n00 * m10 + n10 * m11,
+      n00 * m20 + n10 * m21 + n20,
+      n01 * m00 + n11 * m01 + n21 * m20,
+      n01 * m10 + n11 * m11,
+      n01 * m20 + n11 * m21 + n21,
+    )
   }
   scale(scaleX: number, scaleY?: number): AffineTransformer {
     if (scaleY == null) {
@@ -172,7 +94,7 @@ export class AffineTransformer implements Transformer {
     if (isNaNOrInfinite(scaleX, scaleY) || !scaleX || !scaleY) {
       throw new Error(`Invalid transform (${scaleX}, ${scaleY})`);
     }
-    return this.add(scaleX, 0, 0, scaleY, 0, 0);
+    return this.add(scaleX, 0, 0, 0, scaleY, 0);
   }
   scaleAround(
     scale: number,
@@ -218,34 +140,13 @@ export class AffineTransformer implements Transformer {
     if (originX || originY) {
       result = result.translate(-originX, -originY);
     }
-    result = result.add(cos, -sin, sin, cos, 0, 0);
+    result = result.add(cos, -sin, 0, sin, cos, 0);
     if (originX || originY) {
       result = result.translate(originX, originY);
     }
     return result;
   }
   translate(x: number, y: number): AffineTransformer {
-    return this.add(1, 0, 0, 1, x || 0, y || 0);
+    return this.add(1, 0, x, 0, 1, y);
   }
-}
-
-function calculateMode(
-  scaleX: number,
-  shearX: number,
-  shearY: number,
-  scaleY: number,
-  translateX: number,
-  translateY: number,
-): number {
-  let ret = NO_OP;
-  if (translateX != 0 || translateY != 0) {
-    ret |= TRANSLATE;
-  }
-  if (!(scaleX == 1 && scaleY == 1)) {
-    ret |= SCALE;
-  }
-  if (shearX != 0 || shearY != 0) {
-    ret |= SHEAR;
-  }
-  return ret;
 }
