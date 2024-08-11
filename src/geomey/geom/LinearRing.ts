@@ -95,27 +95,7 @@ export class LinearRing extends AbstractGeometry {
     };
   }
   isConvex(): boolean {
-    return this.getConvexRings().length > 1;
-  }
-  getConvexRings(): ReadonlyArray<LinearRing> {
-    let { convexRings } = this;
-    if (!convexRings) {
-      const convexRingsCoordinates = [];
-      splitToConvex(this.coordinates, convexRingsCoordinates);
-      if (convexRingsCoordinates.length === 1) {
-        convexRings = [this];
-      } else {
-        convexRings = convexRingsCoordinates.map((coordinates) => {
-          const convexRing = new LinearRing(
-            coordinates,
-          ).normalize() as LinearRing;
-          convexRing.convexRings = [convexRing];
-          return convexRing;
-        });
-      }
-      this.convexRings = convexRings;
-    }
-    return convexRings;
+    return isConvex(this.coordinates)
   }
   getPolygon(): Polygon {
     let { polygon } = this;
@@ -368,7 +348,7 @@ export function forEachAngle(
       bx = cx;
       by = cy;
     },
-    1,
+    2,
     length >> 1,
   );
 }
@@ -390,80 +370,6 @@ export function isConvex(coordinates: ReadonlyArray<number>): boolean {
     },
   );
   return result;
-}
-
-export function splitToConvex(
-  coordinates: ReadonlyArray<number>,
-  result: ReadonlyArray<number>[],
-) {
-  const splitStart = getSplitStart(coordinates);
-  if (splitStart == null) {
-    result.push(coordinates);
-    return;
-  }
-  let end = getSplitEnd(coordinates, splitStart);
-  let start = splitStart.index;
-  if (end < start) {
-    [end, start] = [start, end];
-  }
-  const a = coordinates.slice(0, start + 2);
-  const b = coordinates.slice(start, end + 2);
-  if (end == coordinates.length) {
-    b.push(coordinates[0], coordinates[1]);
-  }
-  a.push(...coordinates.slice(end));
-  splitToConvex(a, result);
-  splitToConvex(b, result);
-}
-
-interface SplitStart {
-  index: number;
-  ax: number;
-  ay: number;
-  bx: number;
-  by: number;
-}
-
-function getSplitStart(coordinates: ReadonlyArray<number>): SplitStart {
-  const { length } = coordinates;
-  let result = null;
-  let index = length - 2;
-  forEachAngle(coordinates, (ax, ay, bx, by, cx, cy) => {
-    index += 2;
-    if (crossProduct(ax, ay, bx, by, cx, cy) < 0) {
-      index %= length;
-      result = { index, ax, ay, bx, by };
-    }
-    return result == null;
-  });
-  return result;
-}
-
-function getSplitEnd(
-  coordinates: ReadonlyArray<number>,
-  splitStart: SplitStart,
-): number {
-  // Get the point closest to b that is on the left side of the line
-  const { ax, ay, bx, by } = splitStart;
-  let minDistSq = Infinity;
-  let minIndex = undefined;
-  let index = splitStart.index + 2;
-  forEachCoordinate(
-    coordinates,
-    (x, y) => {
-      if (crossProduct(ax, ay, bx, by, x, y) >= 0) {
-        const distSq = (x - bx) ** 2 + (y - by) ** 2;
-        if (distSq < minDistSq) {
-          minDistSq = distSq;
-          minIndex = index;
-        }
-      }
-      index += 2;
-    },
-    index,
-    coordinates.length - index,
-  );
-  return minIndex;
 }
 
 export function calculateArea(coordinates: ReadonlyArray<number>): number {

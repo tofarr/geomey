@@ -6,7 +6,7 @@ import { wktSpec } from "./geomey/parser/wkt.spec";
 import { relateSpec } from "./geomey/geom/relate.spec";
 import { toleranceSpec } from "./geomey/Tolerance.spec";
 import { relationSpec } from "./geomey/Relation.spec";
-import { linearRingSpec } from "./geomey/geom/LinearRing.spec";
+import { triangleSpec } from "./geomey/geom/triangle.spec";
 
 describe("Coordinate", coordinateSpec);
 describe("Tolerance", toleranceSpec);
@@ -16,4 +16,4 @@ describe("RTree", rTreeSpec);
 describe("Mesh", meshSpec);
 describe("Wkt", wktSpec);
 describe("Relate", relateSpec);
-describe("LinearRing", linearRingSpec);
+describe("Triange", triangleSpec);

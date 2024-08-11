@@ -37,8 +37,8 @@ export function forEachCoordinate(
 ): boolean {
   const { length } = coordinates;
   startIndexInclusive =
-    startIndexInclusive == null ? 0 : startIndexInclusive << 1;
-  numberOfPoints = numberOfPoints == null ? length >> 1 : numberOfPoints;
+    startIndexInclusive == null ? 0 : startIndexInclusive;
+  numberOfPoints = numberOfPoints == null ? (length >> 1) : numberOfPoints;
   while (numberOfPoints-- > 0) {
     const index = startIndexInclusive % length;
     const result = consumer(coordinates[index], coordinates[index + 1]);

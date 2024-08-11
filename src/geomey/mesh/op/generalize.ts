@@ -19,7 +19,7 @@ export function generalize(mesh: Mesh, tolerance: Tolerance) {
       (x, y) => {
         mesh.removeVertex(x, y);
       },
-      1,
+      2,
       coordinates.length >> (1 - 1),
     );
     forEachLineSegmentCoordinates(generalized, (ax, ay, bx, by) => {

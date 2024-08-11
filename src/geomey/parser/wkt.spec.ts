@@ -61,6 +61,16 @@ export const wktSpec = () => {
     );
   });
 
+  it("parses and renders a sanitized self intersecting polygon", () => {
+    // Self intersecting polygon is broken into 3 polygons
+    const wkt = "POLYGON((0 0, 200 0, 100 100),(100 0, 50 50, 150 50))";
+    const parsed = parseWkt(wkt, new Tolerance(0.05));
+    const rendered = parsed.toWkt();
+    expect(rendered).to.equal(
+      "MULTIPOLYGON(((0 0, 100 0, 50 50, 0 0)),((50 50, 150 50, 100 100, 50 50)),((100 0, 200 0, 150 50, 100 0)))"
+    );
+  });
+
   it("parses and renders a geometry collection", () => {
     const wkt =
       "GEOMETRYCOLLECTION(POLYGON((0 0, 100 0, 0 100, 0 0)), POINT(100 100), LINESTRING(200 0, 200 100, 300 100))";
