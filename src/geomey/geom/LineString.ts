@@ -25,15 +25,17 @@ import { Mesh } from "../mesh/Mesh";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
-import { Geometry, Point, Rectangle } from "./";
 import {
+  Geometry,
   getLength,
   intersectionLineSegment,
   LineSegment,
   perpendicularDistance,
+  Point,
   pointTouchesLineSegment,
+  Rectangle,
   relateLineSegments,
-} from "./LineSegment";
+} from "./";
 import { relate } from "./op/relate";
 import { GeoJsonLineString } from "../geoJson";
 

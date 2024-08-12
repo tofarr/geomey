@@ -1,11 +1,20 @@
-import { NumberFormatter } from "../formatter";
+import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { PathWalker } from "../path/PathWalker";
 import { B_INSIDE_A, DISJOINT, Relation, TOUCH } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
 import { AbstractGeometry } from "./AbstractGeometry";
-import { Geometry, ringToWkt, Point, Rectangle } from "./";
-import { signedPerpendicularDistance } from "./LineSegment";
+import {
+  Geometry,
+  Point,
+  Rectangle,
+  Polygon,
+  LinearRing,
+  forEachRingLineSegmentCoordinates,
+  signedPerpendicularDistance,
+  LineString,
+  MultiLineString,
+} from "./";
 import { GeoJsonPolygon } from "../geoJson";
 import { comparePointsForSort, validateCoordinates } from "../coordinate";
 import { Vertex } from "../mesh/Vertex";
@@ -19,6 +28,7 @@ export class Triangle extends AbstractGeometry {
   readonly by: number;
   readonly cx: number;
   readonly cy: number;
+  private polygon?: Polygon;
 
   constructor(
     ax: number,
@@ -29,7 +39,7 @@ export class Triangle extends AbstractGeometry {
     cy: number,
   ) {
     super();
-    validateCoordinates(ax, ay, bx, by, cx, cy)
+    validateCoordinates(ax, ay, bx, by, cx, cy);
     this.ax = ax;
     this.ay = ay;
     this.bx = bx;
@@ -38,11 +48,11 @@ export class Triangle extends AbstractGeometry {
     this.cy = cy;
   }
   static valueOf(geometry: Geometry, tolerance: Tolerance): Triangle[] {
-    const triangles = []
+    const triangles = [];
     forEachTriangle(geometry, tolerance, (ax, ay, bx, by, cx, cy) => {
-      triangles.push(new Triangle(ax, ay, bx, by, cx, cy))
-    })
-    return triangles
+      triangles.push(new Triangle(ax, ay, bx, by, cx, cy));
+    });
+    return triangles;
   }
   calculateCentroid(): Point {
     return Point.valueOf(
@@ -66,12 +76,20 @@ export class Triangle extends AbstractGeometry {
     pathWalker.lineTo(this.cx, this.cy);
     pathWalker.closePath();
   }
-  toWkt(numberFormatter?: NumberFormatter): string {
+  toCoordinates(): number[] {
     const { ax, ay, bx, by, cx, cy } = this;
-    const result = ["POLYGON("];
-    ringToWkt([ax, ay, bx, by, cx, cy], numberFormatter, false, result);
-    result.push(")");
-    return result.join("");
+    return [ax, ay, bx, by, cx, cy];
+  }
+  getPolygon(): Polygon {
+    let { polygon } = this;
+    if (!polygon) {
+      const linearRing = new LinearRing(this.toCoordinates());
+      this.polygon = polygon = new Polygon(linearRing);
+    }
+    return polygon;
+  }
+  toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
+    return this.getPolygon().toWkt(numberFormatter);
   }
   toGeoJson(): GeoJsonPolygon {
     const { ax, ay, bx, by, cx, cy } = this;
@@ -135,83 +153,132 @@ export class Triangle extends AbstractGeometry {
   }
 }
 
-interface Bisector{
-  a: Vertex
-  b: Vertex
-  score: number
+interface Bisector {
+  a: Vertex;
+  b: Vertex;
+  score: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type TriangleConsumer = (ax, ay, bx, by, cx, cy) => any
+export type TriangleConsumer = (ax, ay, bx, by, cx, cy) => any;
 
-export function forEachTriangle(geometry: Geometry, tolerance: Tolerance, consumer: TriangleConsumer) {
-  const pathWalker = MeshPathWalker.valueOf(tolerance)
-  geometry.walkPath(pathWalker)
-  const [mesh] = pathWalker.getMeshes()
-  const vertices = mesh.getVertices()
+export function forEachTriangle(
+  geometry: Geometry,
+  tolerance: Tolerance,
+  consumer: TriangleConsumer,
+) {
+  const pathWalker = MeshPathWalker.valueOf(tolerance);
+  geometry.walkPath(pathWalker);
+  const [mesh] = pathWalker.getMeshes();
+  getTrianglesFromMesh(mesh, geometry, consumer);
+}
+
+function getTrianglesFromMesh(
+  mesh: Mesh,
+  geometry: Geometry,
+  consumer: TriangleConsumer,
+) {
+  const vertices = mesh.getVertices();
   let i = 0;
   while (true) {
-      const { a, b } = getBestBisector(vertices, mesh, geometry)
-      if(!a){
-          // Mesh is now full of triangles!
-          mesh.forEachLinearRing((coordinates) => consumer(
-              coordinates[0], coordinates[1],
-              coordinates[2], coordinates[3],
-              coordinates[4], coordinates[5],
-          ))
-          return
-      }
-      if(i++ > 100){
-        throw new Error("runaway")
-      }
-      mesh.addLink(a.x, a.y, b.x, b.y)
+    const { a, b } = getBestBisector(vertices, mesh, geometry);
+    if (!a) {
+      // Mesh is now full of triangles!
+      const lineStrings = [];
+      mesh.forEachLink(({ a, b }) => {
+        lineStrings.push(new LineString([a.x, a.y, b.x, b.y]));
+      });
+      console.log("TRACE", new MultiLineString(lineStrings).toWkt());
+
+      mesh.forEachLinearRing((coordinates) => {
+        if (coordinates.length == 6) {
+          consumer(
+            coordinates[0],
+            coordinates[1],
+            coordinates[2],
+            coordinates[3],
+            coordinates[4],
+            coordinates[5],
+          );
+        } else {
+          if (coordinates.length != 6) {
+            console.log(getBestBisector(vertices, mesh, geometry));
+          }
+          const subMesh = new Mesh(mesh.tolerance);
+          forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
+            subMesh.addLink(ax, ay, bx, by);
+          });
+          getTrianglesFromMesh(subMesh, geometry, consumer);
+        }
+      });
+      return;
+    }
+    if (i++ > 100) {
+      throw new Error("runaway");
+    }
+    mesh.addLink(a.x, a.y, b.x, b.y);
   }
 }
 
-function getBestBisector(vertices: Vertex[], mesh: Mesh, geometry: Geometry): Bisector {
-  const { length } = vertices
-  let bisector = { a: null, b: null, score: Infinity }
+function getBestBisector(
+  vertices: Vertex[],
+  mesh: Mesh,
+  geometry: Geometry,
+): Bisector {
+  const { length } = vertices;
+  let bisector = { a: null, b: null, score: Infinity };
   for (let i = 0; i < length; i++) {
-      const a = vertices[i]
-      for (let b = i - 1; b >= 0; b--) {
-          if (!populateBisector(a, vertices[b], mesh, geometry, bisector)) {
-              break
-          }
+    const a = vertices[i];
+    for (let b = i - 1; b >= 0; b--) {
+      if (!populateBisector(a, vertices[b], mesh, geometry, bisector)) {
+        break;
       }
-      for (let b = i + 1; b < length; b++) {
-          if (!populateBisector(a, vertices[b], mesh, geometry, bisector)) {
-              break
-          }
+    }
+    for (let b = i + 1; b < length; b++) {
+      if (!populateBisector(a, vertices[b], mesh, geometry, bisector)) {
+        break;
       }
+    }
   }
-  return bisector
+  return bisector;
 }
 
-function populateBisector(a: Vertex, b: Vertex, mesh: Mesh, geometry: Geometry, bisector: Bisector): boolean {
-  const score = getBisectorScore(a, b, mesh, geometry)
+function populateBisector(
+  a: Vertex,
+  b: Vertex,
+  mesh: Mesh,
+  geometry: Geometry,
+  bisector: Bisector,
+): boolean {
+  const score = getBisectorScore(a, b, mesh, geometry);
   if (score < bisector.score) {
-      bisector.a = a
-      bisector.b = b
-      bisector.score = score
+    bisector.a = a;
+    bisector.b = b;
+    bisector.score = score;
   }
-  return ((a.x - b.x) ** 2 < bisector.score)
+  return (a.x - b.x) ** 2 < bisector.score;
 }
 
-function getBisectorScore(a: Vertex, b: Vertex, mesh: Mesh, geometry: Geometry): number {
-  if(a.links.includes(b)){
-      return Infinity // Can't link when we are already linked!
+function getBisectorScore(
+  a: Vertex,
+  b: Vertex,
+  mesh: Mesh,
+  geometry: Geometry,
+): number {
+  if (a.links.includes(b)) {
+    return Infinity; // Can't link when we are already linked!
   }
-  const { x: ax, y: ay} = a
-  const { x: bx, y: by} = b
-  const intersections = mesh.getIntersections(ax, ay, bx, by)
-  if(intersections.length > 4){
-      return Infinity // Can't draw links which cross existing links
+  const { x: ax, y: ay } = a;
+  const { x: bx, y: by } = b;
+  const intersections = mesh.getIntersections(ax, ay, bx, by);
+  if (intersections.length) {
+    return Infinity; // Can't draw links which cross existing links
   }
-  const cx = (ax + bx) / 2
-  const cy = (ay + by) / 2
+  const cx = (ax + bx) / 2;
+  const cy = (ay + by) / 2;
   if (geometry.relatePoint(cx, cy, mesh.tolerance) === DISJOINT) {
-      return Infinity // Can't draw links which go outside the shape
+    return Infinity; // Can't draw links which go outside the shape
   }
-  const score = (bx - ax) ** 2 + (by - ay) ** 2
-  return score
+  const score = (bx - ax) ** 2 + (by - ay) ** 2;
+  return score;
 }

@@ -316,7 +316,7 @@ export function intersectionLineSegment(
     if (ui >= 0 && ui <= 1) {
       return Point.valueOf(jax, jay);
     }
-  } else if (coordinateMatch(x, y, ibx, jby, tolerance)) {
+  } else if (coordinateMatch(x, y, jbx, jby, tolerance)) {
     if (ui >= 0 && ui <= 1) {
       return Point.valueOf(jbx, jby);
     }

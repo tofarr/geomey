@@ -2,6 +2,7 @@ import * as chai from "chai";
 import { Tolerance } from "../Tolerance";
 import { Mesh } from "./Mesh";
 import { Link } from "./Link";
+import { LineString, MultiLineString } from "../geom";
 
 const expect = chai.expect;
 
@@ -116,14 +117,13 @@ export const meshSpec = () => {
     mesh.addLink(80, 0, 80, 10);
     mesh.addLink(70, 10, 80, 10);
     mesh.addLink(70, 0, 70, 10);
-    const lineStrings = mesh.getLineStrings();
-    expect(lineStrings).to.eql([
-      [0, 0, 15, 15],
-      [0, 30, 15, 15],
-      [15, 15, 30, 0, 45, 15, 30, 30, 15, 15],
-      [50, 0, 60, 0, 60, 10, 50, 10],
-      [70, 0, 80, 0, 80, 10, 70, 10, 70, 0],
-    ]);
+    const lineStrings = mesh
+      .getLineStrings()
+      .map((coordinates) => new LineString(coordinates));
+    const multiLineString = new MultiLineString(lineStrings);
+    expect(multiLineString.toWkt()).to.equal(
+      "MULTILINESTRING((0 0, 15 15),(0 30, 15 15),(15 15, 30 0, 45 15, 30 30, 15 15),(50 0, 60 0, 60 10, 50 10),(70 0, 80 0, 80 10, 70 10, 70 0))",
+    );
   });
   it("getLinearRings gets all linearRings", () => {
     const mesh = new Mesh(new Tolerance(0.05));

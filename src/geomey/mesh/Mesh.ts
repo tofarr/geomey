@@ -11,6 +11,8 @@ import {
   sortCoordinates,
 } from "../coordinate";
 import {
+  calculateArea,
+  forEachRingLineSegmentCoordinates,
   intersectionLineSegment,
   pointTouchesLineSegment,
   Rectangle,
@@ -187,6 +189,9 @@ export class Mesh {
     const a = this.addVertex(ax, ay);
     const b = this.addVertex(bx, by);
     const aLinks = a.links as Vertex[];
+    if (aLinks.find((v) => !comparePointsForSort(v.x, v.y, bx, by))) {
+      return;
+    }
     aLinks.push(b);
     aLinks.sort(
       (u, v) => angle(a.x, a.y, u.x, u.y) - angle(a.x, a.y, v.x, v.y),
@@ -406,7 +411,11 @@ export class Mesh {
         if (processed.has(key)) {
           continue;
         }
-        const coordinates = followSimpleLinearRing(a, b, tolerance, processed);
+        const coordinates = followLinearRing(a, b);
+        coordinates.push(a.x, a.y);
+        forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
+          processed.add(calculateCoordinateLinkKey(ax, ay, bx, by, tolerance));
+        });
         if (consumer(coordinates) === false) {
           return false;
         }
@@ -432,11 +441,7 @@ export class Mesh {
   forEachLinearRing(consumer: LinearRingCoordinatesConsumer): boolean {
     const tolerance = this.tolerance.tolerance;
     const processed = new Set<string>();
-    const vertices = [];
-    this.forEachVertex((vertex) => {
-      vertices.push(vertex);
-    });
-    vertices.sort((a, b) => comparePointsForSort(a.x, a.y, b.x, b.y));
+    const vertices = this.getVertices();
 
     // First we process anything that is a trailing line string
     for (const a of vertices) {
@@ -456,7 +461,14 @@ export class Mesh {
         if (processed.has(key)) {
           continue;
         }
-        const coordinates = followLinearRing(a, b, tolerance, processed);
+        let coordinates = followLinearRing(a, b);
+        if (calculateArea(coordinates) < 0) {
+          // If the ring is backwards, try finding a new ring in the opposite direction
+          coordinates = followLinearRing(b, a);
+        }
+        forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
+          processed.add(calculateCoordinateLinkKey(ax, ay, bx, by, tolerance));
+        });
         if (consumer(coordinates) === false) {
           return false;
         }
@@ -559,41 +571,12 @@ function followLineString(
   }
 }
 
-function followSimpleLinearRing(
-  a: Vertex,
-  b: Vertex,
-  tolerance: number,
-  processed: Set<string>,
-): number[] {
-  const origin = a;
-  const coordinates = [a.x, a.y, b.x, b.y];
-  processed.add(calculateLinkKey(a, b, tolerance));
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const { links } = b;
-    const c = links[links[0] == a ? 1 : 0];
-    coordinates.push(c.x, c.y);
-    processed.add(calculateLinkKey(b, c, tolerance));
-    if (c == origin) {
-      return coordinates;
-    }
-    a = b;
-    b = c;
-  }
-}
-
-function followLinearRing(
-  a: Vertex,
-  b: Vertex,
-  tolerance: number,
-  processed: Set<string>,
-): number[] {
+function followLinearRing(a: Vertex, b: Vertex): number[] {
   const origin = a;
   const coordinates = [a.x, a.y];
   // eslint-disable-next-line no-constant-condition
   while (true) {
     coordinates.push(b.x, b.y);
-    processed.add(calculateLinkKey(a, b, tolerance));
     const { links } = b;
     let index = links.indexOf(a) - 1;
     if (index < 0) {
@@ -601,7 +584,6 @@ function followLinearRing(
     }
     const c = links[index];
     if (c == origin) {
-      processed.add(calculateLinkKey(b, c, tolerance));
       return coordinates;
     }
     a = b;
@@ -612,6 +594,16 @@ function followLinearRing(
 function calculateLinkKey(a: Vertex, b: Vertex, tolerance: number) {
   let { x: ax, y: ay } = a;
   let { x: bx, y: by } = b;
+  return calculateCoordinateLinkKey(ax, ay, bx, by, tolerance);
+}
+
+function calculateCoordinateLinkKey(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  tolerance: number,
+) {
   if (comparePointsForSort(ax, ay, bx, by) > 0) {
     [ax, ay, bx, by] = [bx, by, ax, ay];
   }

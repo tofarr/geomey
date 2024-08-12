@@ -95,7 +95,7 @@ export class LinearRing extends AbstractGeometry {
     };
   }
   isConvex(): boolean {
-    return isConvex(this.coordinates)
+    return isConvex(this.coordinates);
   }
   getPolygon(): Polygon {
     let { polygon } = this;
