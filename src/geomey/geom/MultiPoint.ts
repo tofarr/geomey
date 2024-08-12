@@ -1,192 +1,181 @@
-import { isNaNOrInfinite, sortCoordinates } from "../coordinate";
-import { NUMBER_FORMATTER, NumberFormatter } from "../path/NumberFormatter";
+import {
+  AbstractGeometry,
+  coordinatesToWkt,
+  Geometry,
+  getCentroid,
+  Point,
+  Rectangle,
+} from ".";
+import {
+  appendChanged,
+  comparePointsForSort,
+  coordinateMatch,
+  Coordinates,
+  forEachCoordinate,
+  forEachLineSegmentCoordinates,
+  InvalidCoordinateError,
+  sortCoordinates,
+  validateCoordinates,
+} from "../coordinate";
+import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { GeoJsonMultiPoint } from "../geoJson";
+import { Mesh } from "../mesh/Mesh";
+import { PathWalker } from "../path/PathWalker";
+import {
+  A_OUTSIDE_B,
+  B_OUTSIDE_A,
+  DISJOINT,
+  Relation,
+  TOUCH,
+  UNKNOWN,
+} from "../Relation";
+import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
-import { AbstractMultiPoint } from "./AbstractMultiPoint";
-import { Geometry } from "./Geometry";
-import { InvalidGeometryError } from "./InvalidGeometryError";
-import { MultiGeometry } from "./MultiGeometry";
-import { Point, pointsMatch } from "./Point";
-import { PointBuilder } from "./PointBuilder";
-import { A_OUTSIDE_B, B_OUTSIDE_A, DISJOINT, Relation, TOUCH, flipAB } from "./Relation";
+import { relate } from "./op/relate";
 
+export class MultiPoint extends AbstractGeometry {
+  readonly coordinates: Coordinates;
+  private coordinateSet?: Set<string>;
+  private coordinateSetTolerance?: Tolerance;
 
-export class MultiPoint extends AbstractMultiPoint {
-    private unique?: MultiPoint
-
-    protected constructor(coordinates: ReadonlyArray<number>) {
-        super(coordinates)
+  constructor(coordinates: Coordinates) {
+    super();
+    if (!coordinates.length) {
+      throw new InvalidCoordinateError(coordinates);
     }
-
-    static valueOf(coordinates: ReadonlyArray<number>) : MultiPoint {
-        const newCoordinates = coordinates.slice()
-        sortCoordinates(newCoordinates)
-        const result = new MultiPoint(newCoordinates)
-        if (!newCoordinates.length || newCoordinates.length % 2 || isNaNOrInfinite(...newCoordinates)) {
-            throw new InvalidGeometryError(result)
+    validateCoordinates(...coordinates);
+    this.coordinates = coordinates;
+  }
+  static fromMesh(mesh: Mesh): MultiPoint | null {
+    const coordinates = [];
+    mesh.forEachVertex((vertex) => {
+      if (!vertex.links.length) {
+        coordinates.push(vertex.x, vertex.y);
+      }
+    });
+    return coordinates.length ? new MultiPoint(coordinates) : null;
+  }
+  protected calculateCentroid(): Point {
+    return getCentroid(this.coordinates);
+  }
+  protected calculateBounds(): Rectangle {
+    return Rectangle.valueOf(this.coordinates);
+  }
+  walkPath(pathWalker: PathWalker): void {
+    forEachCoordinate(this.coordinates, (x, y) => {
+      pathWalker.moveTo(x, y);
+      pathWalker.lineTo(x, y);
+    });
+  }
+  toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
+    const result = ["MULTIPOINT"];
+    coordinatesToWkt(this.coordinates, numberFormatter, result);
+    return result.join("");
+  }
+  toGeoJson(): GeoJsonMultiPoint {
+    const coordinates = [];
+    forEachCoordinate(this.coordinates, (x, y) => {
+      coordinates.push([x, y]);
+    });
+    return {
+      type: "MultiPoint",
+      coordinates,
+    };
+  }
+  isNormalized(): boolean {
+    return forEachLineSegmentCoordinates(
+      this.coordinates,
+      (ax, ay, bx, by) => comparePointsForSort(ax, ay, bx, by) <= 0,
+    ) as boolean;
+  }
+  calculateNormalized(): MultiPoint | Point {
+    if (this.isNormalized()) {
+      return this;
+    }
+    const coordinates = this.coordinates.slice();
+    sortCoordinates(coordinates);
+    if (coordinates.length == 2) {
+      return Point.valueOf(coordinates[0], coordinates[1]);
+    }
+    return new MultiPoint(coordinates);
+  }
+  isValid(tolerance: Tolerance): boolean {
+    const multiPoint = this.normalize() as MultiPoint;
+    return forEachLineSegmentCoordinates(
+      multiPoint.coordinates,
+      (ax, ay, bx, by) => {
+        return !coordinateMatch(ax, ay, bx, by, tolerance);
+      },
+    );
+  }
+  transform(transformer: Transformer): MultiPoint {
+    const coordinates = transformer.transformAll(this.coordinates);
+    return new MultiPoint(coordinates);
+  }
+  generalize(tolerance: Tolerance): MultiPoint | Point {
+    const multiPoint = this.normalize() as MultiPoint;
+    const coordinates = [];
+    forEachCoordinate(multiPoint.coordinates, (x, y) => {
+      x = tolerance.normalize(x);
+      y = tolerance.normalize(y);
+      appendChanged(x, y, tolerance, coordinates);
+    });
+    if (coordinates.length == 2) {
+      return Point.valueOf(coordinates[0], coordinates[1]);
+    }
+    return new MultiPoint(coordinates);
+  }
+  private getCoordinateSet(tolerance: Tolerance): Set<string> {
+    const { coordinateSetTolerance } = this;
+    if (
+      coordinateSetTolerance &&
+      coordinateSetTolerance.tolerance === tolerance.tolerance
+    ) {
+      return this.coordinateSet;
+    }
+    const coordinateSet = (this.coordinateSet = new Set());
+    this.coordinateSetTolerance = tolerance;
+    forEachCoordinate(this.coordinates, (x, y) => {
+      x = tolerance.normalize(x);
+      y = tolerance.normalize(y);
+      coordinateSet.add(`${x}:${y}`);
+    });
+    return coordinateSet;
+  }
+  relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
+    const coordinateSet = this.getCoordinateSet(tolerance);
+    x = tolerance.normalize(x);
+    y = tolerance.normalize(y);
+    if (coordinateSet.has(`${x}:${y}`)) {
+      if (coordinateSet.size > 1) {
+        return (A_OUTSIDE_B | TOUCH) as Relation;
+      }
+      return TOUCH;
+    }
+    return DISJOINT;
+  }
+  relateGeometry(other: Geometry, tolerance: Tolerance): Relation {
+    if (other instanceof Point) {
+      return this.relatePoint(other.x, other.y, tolerance);
+    }
+    if (other instanceof MultiPoint) {
+      const coordinateSet = this.getCoordinateSet(tolerance);
+      const otherCoordinateSet = other.getCoordinateSet(tolerance);
+      let result = UNKNOWN;
+      for (const key of coordinateSet) {
+        result |= otherCoordinateSet.has(key) ? TOUCH : A_OUTSIDE_B;
+        if (result === (TOUCH | A_OUTSIDE_B)) {
+          break;
         }
-        return result
-    }
-
-    static unsafeValueOf(ordinates: ReadonlyArray<number>) : MultiPoint {
-        return new MultiPoint(ordinates)
-    }
-
-    calculateGeneralized(tolerance: number): MultiPoint {
-        const { minX, minY, maxX, maxY } = this.getBounds()
-        const clusters = new Set<number>()
-        const columns = Math.ceil((maxX - minX) / tolerance)
-        this.forEachCoordinate((x, y) => {
-            x = Math.round(x / tolerance)
-            y = Math.round(y / tolerance)
-            const cell = x + (y * columns)
-            clusters.add(cell)
-        })
-        const clusterArray = Array.from(clusters)
-        clusterArray.sort()
-        const clusteredPoints = []
-        for(const cell of clusters) {
-            const x = (cell % columns) * tolerance
-            const y = cell * tolerance / columns
-            clusteredPoints.push(x, y)
+      }
+      for (const key of otherCoordinateSet) {
+        if (!coordinateSet.has(key)) {
+          result |= B_OUTSIDE_A;
+          return result as Relation;
         }
-        if (clusteredPoints.length == this.coordinates.length) {
-            return this
-        }
-        return new MultiPoint(clusteredPoints)
+      }
+      return result;
     }
-
-    getUnique(): MultiPoint {
-        let { unique } = this
-        if (!unique){
-            unique = this.unique = this.calculateUnique()
-        }
-        return unique
-    }
-
-    calculateUnique(): MultiPoint {
-        const ordinates = []
-        let prevX = undefined
-        let prevY = undefined
-        this.forEachCoordinate((x, y) => {
-            if((x != prevX) || (y != prevY)){
-                ordinates.push(x, y)
-                prevX = x
-                prevY = y
-            }
-        })
-        return new MultiPoint(ordinates)
-    }
-
-    transform(transformer: Transformer): MultiPoint {
-        const coordinates = []
-        this.forEachPoint((point) => {
-            transformer(point)
-            coordinates.push(point.x, point.y)
-        })
-        return MultiPoint.valueOf(coordinates)
-    }
-
-    relatePoint(point: PointBuilder, tolerance: number): Relation {
-        const { x, y } = point
-        let result: Relation = 0
-        this.forEachCoordinate((ax, ay) => {
-            const touching = pointsMatch(ax, ay, x, y, tolerance)
-            if (touching){
-                result |= TOUCH
-            } else {
-                result |= A_OUTSIDE_B
-            }
-            if (result === (TOUCH | A_OUTSIDE_B)) {
-                return false
-            }
-        })
-        if (result === A_OUTSIDE_B){
-            result = DISJOINT
-        }
-        return result
-    }
-
-    relate(other: Geometry, tolerance: number): Relation {
-        let result: Relation = 0
-        this.forEachPoint((point) => {
-            result |= other.relatePoint(point, tolerance)
-        })
-        if (result !== DISJOINT) {
-            if (result | B_OUTSIDE_A){
-                result ^= B_OUTSIDE_A
-            }
-        }
-        return flipAB(result as Relation)
-    }
-
-    union(other: Geometry, tolerance: number): Geometry {
-        const coordinates = []
-        this.getUnique().forEachPoint((point) => {
-            if (other.relatePoint(point, tolerance) === DISJOINT) {
-                coordinates.push(point.x, point.y)
-            }
-        })
-        if (!coordinates) {
-            return other
-        }
-        let otherMultiGeometry = other.toMultiGeometry()
-        let { points } = otherMultiGeometry
-        if (points){
-            coordinates.push.apply(coordinates, points.coordinates)
-            points = MultiPoint.valueOf(coordinates)
-        } else {
-            points = new MultiPoint(coordinates)
-        }
-        return MultiGeometry.unsafeValueOf(
-            points, otherMultiGeometry.lineStrings, otherMultiGeometry.polygons
-        ).normalize()
-    }
-    
-    intersection(other: Geometry, tolerance: number): Geometry | null {
-        const coordinates = []
-        this.forEachPoint((point) => {
-            if (other.relatePoint(point, tolerance) != (A_OUTSIDE_B | B_OUTSIDE_A)) {
-                coordinates.push(point.x, point.y)
-            }
-        })
-        if (coordinates.length == 0) {
-            return null
-        }
-        if (coordinates.length == 2) {
-            return Point.unsafeValueOf(coordinates[0], coordinates[1])
-        }
-        return new MultiPoint(coordinates)
-    }
-
-    less(other: Geometry, tolerance: number): Geometry | null {
-        return this.intersection(other, tolerance)
-    }
-
-    walkPath(pathWalker: PathWalker) {
-        this.forEachCoordinate((x, y) => {
-            pathWalker.moveTo(x, y)
-            pathWalker.lineTo(x, y)
-        })
-    }
-
-    toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
-        const wkt = ["MULTIPOINT ("]
-        this.forEachCoordinate((x, y) => {
-            wkt.push(numberFormatter(x), " ", numberFormatter(y), ", ")
-        })
-        wkt.pop()
-        wkt.push(")")
-        return wkt.join("")
-    }
-
-    toGeoJson(): any {
-        return {
-            type: "MultiPoint",
-            coordinates: this.coordinates.slice()
-        }
-    }
-
-    toMultiGeometry(): MultiGeometry {
-       return MultiGeometry.unsafeValueOf(this)
-    }
+    return relate(this, other, tolerance);
+  }
 }

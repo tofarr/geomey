@@ -1,221 +1,482 @@
-import { comparePointsForSort, isNaNOrInfinite } from "../coordinate"
-import { NUMBER_FORMATTER, NumberFormatter } from "../path/NumberFormatter"
-import { normalize } from "../tolerance"
-import { Transformer } from "../transformer/Transformer"
-import { Geometry } from "./Geometry"
-import { InvalidGeometryError } from "./InvalidGeometryError"
-import { LineSegmentBuilder } from "./LineSegmentBuilder"
-import { LineString } from "./LineString"
-import { MultiGeometry } from "./MultiGeometry"
-import { Point, pointsMatch } from "./Point"
-import { PointBuilder, copyToPoint } from "./PointBuilder"
-import { Rectangle } from "./Rectangle"
-import { A_OUTSIDE_B, B_OUTSIDE_A, Relation, TOUCH, flipAB } from "./Relation"
-
+import {
+  A_OUTSIDE_B,
+  B_OUTSIDE_A,
+  DISJOINT,
+  flipAB,
+  Relation,
+  TOUCH,
+} from "../Relation";
+import { Tolerance } from "../Tolerance";
+import {
+  comparePointsForSort,
+  coordinateMatch,
+  InvalidCoordinateError,
+  isNaNOrInfinite,
+} from "../coordinate";
+import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { GeoJsonLineString } from "../geoJson";
+import { PathWalker } from "../path/PathWalker";
+import { Transformer } from "../transformer/Transformer";
+import {
+  Geometry,
+  LineString,
+  relateLineStringToLineSegment,
+  Point,
+  Rectangle,
+} from "./";
+import { intersection } from "./op/intersection";
+import { less } from "./op/less";
+import { relate } from "./op/relate";
+import { union } from "./op/union";
+import { xor } from "./op/xor";
 
 export class LineSegment implements Geometry {
-    readonly ax: number
-    readonly ay: number
-    readonly bx: number
-    readonly by: number
+  readonly ax: number;
+  readonly ay: number;
+  readonly bx: number;
+  readonly by: number;
+  private centroid?: Point;
+  private bounds?: Rectangle;
 
-    constructor(ax: number, ay: number, bx: number, by: number) {
-        this.ax = ax
-        this.ay = ay
-        this.bx = bx
-        this.by = by
+  constructor(ax: number, ay: number, bx: number, by: number) {
+    if (
+      isNaNOrInfinite(ax, ay, bx, by) ||
+      !comparePointsForSort(ax, ay, bx, by)
+    ) {
+      throw new InvalidCoordinateError([ax, ay, bx, by]);
     }
-
-    static valueOf(ax: number, ay: number, bx: number, by: number): LineSegment {
-        const result = new LineSegment(ax, ay, bx, by)
-        if (isNaNOrInfinite(ax, ay, bx, by) || !comparePointsForSort(ax, ay, bx, by)) {
-            throw new InvalidGeometryError(result)
-        }
-        return result
+    this.ax = ax;
+    this.ay = ay;
+    this.bx = bx;
+    this.by = by;
+  }
+  getCentroid(): Point {
+    let { centroid } = this;
+    if (!centroid) {
+      centroid = this.centroid = Point.valueOf(
+        (this.ax + this.bx) / 2,
+        (this.ay + this.by, 2),
+      );
     }
-    
-    static unsafeValueOf(ax: number, ay: number, bx: number, by: number): LineSegment {
-        return new LineSegment(ax, ay, bx, by)
+    return centroid;
+  }
+  getBounds(): Rectangle {
+    let { bounds } = this;
+    if (!bounds) {
+      bounds = this.bounds = Rectangle.valueOf([
+        this.ax,
+        this.ay,
+        this.bx,
+        this.by,
+      ]);
     }
-
-    getCentroid(): Point {
-        return Point.unsafeValueOf((this.ax + this.ay) / 2, (this.bx + this.by) / 2)
+    return bounds;
+  }
+  getInternalArea(): null {
+    return null;
+  }
+  getDx() {
+    return this.bx - this.ax;
+  }
+  getDy() {
+    return this.by - this.ay;
+  }
+  getSlope() {
+    return this.getDy() / this.getDx();
+  }
+  getLength() {
+    return getLength(this.ax, this.ay, this.bx, this.by);
+  }
+  walkPath(pathWalker: PathWalker): void {
+    pathWalker.moveTo(this.ax, this.ay);
+    pathWalker.lineTo(this.bx, this.by);
+  }
+  toWkt(f: NumberFormatter = NUMBER_FORMATTER): string {
+    return `LINESTRING(${f(this.ax)} ${f(this.ay)}, ${f(this.bx)} ${f(
+      this.by,
+    )})`;
+  }
+  toGeoJson(): GeoJsonLineString {
+    return {
+      type: "LineString",
+      coordinates: [
+        [this.ax, this.ay],
+        [this.bx, this.by],
+      ],
+    };
+  }
+  isNormalized(): boolean {
+    const { ax, ay, bx, by } = this;
+    return comparePointsForSort(ax, ay, bx, by) < 0;
+  }
+  isValid(tolerance: Tolerance): boolean {
+    const { ax, ay, bx, by } = this;
+    return !coordinateMatch(ax, ay, bx, by, tolerance);
+  }
+  normalize(): LineSegment | Point {
+    const { ax, ay, bx, by } = this;
+    const compare = comparePointsForSort(ax, ay, bx, by);
+    if (compare < 0) {
+      return this;
     }
-
-    getBounds(): Rectangle {
-        return Rectangle.valueOf(this.ax, this.ay, this.bx, this.by)
+    if (compare > 0) {
+      return new LineSegment(bx, by, ax, ay);
     }
-
-    getArea(): number {
-        return 0
+    return this.getCentroid();
+  }
+  transform(transformer: Transformer): LineSegment | Point {
+    const [ax, ay, bx, by] = transformer.transformAll([
+      this.ax,
+      this.ay,
+      this.bx,
+      this.by,
+    ]);
+    if (ax == bx && ay == by) {
+      return Point.valueOf(ax, ay);
     }
-
-    getDx() {
-        return this.bx - this.ax
+    return new LineSegment(ax, ay, bx, by);
+  }
+  generalize(tolerance: Tolerance): LineSegment | Point {
+    if (this.getBounds().isCollapsible(tolerance)) {
+      return this.getCentroid();
     }
-
-    getDy() {
-        return this.by - this.ay
+    return this;
+  }
+  relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
+    return relatePointToLineSegment(
+      x,
+      y,
+      this.ax,
+      this.ay,
+      this.bx,
+      this.by,
+      tolerance,
+    );
+  }
+  relate(other: Geometry, tolerance: Tolerance): Relation {
+    if (this.getBounds().isDisjointRectangle(other.getBounds(), tolerance)) {
+      return DISJOINT;
     }
-
-    getSlope() {
-        return this.getDy() / this.getDx()
+    if (other instanceof Point) {
+      return relatePointToLineSegment(
+        other.x,
+        other.y,
+        this.ax,
+        this.ay,
+        this.bx,
+        this.by,
+        tolerance,
+      );
     }
-
-    normalize(){
-        if (comparePointsForSort(this.ax, this.ay, this.bx, this.by) > 0) {
-            return new LineSegment(this.bx, this.by, this.ax, this.ay)
-        }
-        return this
+    if (other instanceof LineSegment) {
+      return relateLineSegments(
+        this.ax,
+        this.ay,
+        this.bx,
+        this.by,
+        other.ax,
+        other.ay,
+        other.bx,
+        other.by,
+        tolerance,
+      );
     }
-
-    generalize(tolerance: number): Geometry {
-        if(this.getDx() <= tolerance && this.getDy() <= tolerance){
-            return this.getCentroid()
-        }
-        return this
+    if (other instanceof LineString) {
+      return flipAB(
+        relateLineStringToLineSegment(
+          other.coordinates,
+          this.ax,
+          this.ay,
+          this.bx,
+          this.by,
+          tolerance,
+        ),
+      );
     }
-
-    transform(transformer: Transformer): Geometry {
-        const point = { x: this.ax, y: this.ay }
-        transformer(point)
-        const ax = point.x
-        const ay = point.y
-        point.x = this.bx
-        point.y = this.by
-        transformer(point)
-        return LineSegment.valueOf(ax, ay, point.x, point.y)
-    }
-
-    relatePoint(point: PointBuilder, tolerance: number): Relation {
-        const { ax, ay, bx, by } = this
-        const { x, y } = point
-        const dist = getPerpendicularDistance(x, y, ax, ay, bx, by)
-        if (dist > tolerance){
-            return (A_OUTSIDE_B | B_OUTSIDE_A) as Relation
-        }
-        let result = TOUCH
-        if (!pointsMatch(ax, ay, x, y, tolerance) || !pointsMatch(bx, by, x, y, tolerance)) {
-            result |= A_OUTSIDE_B
-        }
-        return result
-    }
-
-    relate(other: Geometry, tolerance: number): Relation {
-        // If the length of this line segment is less than tolerance, test as a point.
-        if(((this.getDx() ** 2) + (this.getDy() ** 2)) < (tolerance ** 2)) {
-            return flipAB(other.relatePoint(this.getCentroid(), tolerance))
-        }
-
-        const multiGeometry = other.toMultiGeometry() // Convert to multi geometry
-        // Test against points for touch
-        // Test against linestrings 
-        // Test against polygons for comntainment 
-        throw new Error("Method not implemented.");
-    }
-
-    union(other: Geometry, tolerance: number): Geometry {
-        throw new Error("Method not implemented.");
-    }
-
-    intersectionLine(other: LineSegment, tolerance: number, segment: boolean = true): Point | null {
-        return intersectionLine(this, other, segment, tolerance)
-    }
-
-    intersection(other: Geometry, tolerance: number): Geometry | null {
-        throw new Error("Method not implemented.");
-    }
-
-    less(other: Geometry, tolerance: number): Geometry | null {
-        throw new Error("Method not implemented.");
-    }
-    
-    walkPath(pathWalker: PathWalker) {
-        pathWalker.moveTo(this.ax, this.ay)
-        pathWalker.lineTo(this.bx, this.by)
-    }
-    
-    toWkt(f: NumberFormatter = NUMBER_FORMATTER): string {
-        return `LINESTRING (${f(this.ax)} ${f(this.ay)}, ${f(this.bx)} ${f(this.by)})`
-    }
-    
-    toGeoJson(): any {
-        return {
-            type: "LineString",
-            coordinates: [
-                [this.ax, this.ay],
-                [this.bx, this.by],
-            ]
-        }
-    }
-
-    toMultiGeometry(): MultiGeometry {
-        return MultiGeometry.unsafeValueOf(
-            undefined,
-            [LineString.unsafeValueOf([this.ax, this.ay, this.bx, this.by])]
-        )
-    }
+    return relate(this, other, tolerance);
+  }
+  union(other: Geometry, tolerance: Tolerance): Geometry {
+    return union(this, other, tolerance);
+  }
+  intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
+    return intersection(this, other, tolerance);
+  }
+  less(other: Geometry, tolerance: Tolerance): Geometry | null {
+    return less(this, other, tolerance);
+  }
+  xor(other: Geometry, tolerance: Tolerance): Geometry | null {
+    return xor(this, other, tolerance);
+  }
+  intersectionLineSegment(
+    other: LineSegment,
+    tolerance: Tolerance,
+  ): Point | null {
+    return intersectionLineSegment(
+      this.ax,
+      this.ay,
+      this.bx,
+      this.by,
+      other.ax,
+      other.ay,
+      other.bx,
+      other.by,
+      tolerance,
+    );
+  }
 }
 
-
-export function getPerpendicularDistance(x: number, y: number, ax: number, ay: number, bx: number, by: number): number {
-    const area = 0.5 * (ax * by + bx * y + x * ay - bx * ay - x * by - ax * y);
-    const bottom = Math.hypot(ax - bx, ay - by);
-    const height = area / bottom * 2;
-    return height;
-}
-
-
-function getDenom(
-    iax: number, iay: number, ibx: number, iby: number,
-    jax: number, jay: number, jbx: number, jby: number,
+export function signedPerpendicularDistance(
+  x: number,
+  y: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
 ): number {
-    return (jby - jay) * (ibx - iax) - (jbx - jax) * (iby - iay);
+  const numerator = Math.abs((by - ay) * x - (bx - ax) * y + bx * ay - by * ax);
+  const denominator = getLength(ax, ay, bx, by);
+  return numerator / denominator;
 }
 
+export function perpendicularDistance(
+  x: number,
+  y: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+): number {
+  return Math.abs(signedPerpendicularDistance(x, y, ax, ay, bx, by));
+}
 
-export function intersectionLine(i: LineSegmentBuilder, j: LineSegmentBuilder, segment: boolean, tolerance: number): Point | null {
-    let { ax: iax, ay: iay, bx: ibx, by: iby, } = i
-    let { ax: jax, ay: jay, bx: jbx, by: jby, } = j
+export function intersectionLineSegment(
+  iax: number,
+  iay: number,
+  ibx: number,
+  iby: number,
+  jax: number,
+  jay: number,
+  jbx: number,
+  jby: number,
+  tolerance: Tolerance,
+): Point | null {
+  // First normalize to get consistent results
+  if (comparePointsForSort(iax, iay, ibx, iby) > 0) {
+    [ibx, iby, iax, iay] = [iax, iay, ibx, iby];
+  }
+  if (comparePointsForSort(jax, jay, jbx, jby) > 0) {
+    [jbx, jby, jax, jay] = [jax, jay, jbx, jby];
+  }
+  if (
+    (comparePointsForSort(iax, iay, jax, jay) ||
+      comparePointsForSort(ibx, iby, jbx, jby)) > 0
+  ) {
+    [iax, iay, ibx, iby, jax, jay, jbx, jby] = [
+      jax,
+      jay,
+      jbx,
+      jby,
+      iax,
+      iay,
+      ibx,
+      iby,
+    ];
+  }
 
-    const denom = getDenom(iax, iay, ibx, iby, jax, jay, jbx, jby)
-    if (denom == 0.0) { // Lines are parallel.
-        return null;
-    }
-    const ui = ((jbx - jax) * (iay - jay) - (jby - jay) * (iax - jax)) / denom; // projected distance along i and j
-    const uj = ((ibx - iax) * (iay - jay) - (iby - iay) * (iax - jax)) / denom;
-    if(segment && (ui < 0 || ui > 1 || uj < 0 || uj > 1)) {
-        return null
-    }
-    let x, y;
-    
-    if (iax == ibx) {
-        x = iax;
-    } else if (jax == jbx) {
-        x = jax;
-    } else {
-        x = (ui * (ibx - iax)) + iax;
-    }
-    if (iay == iby) {
-        y = iay;
-    } else if (jay == jby) {
-        y = jay;
-    } else {
-        y = (ui * (iby - iay)) + iay;
-    }
+  const denom = (jby - jay) * (ibx - iax) - (jbx - jax) * (iby - iay);
+  if (denom == 0.0) {
+    return null; // Lines are parallel.
+  }
 
-    if (pointsMatch(x, y, iax, iay, tolerance)) {
-        [x, y] = [iax, iay]
-    } else if (pointsMatch(x, y, ibx, iby, tolerance)) {
-        [x, y] = [ibx, iby]
-    } else if (pointsMatch(x, y, jax, jay, tolerance)) {
-        [x, y] = [jax, jay]
-    } else if (pointsMatch(x, y, jbx, jby, tolerance)) {
-        [x, y] = [jbx, jby]
-    } else {
-        x = normalize(x, tolerance)
-        y = normalize(y, tolerance)
-    }
+  // projected distance along i and j
+  const ui = ((jbx - jax) * (iay - jay) - (jby - jay) * (iax - jax)) / denom;
+  const uj = ((ibx - iax) * (iay - jay) - (iby - iay) * (iax - jax)) / denom;
 
-    return Point.valueOf(x, y)
+  // point of intersection
+  const x = ui * (ibx - iax) + iax;
+  const y = ui * (iby - iay) + iay;
+
+  if (coordinateMatch(x, y, iax, iay, tolerance)) {
+    if (
+      coordinateMatch(x, y, jax, jay, tolerance) ||
+      coordinateMatch(x, y, jbx, jby, tolerance) ||
+      (uj >= 0 && uj <= 1)
+    ) {
+      return Point.valueOf(iax, iay);
+    }
+  } else if (coordinateMatch(x, y, ibx, iby, tolerance)) {
+    if (
+      coordinateMatch(x, y, jax, jay, tolerance) ||
+      coordinateMatch(x, y, jbx, jby, tolerance) ||
+      (uj >= 0 && uj <= 1)
+    ) {
+      return Point.valueOf(ibx, iby);
+    }
+  } else if (coordinateMatch(x, y, jax, jay, tolerance)) {
+    if (ui >= 0 && ui <= 1) {
+      return Point.valueOf(jax, jay);
+    }
+  } else if (coordinateMatch(x, y, jbx, jby, tolerance)) {
+    if (ui >= 0 && ui <= 1) {
+      return Point.valueOf(jbx, jby);
+    }
+  } else if (ui > 0 && ui < 1 && uj > 0 && uj < 1) {
+    return Point.valueOf(x, y);
+  }
+  return null;
+}
+
+export function projectProgress(
+  x: number,
+  y: number,
+  ax: number,
+  ay: number,
+  abx: number,
+  aby: number,
+): number {
+  // Calculate the vector from A to the point
+  const apx = x - ax;
+  const apy = y - ay;
+
+  // Calculate the projection of ap onto ab
+  const abab = abx * abx + aby * aby;
+  const apab = apx * abx + apy * aby;
+  const progress = apab / abab;
+  return progress;
+}
+
+export function projectPointOntoLineSegment(
+  x: number,
+  y: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  tolerance: Tolerance,
+): Point | null {
+  // Calculate the vector from A to B
+  const abx = bx - ax;
+  const aby = by - ay;
+
+  const progress = projectProgress(x, y, ax, ay, abx, aby);
+
+  // Get projected point
+  const px = ax + progress * abx;
+  const py = ax + progress * aby;
+
+  if (coordinateMatch(px, py, ax, ay, tolerance)) {
+    // if projected point is very close to a, use a
+    return Point.valueOf(ax, ay);
+  } else if (coordinateMatch(px, py, bx, by, tolerance)) {
+    // if projected point is very close to b, use b
+    return Point.valueOf(bx, by);
+  } else if (progress < 0 || progress > 1) {
+    // reject points outside bounds
+    return null;
+  }
+
+  return Point.valueOf(px, py);
+}
+
+export function pointTouchesLineSegment(
+  x: number,
+  y: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  tolerance: Tolerance,
+) {
+  if (tolerance.outside(perpendicularDistance(x, y, ax, ay, bx, by))) {
+    return false;
+  }
+
+  // Calculate the vector from A to B
+  const abx = bx - ax;
+  const aby = by - ay;
+
+  const progress = projectProgress(x, y, ax, ay, abx, aby);
+
+  if (progress >= 0 && progress <= 1) {
+    return true;
+  }
+
+  // Get projected point
+  const px = ax + progress * abx;
+  const py = ax + progress * aby;
+
+  if (coordinateMatch(px, py, ax, ay, tolerance)) {
+    // if projected point is very close to a, use a
+    return true;
+  } else if (coordinateMatch(px, py, bx, by, tolerance)) {
+    // if projected point is very close to b, use b
+    return true;
+  }
+  return false;
+}
+
+export function relatePointToLineSegment(
+  x: number,
+  y: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  tolerance: Tolerance,
+): Relation {
+  let result = A_OUTSIDE_B;
+  if (pointTouchesLineSegment(x, y, ax, ay, bx, by, tolerance)) {
+    result |= TOUCH;
+  } else {
+    result |= B_OUTSIDE_A;
+  }
+  return result as Relation;
+}
+
+export function relateLineSegments(
+  iax: number,
+  iay: number,
+  ibx: number,
+  iby: number,
+  jax: number,
+  jay: number,
+  jbx: number,
+  jby: number,
+  tolerance: Tolerance,
+): Relation {
+  const iaj = relatePointToLineSegment(iax, iay, jax, jay, jbx, jby, tolerance);
+  const ibj = relatePointToLineSegment(ibx, iby, jax, jay, jbx, jby, tolerance);
+  const jai = relatePointToLineSegment(jax, jay, iax, iay, ibx, iby, tolerance);
+  const jbi = relatePointToLineSegment(jbx, jby, iax, iay, ibx, iby, tolerance);
+  if (iaj & TOUCH && ibj & TOUCH) {
+    if (jai & TOUCH && jbi & TOUCH) {
+      return TOUCH;
+    }
+    return (TOUCH | B_OUTSIDE_A) as Relation;
+  }
+  if (jai & TOUCH && jbi & TOUCH) {
+    return (TOUCH | A_OUTSIDE_B) as Relation;
+  }
+  if (iaj & TOUCH || ibj & TOUCH || jai & TOUCH || jbi & TOUCH) {
+    return (A_OUTSIDE_B | B_OUTSIDE_A | TOUCH) as Relation;
+  }
+  const intersection = intersectionLineSegment(
+    iax,
+    iay,
+    ibx,
+    iby,
+    jax,
+    jay,
+    jbx,
+    jby,
+    tolerance,
+  );
+  if (!intersection) {
+    return DISJOINT;
+  }
+  return (A_OUTSIDE_B | B_OUTSIDE_A | TOUCH) as Relation;
+}
+
+export function getLength(ax: number, ay: number, bx: number, by: number) {
+  return Math.sqrt((by - ay) ** 2 + (bx - ax) ** 2);
 }

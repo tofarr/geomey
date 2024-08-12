@@ -1,131 +1,121 @@
-import { isNaNOrInfinite } from "../coordinate";
-import { NUMBER_FORMATTER, NumberFormatter } from "../path/NumberFormatter";
-import { match } from "../tolerance";
+import { DISJOINT, Relation, TOUCH, flipAB } from "../Relation";
+import { Tolerance } from "../Tolerance";
+import { coordinateMatch, validateCoordinates } from "../coordinate";
+import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
+import { GeoJsonPoint } from "../geoJson";
+import { Mesh } from "../mesh/Mesh";
+import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
-import { Geometry } from "./Geometry";
-import { InvalidGeometryError } from "./InvalidGeometryError";
-import { MultiGeometry } from "./MultiGeometry";
-import { MultiPoint } from "./MultiPoint";
-import { PointBuilder } from "./PointBuilder";
-import { Rectangle } from "./Rectangle";
-import { B_OUTSIDE_A, DISJOINT, Relation, TOUCH, flipAB } from "./Relation";
-
+import { Geometry, Rectangle } from "./";
+import { union } from "./op/union";
+import { xor } from "./op/xor";
 
 export class Point implements Geometry {
-    readonly x: number
-    readonly y: number
-    private bounds?: Rectangle
-    
-    private constructor(x: number, y: number) {
-        this.x = x
-        this.y = y
-    }
+  static readonly ORIGIN = new Point(0, 0);
+  readonly x: number;
+  readonly y: number;
+  private bounds?: Rectangle;
 
-    static valueOf(x: number, y: number): Point {
-        const result = new Point(x, y)
-        if (isNaNOrInfinite(x, y)) {
-            throw new InvalidGeometryError(result)
-        }
-        return result
+  private constructor(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+  }
+  static valueOf(x: number, y: number): Point {
+    if (x === 0 && y === 0) {
+      return this.ORIGIN;
     }
-
-    static unsafeValueOf(x: number, y: number): Point {
-        return new Point(x, y)
+    validateCoordinates(x, y);
+    return new Point(x, y);
+  }
+  getCentroid(): Point {
+    return this;
+  }
+  getBounds(): Rectangle {
+    let { bounds } = this;
+    if (!bounds) {
+      const { x, y } = this;
+      bounds = this.bounds = new Rectangle(x, y, x, y);
     }
-
-    getCentroid(): Point {
-        return this
+    return bounds;
+  }
+  walkPath(pathWalker: PathWalker): void {
+    const { x, y } = this;
+    pathWalker.moveTo(x, y);
+    pathWalker.lineTo(x, y);
+  }
+  toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
+    return pointToWkt(this.x, this.y, numberFormatter);
+  }
+  toGeoJson(): GeoJsonPoint {
+    return {
+      type: "Point",
+      coordinates: [this.x, this.y],
+    };
+  }
+  isValid(): boolean {
+    return true;
+  }
+  isNormalized(): boolean {
+    return true;
+  }
+  normalize(): Point {
+    return this;
+  }
+  transform(transformer: Transformer): Point {
+    const [x, y] = transformer.transform(this.x, this.y);
+    return Point.valueOf(x, y);
+  }
+  generalize(): Geometry {
+    return this;
+  }
+  relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
+    return coordinateMatch(this.x, this.y, x, y, tolerance) ? TOUCH : DISJOINT;
+  }
+  relate(other: Geometry, tolerance: Tolerance): Relation {
+    if (other instanceof Point) {
+      return this.relatePoint(other.x, other.y, tolerance);
     }
-
-    getBounds(): Rectangle {
-        let { bounds } = this
-        if (!bounds){
-            const { x, y } = this
-            bounds = this.bounds = Rectangle.unsafeValueOf(x, y, x, y)
-        }
-        return bounds
+    return flipAB(other.relatePoint(this.x, this.y, tolerance));
+  }
+  union(other: Geometry, tolerance: Tolerance): Geometry {
+    if (other.relatePoint(this.x, this.y, tolerance) !== DISJOINT) {
+      return other;
     }
-
-    getArea(): number {
-        return 0
+    return union(this, other, tolerance);
+  }
+  intersection(other: Geometry, tolerance: Tolerance): Geometry | null {
+    if (other.relatePoint(this.x, this.y, tolerance) === DISJOINT) {
+      return null;
     }
-
-    generalize(tolerance: number): Point {
-        return this
+    return this;
+  }
+  less(other: Geometry, tolerance: Tolerance): Geometry | null {
+    return this.intersection(other, tolerance);
+  }
+  xor(other: Geometry, tolerance: Tolerance): Geometry | null {
+    if (other instanceof Point) {
+      if (coordinateMatch(this.x, this.y, other.x, other.y, tolerance)) {
+        return null;
+      }
     }
-
-    transform(transformer: Transformer): Point {
-        const { x, y } = this
-        const builder = { x, y }
-        transformer(builder)
-        return Point.valueOf(builder.x, builder.y)
-    }
-
-    relatePoint(point: PointBuilder, tolerance: number): Relation {
-        return pointsMatch(this.x, this.y, point.x, point.y, tolerance) ? TOUCH : DISJOINT
-    }
-
-    relate(other: Geometry, tolerance: number): Relation {
-        return flipAB(other.relatePoint(this, tolerance))
-    }
-
-    union(other: Geometry, tolerance: number): Geometry {
-        if (!(other.relatePoint(this, tolerance) & B_OUTSIDE_A)) {
-            return other
-        }
-        const { points, lineStrings, polygons } = other.toMultiGeometry()
-        const ordinates = points ? points.coordinates.slice() : []
-        ordinates.push(this.x, this.y)
-        const result = MultiGeometry.valueOf(
-            MultiPoint.valueOf(ordinates), lineStrings, polygons
-        )
-        return result
-    }
-
-    intersection(other: Geometry, tolerance: number): Geometry {
-        if (!(other.relatePoint(this, tolerance) & B_OUTSIDE_A)) {
-            return other
-        }
-        return null
-    }
-
-    less(other: Geometry, tolerance: number): Geometry {
-        return this.intersection(other, tolerance)
-    }
-
-    walkPath(pathWalker: PathWalker) {
-        const { x, y } = this
-        pathWalker.moveTo(x, y)
-        pathWalker.lineTo(x, y)
-    }
-
-    toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
-        return `POINT (${numberFormatter(this.x)} ${numberFormatter(this.y)})`
-    }
-
-    toGeoJson() {
-        return {
-            type: "Point",
-            coordinates: [this.x, this.y]
-        }
-    }
-
-    toMultiGeometry() {
-        return MultiGeometry.unsafeValueOf(
-            MultiPoint.unsafeValueOf([this.x, this.y])
-        )
-    }    
+    return xor(this, other, tolerance);
+  }
 }
 
-
-export const ORIGIN = Point.unsafeValueOf(0, 0)
-
-
-export function pointsMatch(ax: number, ay: number, bx: number, by: number, tolerance: number): boolean {
-    return match(ax, bx, tolerance) && match(ay, by, tolerance)
+export function createPoints(mesh: Mesh): number[] {
+  const coordinates = [];
+  mesh.forEachVertex((vertex) => {
+    if (!vertex.links.length) {
+      coordinates.push(vertex.x, vertex.y);
+    }
+  });
+  return coordinates;
 }
 
-
-export function distSq(ax: number, ay: number, bx: number, by: number): number{
-    return (bx - ax) ** 2 + (by - ay) ** 2
+export function pointToWkt(
+  x: number,
+  y: number,
+  numberFormatter: NumberFormatter = NUMBER_FORMATTER,
+): string {
+  return `POINT(${numberFormatter(x)} ${numberFormatter(y)})`;
 }
