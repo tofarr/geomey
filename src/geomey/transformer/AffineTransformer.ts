@@ -74,10 +74,10 @@ export class AffineTransformer implements Transformer {
   ): AffineTransformer {
     const { m00, m10, m20, m01, m11, m21 } = this;
     return new AffineTransformer(
-      n00 * m00 + n10 * m01 + n20 * m20,
+      n00 * m00 + n10 * m01,
       n00 * m10 + n10 * m11,
       n00 * m20 + n10 * m21 + n20,
-      n01 * m00 + n11 * m01 + n21 * m20,
+      n01 * m00 + n11 * m01,
       n01 * m10 + n11 * m11,
       n01 * m20 + n11 * m21 + n21,
     );

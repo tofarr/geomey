@@ -188,7 +188,6 @@ function getTrianglesFromMesh(
       mesh.forEachLink(({ a, b }) => {
         lineStrings.push(new LineString([a.x, a.y, b.x, b.y]));
       });
-      console.log("TRACE", new MultiLineString(lineStrings).toWkt());
 
       mesh.forEachLinearRing((coordinates) => {
         if (coordinates.length == 6) {
@@ -201,9 +200,6 @@ function getTrianglesFromMesh(
             coordinates[5],
           );
         } else {
-          if (coordinates.length != 6) {
-            console.log(getBestBisector(vertices, mesh, geometry));
-          }
           const subMesh = new Mesh(mesh.tolerance);
           forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
             subMesh.addLink(ax, ay, bx, by);

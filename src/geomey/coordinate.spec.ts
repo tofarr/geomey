@@ -2,8 +2,11 @@ import * as chai from "chai";
 import {
   angle,
   appendChanged,
+  compareCoordinatesForSort,
   coordinatesMatch,
+  crossProduct,
   forEachCoordinate,
+  isConvex,
 } from "./coordinate";
 import { Tolerance } from "./Tolerance";
 
@@ -58,4 +61,29 @@ export const coordinateSpec = () => {
       false,
     );
   });
+
+  it("calculates the cross product correctly", () => {
+    expect(crossProduct(1, 0, 2, 1, 1, 2)).to.equal(2)
+    expect(crossProduct(1, 0, 0, 1, 1, 2)).to.equal(-2)
+  })
+
+  it("calculates the convexness correctly", () => {
+    expect(isConvex(1, 0, 2, 1, 1, 2)).to.equal(true)
+    expect(isConvex(1, 0, 0, 1, 1, 2)).to.equal(false)
+  })
+
+  it("compares coordinates correctly", () => {
+    expect(compareCoordinatesForSort([], [])).to.equal(0)
+    expect(compareCoordinatesForSort([1, 2], [1, 2])).to.equal(0)
+
+    expect(compareCoordinatesForSort([], [1, 2])).to.be.below(0)
+    expect(compareCoordinatesForSort([1, 2], [1, 3])).to.be.below(0)
+    expect(compareCoordinatesForSort([1, 2], [2, 2])).to.be.below(0)
+    expect(compareCoordinatesForSort([1, 2], [1, 2, 1, 2])).to.be.below(0)
+
+    expect(compareCoordinatesForSort([1, 2], [])).to.be.above(0)
+    expect(compareCoordinatesForSort([1, 3], [1, 2])).to.be.above(0)
+    expect(compareCoordinatesForSort([2, 2], [1, 2])).to.be.above(0)
+    expect(compareCoordinatesForSort([1, 2, 1, 2], [1, 2])).to.be.above(0)
+  })
 };
