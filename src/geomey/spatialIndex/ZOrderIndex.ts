@@ -59,6 +59,7 @@ export class ZOrderIndex<T> implements SpatialIndex<T> {
         return false;
       }
     }
+    return true
   }
   remove(rectangle: Rectangle, matcher: (value: T) => boolean): boolean {
     let found = false;

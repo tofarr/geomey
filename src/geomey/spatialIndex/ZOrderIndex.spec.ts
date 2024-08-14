@@ -2,6 +2,7 @@ import * as chai from "chai";
 import { calculateZOrder, ZOrderIndex } from "./ZOrderIndex";
 import { Tolerance } from "../Tolerance";
 import { Point, Rectangle } from "../geom";
+import { assert } from "chai";
 
 const expect = chai.expect;
 const ORIGIN = Point.ORIGIN;
@@ -28,6 +29,15 @@ export const zOrderIndexSpec = () => {
       // NOTE: We do not assert b < c
     }
   });
+
+  it("will nto create a z order for a value below the minimum", () => {
+    expect(() => {
+      calculateZOrder(-0.1, 0, ORIGIN, 0.1)
+    }).to.throw(Error)
+    expect(() => {
+      calculateZOrder(0, -0.1, ORIGIN, 0.1)
+    }).to.throw(Error)
+  })
 
   it("Loads non overlapping data", () => {
     const index = new ZOrderIndex(new Tolerance(0.05));
@@ -147,5 +157,64 @@ export const zOrderIndexSpec = () => {
     });
     results.sort();
     expect(results).to.eql(["1:3", "1:4", "2:2", "2:4", "3:2", "3:3", "3:4"]);
+  });
+
+  it("empty index finds nothing", () => {
+    const index = new ZOrderIndex(new Tolerance(0.05));
+    index.findAll(() => { assert(false) })
+    index.findIntersecting(new Rectangle(0, 0, 100, 100), () => { assert(false) })
+  });
+
+
+  it("stops finding when a consumer returns false", () => {
+    const index = new ZOrderIndex(new Tolerance(0.05));
+    for (let j = 0; j < 7; j++) {
+      index.add(new Rectangle(0, j, 1, j + 1), j);
+    }
+    expect(index.findAll((value) => { 
+      expect(value).to.be.below(4)
+      return value !== 3
+    })).to.equal(false)
+    expect(index.findIntersecting(new Rectangle(0, 1.1, 1, 10), (value) => { 
+      expect(value).to.be.below(4)
+      return value === 3
+    })).to.equal(false)
+  });
+
+  it("finds nodes as expected when searching", () => {
+    const index = new ZOrderIndex(new Tolerance(0.05));
+    for (let j = 0; j < 7; j+=2) {
+      index.add(new Rectangle(0, j, 1, j + 1), j);
+    }
+    expect(index.findIntersecting(new Rectangle(1.05, 3.05, 2.05, 4.05), (value) => { 
+      throw new Error("unexpected_state")
+    }))
+  })
+
+  
+  it("Still works when a preset min is provided", () => {
+    const index = new ZOrderIndex(new Tolerance(0.05), Point.valueOf(-100, -100));
+    for (let i = 0; i < 7; i++) {
+      for (let j = 0; j < 7; j++) {
+        index.add(new Rectangle(i, j, i + 1, j + 1), `${i}:${j}`);
+      }
+    }
+    const results = [];
+    index.findIntersecting(new Rectangle(2, 3, 3, 4), (value, rectangle) => {
+      expect(value).to.equal(`${rectangle.minX}:${rectangle.minY}`);
+      results.push(value);
+    });
+    results.sort();
+    expect(results).to.eql([
+      "1:2",
+      "1:3",
+      "1:4",
+      "2:2",
+      "2:3",
+      "2:4",
+      "3:2",
+      "3:3",
+      "3:4",
+    ]);
   });
 };
