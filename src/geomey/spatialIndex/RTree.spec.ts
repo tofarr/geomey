@@ -32,8 +32,8 @@ export const rTreeSpec = () => {
   });
 
   it("Builds indexes for existing data", () => {
-    const bounds = []
-    const values = []
+    const bounds = [];
+    const values = [];
     for (let i = 0; i < 7; i++) {
       for (let j = 0; j < 7; j++) {
         bounds.push(new Rectangle(i, j, i + 1, j + 1));
@@ -62,9 +62,13 @@ export const rTreeSpec = () => {
 
   it("Throws an error when existing data is invalid", () => {
     expect(() => {
-      new RTree(10, [new Rectangle(1, 2, 3, 4), new Rectangle(1, 2, 3, 4)], ['a'])
-    }).to.throw(Error)
-  })
+      new RTree(
+        10,
+        [new Rectangle(1, 2, 3, 4), new Rectangle(1, 2, 3, 4)],
+        ["a"],
+      );
+    }).to.throw(Error);
+  });
 
   it("Loads data which overlaps at the max", () => {
     const index = new RTree();
@@ -165,14 +169,17 @@ export const rTreeSpec = () => {
     for (let j = 0; j < 7; j++) {
       index.add(new Rectangle(0, j, 1, j + 1), j);
     }
-    expect(index.findAll((value) => { 
-      expect(value).to.be.below(4)
-      return value !== 3
-    })).to.equal(false)
-    expect(index.findIntersecting(new Rectangle(0, 1.1, 1, 10), (value) => { 
-      expect(value).to.be.below(4)
-      return value === 3
-    })).to.equal(false)
+    expect(
+      index.findAll((value) => {
+        expect(value).to.be.below(4);
+        return value !== 3;
+      }),
+    ).to.equal(false);
+    expect(
+      index.findIntersecting(new Rectangle(0, 1.1, 1, 10), (value) => {
+        expect(value).to.be.below(4);
+        return value === 3;
+      }),
+    ).to.equal(false);
   });
-
 };

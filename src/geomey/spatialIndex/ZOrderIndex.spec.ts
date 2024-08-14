@@ -32,12 +32,12 @@ export const zOrderIndexSpec = () => {
 
   it("will nto create a z order for a value below the minimum", () => {
     expect(() => {
-      calculateZOrder(-0.1, 0, ORIGIN, 0.1)
-    }).to.throw(Error)
+      calculateZOrder(-0.1, 0, ORIGIN, 0.1);
+    }).to.throw(Error);
     expect(() => {
-      calculateZOrder(0, -0.1, ORIGIN, 0.1)
-    }).to.throw(Error)
-  })
+      calculateZOrder(0, -0.1, ORIGIN, 0.1);
+    }).to.throw(Error);
+  });
 
   it("Loads non overlapping data", () => {
     const index = new ZOrderIndex(new Tolerance(0.05));
@@ -161,39 +161,50 @@ export const zOrderIndexSpec = () => {
 
   it("empty index finds nothing", () => {
     const index = new ZOrderIndex(new Tolerance(0.05));
-    index.findAll(() => { assert(false) })
-    index.findIntersecting(new Rectangle(0, 0, 100, 100), () => { assert(false) })
+    index.findAll(() => {
+      assert(false);
+    });
+    index.findIntersecting(new Rectangle(0, 0, 100, 100), () => {
+      assert(false);
+    });
   });
-
 
   it("stops finding when a consumer returns false", () => {
     const index = new ZOrderIndex(new Tolerance(0.05));
     for (let j = 0; j < 7; j++) {
       index.add(new Rectangle(0, j, 1, j + 1), j);
     }
-    expect(index.findAll((value) => { 
-      expect(value).to.be.below(4)
-      return value !== 3
-    })).to.equal(false)
-    expect(index.findIntersecting(new Rectangle(0, 1.1, 1, 10), (value) => { 
-      expect(value).to.be.below(4)
-      return value === 3
-    })).to.equal(false)
+    expect(
+      index.findAll((value) => {
+        expect(value).to.be.below(4);
+        return value !== 3;
+      }),
+    ).to.equal(false);
+    expect(
+      index.findIntersecting(new Rectangle(0, 1.1, 1, 10), (value) => {
+        expect(value).to.be.below(4);
+        return value === 3;
+      }),
+    ).to.equal(false);
   });
 
   it("finds nodes as expected when searching", () => {
     const index = new ZOrderIndex(new Tolerance(0.05));
-    for (let j = 0; j < 7; j+=2) {
+    for (let j = 0; j < 7; j += 2) {
       index.add(new Rectangle(0, j, 1, j + 1), j);
     }
-    expect(index.findIntersecting(new Rectangle(1.05, 3.05, 2.05, 4.05), (value) => { 
-      throw new Error("unexpected_state")
-    }))
-  })
+    expect(
+      index.findIntersecting(new Rectangle(1.05, 3.05, 2.05, 4.05), (value) => {
+        throw new Error("unexpected_state");
+      }),
+    );
+  });
 
-  
   it("Still works when a preset min is provided", () => {
-    const index = new ZOrderIndex(new Tolerance(0.05), Point.valueOf(-100, -100));
+    const index = new ZOrderIndex(
+      new Tolerance(0.05),
+      Point.valueOf(-100, -100),
+    );
     for (let i = 0; i < 7; i++) {
       for (let j = 0; j < 7; j++) {
         index.add(new Rectangle(i, j, i + 1, j + 1), `${i}:${j}`);

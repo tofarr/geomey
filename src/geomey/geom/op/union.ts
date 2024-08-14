@@ -9,11 +9,15 @@ export function union(
   tolerance: Tolerance,
 ): Geometry {
   const [rings, linesAndPoints] = createMeshes(tolerance, a, b);
-  rings.cullLinks((x, y) => {
+  
+  function isInside(x, y) {
+
     return !!(
-      a.relatePoint(x, y, tolerance) | B_INSIDE_A ||
-      b.relatePoint(x, y, tolerance) | B_INSIDE_A
+      a.relatePoint(x, y, tolerance) & B_INSIDE_A ||
+      b.relatePoint(x, y, tolerance) & B_INSIDE_A
     );
-  });
+  }
+  rings.cull(isInside);
+  linesAndPoints.cull(isInside);
   return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
 }

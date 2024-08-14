@@ -5,14 +5,15 @@ import { Tolerance } from "../../Tolerance";
 import { Geometry, GeometryCollection } from "../";
 
 export function xor(a: Geometry, b: Geometry, tolerance: Tolerance): Geometry {
-  const meshes = createMeshes(tolerance, a, b);
-  const [rings, linesAndPoints] = meshes;
+  const [rings, linesAndPoints] = createMeshes(tolerance, a, b);
   addExplicitPointsOfIntersection(rings, linesAndPoints);
-  linesAndPoints.cull((x, y) => {
-    return (
-      (a.relatePoint(x, y, tolerance) === DISJOINT) !=
+  function isInside(x, y) {
+    return !!(
+      (a.relatePoint(x, y, tolerance) === DISJOINT) ==
       (b.relatePoint(x, y, tolerance) === DISJOINT)
     );
-  });
+  }
+  rings.cull(isInside);
+  linesAndPoints.cull(isInside);
   return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
 }

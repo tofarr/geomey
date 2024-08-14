@@ -102,16 +102,6 @@ export class Point implements Geometry {
   }
 }
 
-export function createPoints(mesh: Mesh): number[] {
-  const coordinates = [];
-  mesh.forEachVertex((vertex) => {
-    if (!vertex.links.length) {
-      coordinates.push(vertex.x, vertex.y);
-    }
-  });
-  return coordinates;
-}
-
 export function pointToWkt(
   x: number,
   y: number,

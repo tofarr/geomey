@@ -21,13 +21,13 @@ export class RTree<T> implements SpatialIndex<T> {
     leafBounds?: Rectangle[],
     leafValues?: T[],
   ) {
-    const bounds = new RectangleBuilder()
+    const bounds = new RectangleBuilder();
     if (leafBounds) {
-      for (const leafBound of leafBounds){
-        bounds.unionRectangle(leafBound)
+      for (const leafBound of leafBounds) {
+        bounds.unionRectangle(leafBound);
       }
-      if(leafValues.length != leafBounds.length) {
-        throw new Error('invalid_arguments')
+      if (leafValues.length != leafBounds.length) {
+        throw new Error("invalid_arguments");
       }
     }
     const root = {
@@ -35,7 +35,7 @@ export class RTree<T> implements SpatialIndex<T> {
       leafBounds: leafBounds || [],
       leafValues: leafValues || [],
     };
-    this.root = root
+    this.root = root;
     this.maxLeafSize = maxLeafSize || MAX_LEAF_SIZE;
     if (root.leafBounds.length > this.maxLeafSize) {
       this.splitLeaf(root);

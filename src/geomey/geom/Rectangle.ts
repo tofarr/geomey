@@ -90,6 +90,7 @@ export class Rectangle implements Geometry {
     pathWalker.lineTo(maxX, minY);
     pathWalker.lineTo(maxX, maxY);
     pathWalker.lineTo(minX, maxY);
+    pathWalker.closePath();
   }
   toWkt(numberFormatter?: NumberFormatter): string {
     return this.getPolygon().toWkt(numberFormatter);
@@ -173,6 +174,9 @@ export class Rectangle implements Geometry {
     }
     if (x + t < maxX || y + t < maxY || x - t > minX || y - t > minY) {
       result |= A_OUTSIDE_B;
+    }
+    if (x + t < maxX && y + t < maxY && x - t > minX && y - t > minY) {
+      result |= B_INSIDE_A;
     }
     return result;
   }
