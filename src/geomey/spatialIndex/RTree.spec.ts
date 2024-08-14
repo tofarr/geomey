@@ -31,6 +31,41 @@ export const rTreeSpec = () => {
     ]);
   });
 
+  it("Builds indexes for existing data", () => {
+    const bounds = []
+    const values = []
+    for (let i = 0; i < 7; i++) {
+      for (let j = 0; j < 7; j++) {
+        bounds.push(new Rectangle(i, j, i + 1, j + 1));
+        values.push(`${i}:${j}`);
+      }
+    }
+    const index = new RTree(10, bounds, values);
+    const results = [];
+    index.findIntersecting(new Rectangle(2, 3, 3, 4), (value, rectangle) => {
+      expect(value).to.equal(`${rectangle.minX}:${rectangle.minY}`);
+      results.push(value);
+    });
+    results.sort();
+    expect(results).to.eql([
+      "1:2",
+      "1:3",
+      "1:4",
+      "2:2",
+      "2:3",
+      "2:4",
+      "3:2",
+      "3:3",
+      "3:4",
+    ]);
+  });
+
+  it("Throws an error when existing data is invalid", () => {
+    expect(() => {
+      new RTree(10, [new Rectangle(1, 2, 3, 4), new Rectangle(1, 2, 3, 4)], ['a'])
+    }).to.throw(Error)
+  })
+
   it("Loads data which overlaps at the max", () => {
     const index = new RTree();
     for (let i = 0; i < 5; i++) {
@@ -124,4 +159,20 @@ export const rTreeSpec = () => {
     results.sort();
     expect(results).to.eql(["1:3", "1:4", "2:2", "2:4", "3:2", "3:3", "3:4"]);
   });
+
+  it("stops finding when a consumer returns false", () => {
+    const index = new RTree();
+    for (let j = 0; j < 7; j++) {
+      index.add(new Rectangle(0, j, 1, j + 1), j);
+    }
+    expect(index.findAll((value) => { 
+      expect(value).to.be.below(4)
+      return value !== 3
+    })).to.equal(false)
+    expect(index.findIntersecting(new Rectangle(0, 1.1, 1, 10), (value) => { 
+      expect(value).to.be.below(4)
+      return value === 3
+    })).to.equal(false)
+  });
+
 };

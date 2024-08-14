@@ -10,7 +10,7 @@ export interface Node<T> {
   b?: Node<T>;
 }
 
-const MAX_LEAF_SIZE = 10;
+const MAX_LEAF_SIZE = 16;
 
 export class RTree<T> implements SpatialIndex<T> {
   root: Node<T>;
@@ -21,14 +21,24 @@ export class RTree<T> implements SpatialIndex<T> {
     leafBounds?: Rectangle[],
     leafValues?: T[],
   ) {
-    this.root = {
-      bounds: new RectangleBuilder(),
+    const bounds = new RectangleBuilder()
+    if (leafBounds) {
+      for (const leafBound of leafBounds){
+        bounds.unionRectangle(leafBound)
+      }
+      if(leafValues.length != leafBounds.length) {
+        throw new Error('invalid_arguments')
+      }
+    }
+    const root = {
+      bounds: bounds,
       leafBounds: leafBounds || [],
       leafValues: leafValues || [],
     };
+    this.root = root
     this.maxLeafSize = maxLeafSize || MAX_LEAF_SIZE;
-    if (this.root.leafBounds.length > this.maxLeafSize) {
-      this.splitLeaf(this.root);
+    if (root.leafBounds.length > this.maxLeafSize) {
+      this.splitLeaf(root);
     }
   }
   add(rectangle: Rectangle, value: T) {
