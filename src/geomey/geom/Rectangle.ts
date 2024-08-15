@@ -4,6 +4,8 @@ import {
   B_INSIDE_A,
   B_OUTSIDE_A,
   DISJOINT,
+  OUTSIDE_TOUCH,
+  OVERLAP,
   Relation,
   TOUCH,
   UNKNOWN,
@@ -32,6 +34,12 @@ export class Rectangle implements Geometry {
 
   constructor(minX: number, minY: number, maxX: number, maxY: number) {
     validateCoordinates(minX, minY, maxX, maxY);
+    if (maxX < minX) {
+      [minX, maxX] = [maxX, minX];
+    }
+    if (maxY < minY) {
+      [minY, maxY] = [maxY, minY];
+    }
     this.minX = minX;
     this.minY = minY;
     this.maxX = maxX;
@@ -61,7 +69,7 @@ export class Rectangle implements Geometry {
     if (!centroid) {
       centroid = this.centroid = Point.valueOf(
         (this.minX + this.maxX) / 2,
-        (this.minY + this.maxY, 2),
+        (this.minY + this.maxY) / 2,
       );
     }
     return centroid;
@@ -129,7 +137,7 @@ export class Rectangle implements Geometry {
     }
     return this;
   }
-  transform(transformer: Transformer): Geometry {
+  transform(transformer: Transformer): Rectangle {
     return Rectangle.valueOf(transformer.transformAll(this.toCoordinates()));
   }
   generalize(tolerance: Tolerance): Geometry {
@@ -147,14 +155,6 @@ export class Rectangle implements Geometry {
       this.minY <= rectangle.maxY &&
       this.maxX >= rectangle.minX &&
       this.maxY >= rectangle.minY
-    );
-  }
-  containsRectangle(rectangle: IRectangle): boolean {
-    return (
-      this.minX <= rectangle.minX &&
-      this.minY <= rectangle.minY &&
-      this.maxX >= rectangle.maxX &&
-      this.maxY >= rectangle.maxY
     );
   }
   relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
@@ -192,78 +192,20 @@ export class Rectangle implements Geometry {
     );
   }
   relateRectangle(rectangle: Rectangle, tolerance: Tolerance): Relation {
-    if (this.isDisjointRectangle(rectangle, tolerance)) {
-      return DISJOINT;
-    }
     const { minX: aMinX, minY: aMinY, maxX: aMaxX, maxY: aMaxY } = this;
     const { minX: bMinX, minY: bMinY, maxX: bMaxX, maxY: bMaxY } = rectangle;
-    const { tolerance: t } = tolerance;
-    let result = UNKNOWN;
-    if (aOutsideB(aMinX, aMinY, aMaxX, aMaxY, bMinX, bMinY, bMaxX, bMaxY, t)) {
-      result |= A_OUTSIDE_B;
+    const relateX = relateRangeToRange(aMinX, aMaxX, bMinX, bMaxX, tolerance)
+    if (relateX == DISJOINT) {
+      return DISJOINT
     }
-    if (aOutsideB(bMinX, bMinY, bMaxX, bMaxY, aMinX, aMinY, aMaxX, aMaxY, t)) {
-      result |= B_OUTSIDE_A;
+    const relateY = relateRangeToRange(aMinY, aMaxY, bMinY, bMaxY, tolerance)
+    if (relateY == DISJOINT) {
+      return DISJOINT
     }
-    if (
-      aInsideB(
-        aMinX,
-        aMinY,
-        aMaxX,
-        aMaxY,
-        bMinX,
-        bMinY,
-        bMaxX,
-        bMaxY,
-        tolerance,
-      )
-    ) {
-      result |= A_INSIDE_B;
-    }
-    if (
-      aInsideB(
-        bMinX,
-        bMinY,
-        bMaxX,
-        bMaxY,
-        aMinX,
-        aMinY,
-        aMaxX,
-        aMaxY,
-        tolerance,
-      )
-    ) {
-      result |= B_INSIDE_A;
-    }
-    if (
-      !(
-        aFullyContainsB(
-          bMinX,
-          bMinY,
-          bMaxX,
-          bMaxY,
-          aMinX,
-          aMinY,
-          aMaxX,
-          aMaxY,
-          t,
-        ) ||
-        aFullyContainsB(
-          bMinX,
-          bMinY,
-          bMaxX,
-          bMaxY,
-          aMinX,
-          aMinY,
-          aMaxX,
-          aMaxY,
-          t,
-        )
-      )
-    ) {
-      result |= TOUCH;
-    }
-    return result;
+    const overlap = relateX & relateY & OVERLAP
+    const outside_touch = (relateX | relateY) & OUTSIDE_TOUCH
+    return (overlap | outside_touch) as Relation
+
   }
   relate(other: Geometry, tolerance: Tolerance): Relation {
     return this.relateRectangle(other.getBounds(), tolerance);
@@ -278,23 +220,15 @@ export class Rectangle implements Geometry {
     );
   }
   intersection(other: Geometry, tolerance: Tolerance): Rectangle | null {
-    const { minX: aMinX, minY: aMinY, maxX: aMaxX, maxY: aMaxY } = this;
-    const {
-      minX: bMinX,
-      minY: bMinY,
-      maxX: bMaxX,
-      maxY: bMaxY,
-    } = other.getBounds();
-    const { tolerance: t } = tolerance;
-    if (isDisjoint(bMinX, bMinY, bMaxX, bMaxY, aMinX, aMinY, aMaxX, aMaxY, t)) {
-      return null;
+    const otherBounds = other.getBounds()
+    if (this.isDisjointRectangle(otherBounds, tolerance)){
+      return null
     }
-    const bounds = other.getBounds();
     return new Rectangle(
-      Math.min(this.minX, bounds.minX),
-      Math.min(this.minY, bounds.minY),
-      Math.max(this.maxX, bounds.maxX),
-      Math.max(this.maxY, bounds.maxY),
+      Math.max(this.minX, otherBounds.minX),
+      Math.max(this.minY, otherBounds.minY),
+      Math.min(this.maxX, otherBounds.maxX),
+      Math.min(this.maxY, otherBounds.maxY),
     );
   }
   less(other: Geometry, tolerance: Tolerance): Geometry | null {
@@ -308,80 +242,28 @@ export class Rectangle implements Geometry {
   }
 }
 
-function isDisjoint(
-  aMinX: number,
-  aMinY: number,
-  aMaxX: number,
-  aMaxY: number,
-  bMinX: number,
-  bMinY: number,
-  bMaxX: number,
-  bMaxY: number,
-  t: number,
-) {
-  return (
-    aMaxX + t < bMinX ||
-    aMaxY + t < bMinY ||
-    aMinX - t > bMaxX ||
-    aMinY - t > bMaxY
-  );
-}
+export function relateRangeToRange(aMin: number, aMax: number, bMin: number, bMax: number, tolerance: Tolerance): Relation {
+    if (tolerance.lt(aMax, bMin) || tolerance.gt(aMin, bMax)){
+      return DISJOINT
+    }
+    const min = Math.max(aMin, bMin)
+    const max = Math.min(aMax, bMax)
+    let result = UNKNOWN
+    if (!tolerance.match(min, max)){
+      result = (A_INSIDE_B | B_INSIDE_A) as Relation
+    }
+    if (tolerance.lt(aMin, min) || tolerance.gt(aMax, max)){
+      result |= A_OUTSIDE_B
+    }
+    if (tolerance.lt(bMin, min) || tolerance.gt(bMax, max)){
+      result |= B_OUTSIDE_A
+    }
 
-function aOutsideB(
-  aMinX: number,
-  aMinY: number,
-  aMaxX: number,
-  aMaxY: number,
-  bMinX: number,
-  bMinY: number,
-  bMaxX: number,
-  bMaxY: number,
-  t: number,
-) {
-  return (
-    aMinX + t < bMinX ||
-    aMinY + t < bMinY ||
-    aMaxX - t > bMaxX ||
-    aMaxY - t > bMaxY
-  );
-}
-
-function aInsideB(
-  aMinX: number,
-  aMinY: number,
-  aMaxX: number,
-  aMaxY: number,
-  bMinX: number,
-  bMinY: number,
-  bMaxX: number,
-  bMaxY: number,
-  tolerance: Tolerance,
-) {
-  if (tolerance.match(bMinX, bMaxX) || tolerance.match(bMinY, bMaxY)) {
-    return false;
-  }
-  const { tolerance: t } = tolerance;
-  return (
-    (aMinX > bMinX + t && aMinY > bMinY + t) ||
-    (aMaxX < bMaxY - t && aMaxY < bMaxY - t)
-  );
-}
-
-function aFullyContainsB(
-  aMinX: number,
-  aMinY: number,
-  aMaxX: number,
-  aMaxY: number,
-  bMinX: number,
-  bMinY: number,
-  bMaxX: number,
-  bMaxY: number,
-  t: number,
-) {
-  return (
-    aMinX + t < bMinX &&
-    aMinY + t < bMinY &&
-    aMaxX - t > bMaxX &&
-    aMaxY - t > bMaxY
-  );
+    if (tolerance.match(aMin, bMin) || tolerance.match(aMax, bMax)) {
+      result |= TOUCH
+    }
+    if ((aMin < bMin) !== (aMax > bMax)) {
+      result |= TOUCH
+    }
+    return result
 }

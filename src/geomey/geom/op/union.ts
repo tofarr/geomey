@@ -9,9 +9,8 @@ export function union(
   tolerance: Tolerance,
 ): Geometry {
   const [rings, linesAndPoints] = createMeshes(tolerance, a, b);
-  
-  function isInside(x, y) {
 
+  function isInside(x, y) {
     return !!(
       a.relatePoint(x, y, tolerance) & B_INSIDE_A ||
       b.relatePoint(x, y, tolerance) & B_INSIDE_A

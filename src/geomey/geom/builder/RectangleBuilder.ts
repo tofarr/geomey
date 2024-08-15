@@ -61,14 +61,6 @@ export class RectangleBuilder {
       this.maxY >= rectangle.minY
     );
   }
-  containsRectangle(rectangle: IRectangle): boolean {
-    return (
-      this.minX <= rectangle.minX &&
-      this.minY <= rectangle.minY &&
-      this.maxX >= rectangle.maxX &&
-      this.maxY >= rectangle.maxY
-    );
-  }
   build(): Rectangle | void {
     const { minX, minY, maxX, maxY } = this;
     if (minX > maxX && minY > maxY) {

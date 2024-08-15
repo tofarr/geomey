@@ -10,6 +10,7 @@ import { triangleSpec } from "./geomey/geom/Triangle.spec";
 import { linearRingSpec } from "./geomey/geom/LinearRing.spec";
 import { affineTransformerSpec } from "./geomey/transformer/AffineTransformer.spec";
 import { pointSpec } from "./geomey/geom/Point.spec";
+import { rectangleSpec } from "./geomey/geom/Rectangle.spec";
 
 describe("Coordinate", coordinateSpec);
 describe("Tolerance", toleranceSpec);
@@ -23,3 +24,4 @@ describe("Relate", relateSpec);
 describe("Triange", triangleSpec);
 describe("LinearRing", linearRingSpec);
 describe("Point", pointSpec);
+describe("Rectangle", rectangleSpec);

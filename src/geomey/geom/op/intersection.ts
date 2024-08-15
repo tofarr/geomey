@@ -20,5 +20,6 @@ export function intersection(
       );
     });
   }
-  return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
+  const geometry = GeometryCollection.fromMeshes(rings, linesAndPoints);
+  return geometry ? geometry.normalize() : null;
 }

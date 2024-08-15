@@ -1,19 +1,24 @@
 import { createMeshes } from "../../mesh/MeshPathWalker";
 import { addExplicitPointsOfIntersection } from "../../mesh/op/addExplicitPointsOfIntersection";
-import { DISJOINT } from "../../Relation";
+import { DISJOINT, TOUCH } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
 import { Geometry, GeometryCollection } from "../";
 
-export function xor(a: Geometry, b: Geometry, tolerance: Tolerance): Geometry {
+export function xor(a: Geometry, b: Geometry, tolerance: Tolerance): Geometry | null {
   const [rings, linesAndPoints] = createMeshes(tolerance, a, b);
   addExplicitPointsOfIntersection(rings, linesAndPoints);
-  function isInside(x, y) {
+  rings.cullLinks((x, y) => {
     return !!(
-      (a.relatePoint(x, y, tolerance) === DISJOINT) ==
-      (b.relatePoint(x, y, tolerance) === DISJOINT)
+      (a.relatePoint(x, y, tolerance) & TOUCH) &&
+      (b.relatePoint(x, y, tolerance) & TOUCH)
     );
-  }
-  rings.cull(isInside);
-  linesAndPoints.cull(isInside);
-  return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
+  });
+  linesAndPoints.cull((x, y) => {
+    return (
+      (a.relatePoint(x, y, tolerance) !== DISJOINT) &&
+      (b.relatePoint(x, y, tolerance) !== DISJOINT)
+    )
+  });
+  const geometry = GeometryCollection.fromMeshes(rings, linesAndPoints);
+  return geometry ? geometry.normalize() : null;
 }
