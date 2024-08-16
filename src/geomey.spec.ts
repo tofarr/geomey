@@ -11,6 +11,7 @@ import { linearRingSpec } from "./geomey/geom/LinearRing.spec";
 import { affineTransformerSpec } from "./geomey/transformer/AffineTransformer.spec";
 import { pointSpec } from "./geomey/geom/Point.spec";
 import { rectangleSpec } from "./geomey/geom/Rectangle.spec";
+import { meshPathWalkerSpec } from "./geomey/mesh/MeshPathWalker.spec";
 
 describe("Coordinate", coordinateSpec);
 describe("Tolerance", toleranceSpec);
@@ -18,6 +19,7 @@ describe("Relation", relationSpec);
 describe("ZOrderIndex", zOrderIndexSpec);
 describe("RTree", rTreeSpec);
 describe("Mesh", meshSpec);
+describe("MeshPathWalker", meshPathWalkerSpec);
 describe("AffineTransformer", affineTransformerSpec);
 describe("Wkt", wktSpec);
 describe("Relate", relateSpec);

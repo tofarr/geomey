@@ -1,4 +1,4 @@
-import { forEachLineSegmentCoordinates } from "../coordinate";
+import { forEachCoordinate, forEachLineSegmentCoordinates } from "../coordinate";
 import { forEachRingLineSegmentCoordinates, Geometry } from "../geom";
 import { signedPerpendicularDistance } from "../geom";
 import { PathWalker } from "../path/PathWalker";
@@ -26,17 +26,13 @@ export class MeshPathWalker implements PathWalker {
     const { coordinates } = this;
     const { length } = coordinates;
     if (length) {
-      if (length == 2) {
-        this.linesAndPoints.addVertex(coordinates[0], coordinates[1]);
-      } else {
-        forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
-          if (ax == bx && ay == by) {
-            this.linesAndPoints.addVertex(ax, ay);
-          } else {
-            this.linesAndPoints.addLink(ax, ay, bx, by);
-          }
-        });
-      }
+      forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
+        if (ax == bx && ay == by) {
+          this.linesAndPoints.addVertex(ax, ay);
+        } else {
+          this.linesAndPoints.addLink(ax, ay, bx, by);
+        }
+      });
     }
     coordinates.length = 0;
   }
@@ -54,8 +50,8 @@ export class MeshPathWalker implements PathWalker {
     const { coordinates, linesAndPoints, rings } = this;
     const { length } = coordinates;
     const ax = coordinates[length - 2];
-    const ay = coordinates[length - 2];
-    const { tolerance } = linesAndPoints || rings;
+    const ay = coordinates[length - 1];
+    const { tolerance } = linesAndPoints;
     if (
       tolerance.match(0, signedPerpendicularDistance(ax, ay, dx, dy, bx, by)) &&
       tolerance.match(0, signedPerpendicularDistance(ax, ay, dx, dy, cx, cy))
