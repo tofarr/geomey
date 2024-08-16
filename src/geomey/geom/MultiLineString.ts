@@ -49,6 +49,9 @@ export class MultiLineString extends AbstractGeometry {
     if (lineStrings.find((lineString) => !lineString.isNormalized())) {
       return false;
     }
+    if (lineStrings.length == 1) {
+      return false
+    }
     for (let i = lineStrings.length - 2; i >= 0; i--) {
       if (compareLineStringsForSort(lineStrings[i], lineStrings[i + 1]) > 0) {
         return false;
@@ -63,10 +66,10 @@ export class MultiLineString extends AbstractGeometry {
     const lineStrings = this.lineStrings.map(
       (lineString) => lineString.normalize() as LineString,
     );
-    lineStrings.sort(compareLineStringsForSort);
     if (lineStrings.length === 1) {
       return lineStrings[0];
     }
+    lineStrings.sort(compareLineStringsForSort);
     return new MultiLineString(lineStrings);
   }
   walkPath(pathWalker: PathWalker): void {

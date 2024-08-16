@@ -55,7 +55,7 @@ export class LineSegment implements Geometry {
     if (!centroid) {
       centroid = this.centroid = Point.valueOf(
         (this.ax + this.bx) / 2,
-        (this.ay + this.by, 2),
+        (this.ay + this.by) / 2,
       );
     }
     return centroid;
@@ -118,11 +118,9 @@ export class LineSegment implements Geometry {
     const compare = comparePointsForSort(ax, ay, bx, by);
     if (compare < 0) {
       return this;
-    }
-    if (compare > 0) {
+    } else {
       return new LineSegment(bx, by, ax, ay);
     }
-    return this.getCentroid();
   }
   transform(transformer: Transformer): LineSegment | Point {
     const [ax, ay, bx, by] = transformer.transformAll([
@@ -206,22 +204,6 @@ export class LineSegment implements Geometry {
   }
   xor(other: Geometry, tolerance: Tolerance): Geometry | null {
     return xor(this, other, tolerance);
-  }
-  intersectionLineSegment(
-    other: LineSegment,
-    tolerance: Tolerance,
-  ): Point | null {
-    return intersectionLineSegment(
-      this.ax,
-      this.ay,
-      this.bx,
-      this.by,
-      other.ax,
-      other.ay,
-      other.bx,
-      other.by,
-      tolerance,
-    );
   }
 }
 

@@ -95,9 +95,11 @@ export class GeometryCollection extends AbstractGeometry {
         results.push(lineString.toWkt(numberFormatter), ",");
       }
     }
-    forEachCoordinate(points.coordinates, (x, y) => {
-      results.push(pointToWkt(x, y, numberFormatter), ",");
-    });
+    if (points) {
+      forEachCoordinate(points.coordinates, (x, y) => {
+        results.push(pointToWkt(x, y, numberFormatter), ",");
+      });
+    }
     results.pop();
     results.push(")");
     return results.join("");

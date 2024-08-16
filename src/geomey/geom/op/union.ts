@@ -2,6 +2,7 @@ import { createMeshes } from "../../mesh/MeshPathWalker";
 import { B_INSIDE_A } from "../../Relation";
 import { Tolerance } from "../../Tolerance";
 import { Geometry, GeometryCollection } from "../";
+import { addExplicitPointsOfIntersection } from "../../mesh/op/addExplicitPointsOfIntersection";
 
 export function union(
   a: Geometry,
@@ -9,6 +10,7 @@ export function union(
   tolerance: Tolerance,
 ): Geometry {
   const [rings, linesAndPoints] = createMeshes(tolerance, a, b);
+  addExplicitPointsOfIntersection(rings, linesAndPoints);
 
   function isInside(x, y) {
     return !!(

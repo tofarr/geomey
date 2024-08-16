@@ -12,6 +12,7 @@ import { affineTransformerSpec } from "./geomey/transformer/AffineTransformer.sp
 import { pointSpec } from "./geomey/geom/Point.spec";
 import { rectangleSpec } from "./geomey/geom/Rectangle.spec";
 import { meshPathWalkerSpec } from "./geomey/mesh/MeshPathWalker.spec";
+import { lineSegmentSpec } from "./geomey/geom/LineSegment.spec";
 
 describe("Coordinate", coordinateSpec);
 describe("Tolerance", toleranceSpec);
@@ -27,3 +28,4 @@ describe("Triange", triangleSpec);
 describe("LinearRing", linearRingSpec);
 describe("Point", pointSpec);
 describe("Rectangle", rectangleSpec);
+describe("LineSegment", lineSegmentSpec);
