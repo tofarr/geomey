@@ -14,8 +14,10 @@ import {
   calculateArea,
   forEachRingLineSegmentCoordinates,
   intersectionLineSegment,
+  perpendicularDistance,
   pointTouchesLineSegment,
   Rectangle,
+  signedPerpendicularDistance,
 } from "../geom";
 import { Tolerance } from "../Tolerance";
 import { Link } from "./Link";
@@ -131,19 +133,8 @@ export class Mesh {
     this.links.findIntersecting(Rectangle.valueOf([ax, ay, bx, by]), (link) => {
       const { x: jax, y: jay } = link.a;
       const { x: jbx, y: jby } = link.b;
-      const intersection = intersectionLineSegment(
-        ax,
-        ay,
-        bx,
-        by,
-        jax,
-        jay,
-        jbx,
-        jby,
-        tolerance,
-      );
-      if (intersection) {
-        const { x: ix, y: iy } = intersection;
+
+      function addIntersection(ix: number, iy: number) {
         if (
           !(
             coordinateEqual(jax, jay, ix, iy) ||
@@ -154,6 +145,36 @@ export class Mesh {
           toAdd.push(jax, jay, ix, iy, ix, iy, jbx, jby);
         }
         intersections.push(ix, iy);
+      }
+
+      const containsJA = tolerance.within(
+        signedPerpendicularDistance(jax, jay, ax, ay, bx, by),
+      );
+      const containsJB = tolerance.within(
+        signedPerpendicularDistance(jbx, jby, ax, ay, bx, by),
+      );
+      if (containsJA || containsJB) {
+        if (containsJA) {
+          addIntersection(jax, jay);
+        }
+        if (containsJB) {
+          addIntersection(jbx, jby);
+        }
+      } else {
+        const intersection = intersectionLineSegment(
+          ax,
+          ay,
+          bx,
+          by,
+          jax,
+          jay,
+          jbx,
+          jby,
+          tolerance,
+        );
+        if (intersection) {
+          addIntersection(intersection.x, intersection.y);
+        }
       }
     });
     intersections.push(bx, by);
@@ -533,10 +554,10 @@ export class Mesh {
       );
     }
   }
-  cullVertices(match: (x: number, y: number) => boolean) {
+  cullVertices(match: (x: number, y: number, links: Vertex[]) => boolean) {
     const toRemove = [];
-    this.forEachVertex(({ x, y }) => {
-      if (match(x, y)) {
+    this.forEachVertex(({ x, y, links }) => {
+      if (match(x, y, links as Vertex[])) {
         toRemove.push(x, y);
       }
     });

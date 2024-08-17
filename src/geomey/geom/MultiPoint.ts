@@ -83,6 +83,9 @@ export class MultiPoint extends AbstractGeometry {
     };
   }
   isNormalized(): boolean {
+    if (this.coordinates.length == 2) {
+      return false;
+    }
     return forEachLineSegmentCoordinates(
       this.coordinates,
       (ax, ay, bx, by) => comparePointsForSort(ax, ay, bx, by) <= 0,

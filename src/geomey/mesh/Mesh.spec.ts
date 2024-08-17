@@ -162,6 +162,18 @@ export const meshSpec = () => {
     expect(mesh.getVertices().length).to.eql(4);
     expect(mesh.getLinkCoordinates()).to.eql([[30, 0, 30, 30]]);
   });
+  it("handles overlapping colinear segments correctly", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    mesh.addLink(0, 2, 6, 8);
+    mesh.addLink(4, 6, 8, 10);
+    expect(mesh.getLineStrings()).to.eql([[0, 2, 4, 6, 6, 8, 8, 10]]);
+  });
+  it("handles contained colinear segments correctly", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    mesh.addLink(0, 0, 30, 30);
+    mesh.addLink(10, 10, 20, 20);
+    expect(mesh.getLineStrings()).to.eql([[0, 0, 10, 10, 20, 20, 30, 30]]);
+  });
 };
 
 function expectLink(

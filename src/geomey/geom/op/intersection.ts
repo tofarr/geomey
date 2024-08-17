@@ -15,8 +15,8 @@ export function intersection(
   for (const mesh of meshes) {
     mesh.cull((x, y) => {
       return !!(
-        a.relatePoint(x, y, tolerance) | B_OUTSIDE_A ||
-        b.relatePoint(x, y, tolerance) | B_OUTSIDE_A
+        a.relatePoint(x, y, tolerance) & B_OUTSIDE_A ||
+        b.relatePoint(x, y, tolerance) & B_OUTSIDE_A
       );
     });
   }

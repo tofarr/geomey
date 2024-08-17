@@ -9,7 +9,7 @@ export class SVGPathWalker implements PathWalker {
   constructor(numberFormatter?: (n: number) => string) {
     this.path = [];
     this.numberFormatter = numberFormatter || NUMBER_FORMATTER;
-    this.isLine = false
+    this.isLine = false;
   }
 
   moveTo(x: number, y: number): void {
@@ -20,8 +20,13 @@ export class SVGPathWalker implements PathWalker {
 
   lineTo(x: number, y: number): void {
     const { numberFormatter } = this;
-    this.path.push((this.isLine ? " " : "L"), numberFormatter(x), " ", numberFormatter(y));
-    this.isLine = true
+    this.path.push(
+      this.isLine ? " " : "L",
+      numberFormatter(x),
+      " ",
+      numberFormatter(y),
+    );
+    this.isLine = true;
   }
 
   bezierCurveTo(
@@ -47,12 +52,12 @@ export class SVGPathWalker implements PathWalker {
       " ",
       numberFormatter(y),
     );
-    this.isLine = false
+    this.isLine = false;
   }
 
   closePath(): void {
     this.path.push("Z");
-    this.isLine = false
+    this.isLine = false;
   }
 
   toPath(): string {

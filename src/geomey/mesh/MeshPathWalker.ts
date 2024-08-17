@@ -1,4 +1,7 @@
-import { forEachCoordinate, forEachLineSegmentCoordinates } from "../coordinate";
+import {
+  forEachCoordinate,
+  forEachLineSegmentCoordinates,
+} from "../coordinate";
 import { forEachRingLineSegmentCoordinates, Geometry } from "../geom";
 import { signedPerpendicularDistance } from "../geom";
 import { PathWalker } from "../path/PathWalker";

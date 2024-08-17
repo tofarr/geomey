@@ -50,7 +50,7 @@ export class MultiLineString extends AbstractGeometry {
       return false;
     }
     if (lineStrings.length == 1) {
-      return false
+      return false;
     }
     for (let i = lineStrings.length - 2; i >= 0; i--) {
       if (compareLineStringsForSort(lineStrings[i], lineStrings[i + 1]) > 0) {

@@ -151,6 +151,13 @@ export class GeometryCollection extends AbstractGeometry {
     if (polygons && polygons.polygons.length > 2) {
       polygons = polygons.normalize() as MultiPolygon;
     }
+    if (
+      points == this.points &&
+      lineStrings == this.lineStrings &&
+      polygons == this.polygons
+    ) {
+      return this;
+    }
     return new GeometryCollection(points, lineStrings, polygons);
   }
   isValid(tolerance: Tolerance): boolean {

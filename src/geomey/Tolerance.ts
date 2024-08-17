@@ -27,11 +27,11 @@ export class Tolerance {
   }
 
   lt(a: number, b: number): boolean {
-    return a < (b - this.tolerance)
+    return a < b - this.tolerance;
   }
 
   gt(a: number, b: number): boolean {
-    return a > (b + this.tolerance)
+    return a > b + this.tolerance;
   }
 
   normalize(value: number): number {

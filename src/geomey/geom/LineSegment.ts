@@ -327,39 +327,6 @@ export function projectProgress(
   return progress;
 }
 
-export function projectPointOntoLineSegment(
-  x: number,
-  y: number,
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number,
-  tolerance: Tolerance,
-): Point | null {
-  // Calculate the vector from A to B
-  const abx = bx - ax;
-  const aby = by - ay;
-
-  const progress = projectProgress(x, y, ax, ay, abx, aby);
-
-  // Get projected point
-  const px = ax + progress * abx;
-  const py = ax + progress * aby;
-
-  if (coordinateMatch(px, py, ax, ay, tolerance)) {
-    // if projected point is very close to a, use a
-    return Point.valueOf(ax, ay);
-  } else if (coordinateMatch(px, py, bx, by, tolerance)) {
-    // if projected point is very close to b, use b
-    return Point.valueOf(bx, by);
-  } else if (progress < 0 || progress > 1) {
-    // reject points outside bounds
-    return null;
-  }
-
-  return Point.valueOf(px, py);
-}
-
 export function pointTouchesLineSegment(
   x: number,
   y: number,
@@ -385,7 +352,7 @@ export function pointTouchesLineSegment(
 
   // Get projected point
   const px = ax + progress * abx;
-  const py = ax + progress * aby;
+  const py = ay + progress * aby;
 
   if (coordinateMatch(px, py, ax, ay, tolerance)) {
     // if projected point is very close to a, use a
