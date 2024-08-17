@@ -1,11 +1,6 @@
 import { forEachCoordinate, isNaNOrInfinite } from "../coordinate";
 import { Transformer } from "./Transformer";
 
-const NO_OP = 0;
-const TRANSLATE = 1;
-const SCALE = 2;
-const SHEAR = 4;
-
 /**
  * Class representing an affine transfomrm.
  *

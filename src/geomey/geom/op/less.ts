@@ -56,18 +56,18 @@ export function less(
   });
 
   linesAndPoints.cullLinks((x, y) => {
-    return b.relatePoint(x, y, tolerance) !== DISJOINT
-  })
+    return b.relatePoint(x, y, tolerance) !== DISJOINT;
+  });
   linesAndPoints.cullVertices((x, y, links) => {
-    const relate = b.relatePoint(x, y, tolerance)
+    const relate = b.relatePoint(x, y, tolerance);
     if (relate & B_INSIDE_A) {
-      return true
+      return true;
     }
-    if ((relate & TOUCH) && !links.length){
-      return true
+    if (relate & TOUCH && !links.length) {
+      return true;
     }
-    return false
-  })
+    return false;
+  });
 
   const geometry = GeometryCollection.fromMeshes(rings, linesAndPoints);
   // Another step is required here - linear rings may still be invalid if they overlap with b

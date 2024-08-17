@@ -1,7 +1,4 @@
-import {
-  forEachCoordinate,
-  forEachLineSegmentCoordinates,
-} from "../coordinate";
+import { forEachLineSegmentCoordinates } from "../coordinate";
 import { forEachRingLineSegmentCoordinates, Geometry } from "../geom";
 import { signedPerpendicularDistance } from "../geom";
 import { PathWalker } from "../path/PathWalker";
@@ -50,7 +47,7 @@ export class MeshPathWalker implements PathWalker {
     dx: number,
     dy: number,
   ): void {
-    const { coordinates, linesAndPoints, rings } = this;
+    const { coordinates, linesAndPoints } = this;
     const { length } = coordinates;
     const ax = coordinates[length - 2];
     const ay = coordinates[length - 1];

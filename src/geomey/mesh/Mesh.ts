@@ -14,7 +14,6 @@ import {
   calculateArea,
   forEachRingLineSegmentCoordinates,
   intersectionLineSegment,
-  perpendicularDistance,
   pointTouchesLineSegment,
   Rectangle,
   signedPerpendicularDistance,
@@ -613,9 +612,7 @@ function followLinearRing(a: Vertex, b: Vertex): number[] {
 }
 
 function calculateLinkKey(a: Vertex, b: Vertex, tolerance: number) {
-  let { x: ax, y: ay } = a;
-  let { x: bx, y: by } = b;
-  return calculateCoordinateLinkKey(ax, ay, bx, by, tolerance);
+  return calculateCoordinateLinkKey(a.x, a.y, b.x, b.y, tolerance);
 }
 
 function calculateCoordinateLinkKey(

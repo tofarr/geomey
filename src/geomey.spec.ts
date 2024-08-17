@@ -13,6 +13,7 @@ import { pointSpec } from "./geomey/geom/Point.spec";
 import { rectangleSpec } from "./geomey/geom/Rectangle.spec";
 import { meshPathWalkerSpec } from "./geomey/mesh/MeshPathWalker.spec";
 import { lineSegmentSpec } from "./geomey/geom/LineSegment.spec";
+import { lineStringSpec } from "./geomey/geom/LineString.spec";
 
 describe("Coordinate", coordinateSpec);
 describe("Tolerance", toleranceSpec);
@@ -29,3 +30,4 @@ describe("LinearRing", linearRingSpec);
 describe("Point", pointSpec);
 describe("Rectangle", rectangleSpec);
 describe("LineSegment", lineSegmentSpec);
+describe("LineString", lineStringSpec);

@@ -13,7 +13,6 @@ import {
   forEachRingLineSegmentCoordinates,
   signedPerpendicularDistance,
   LineString,
-  MultiLineString,
 } from "./";
 import { GeoJsonPolygon } from "../geoJson";
 import { comparePointsForSort, validateCoordinates } from "../coordinate";
@@ -180,6 +179,7 @@ function getTrianglesFromMesh(
 ) {
   const vertices = mesh.getVertices();
   let i = 0;
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const { a, b } = getBestBisector(vertices, mesh, geometry);
     if (!a) {
@@ -222,7 +222,7 @@ function getBestBisector(
   geometry: Geometry,
 ): Bisector {
   const { length } = vertices;
-  let bisector = { a: null, b: null, score: Infinity };
+  const bisector = { a: null, b: null, score: Infinity };
   for (let i = 0; i < length; i++) {
     const a = vertices[i];
     for (let b = i - 1; b >= 0; b--) {

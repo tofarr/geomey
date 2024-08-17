@@ -28,8 +28,14 @@ import {
   intersectionLineSegment,
   pointTouchesLineSegment,
 } from "./LineSegment";
-import { douglasPeucker, walkPath } from "./LineString";
-import { Point, Polygon, Rectangle } from "./";
+import {
+  calculateCentroid,
+  douglasPeucker,
+  Point,
+  Polygon,
+  Rectangle,
+  walkPath,
+} from "./";
 import { GeoJsonPolygon } from "../geoJson";
 
 /**
@@ -241,27 +247,6 @@ export function forEachRingLineSegmentCoordinates(
     bx = ax;
     by = ay;
   }
-}
-
-export function calculateCentroid(coordinates: ReadonlyArray<number>): Point {
-  let xSum = 0;
-  let ySum = 0;
-  let area = 0;
-  forEachLineSegmentCoordinates(
-    coordinates,
-    (ax, ay, bx, by) => {
-      const a = ax * by - bx * ay;
-      area += a;
-      xSum += (ax + bx) * a;
-      ySum += (ay + by) * a;
-    },
-    0,
-    coordinates.length >> 1,
-  );
-  area *= 0.5;
-  const cx = xSum / (6 * area);
-  const cy = ySum / (6 * area);
-  return Point.valueOf(cx, cy);
 }
 
 export function ringToWkt(

@@ -14,13 +14,7 @@ import { Mesh } from "../mesh/Mesh";
 import { MeshPathWalker } from "../mesh/MeshPathWalker";
 import { generalize } from "../mesh/op/generalize";
 import { PathWalker } from "../path/PathWalker";
-import {
-  A_OUTSIDE_B,
-  B_INSIDE_A,
-  DISJOINT,
-  Relation,
-  TOUCH,
-} from "../Relation";
+import { B_INSIDE_A, DISJOINT, Relation } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
 import { RectangleBuilder } from "./builder/RectangleBuilder";

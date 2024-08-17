@@ -10,12 +10,10 @@ import {
   appendChanged,
   compareCoordinatesForSort,
   comparePointsForSort,
-  CoordinateConsumer,
   coordinateMatch,
   forEachCoordinate,
   forEachLineSegmentCoordinates,
   InvalidCoordinateError,
-  LineSegmentCoordinatesConsumer,
   reverse,
   sortCoordinates,
   validateCoordinates,
@@ -44,6 +42,7 @@ import { GeoJsonLineString } from "../geoJson";
  */
 export class LineString extends AbstractGeometry {
   readonly coordinates: ReadonlyArray<number>;
+  private length: number;
 
   constructor(coordinates: ReadonlyArray<number>) {
     super();
@@ -60,34 +59,23 @@ export class LineString extends AbstractGeometry {
     });
     return results;
   }
-  forEachCoordinate(consumer: CoordinateConsumer): boolean {
-    return forEachCoordinate(this.coordinates, consumer);
-  }
-  forEachLineSegmentCoordinates(
-    consumer: LineSegmentCoordinatesConsumer,
-  ): boolean {
-    return forEachLineSegmentCoordinates(this.coordinates, consumer);
-  }
   protected calculateCentroid(): Point {
-    return getCentroid(this.coordinates);
+    return calculateCentroid(this.coordinates);
   }
   protected calculateBounds(): Rectangle {
     return Rectangle.valueOf(this.coordinates);
   }
   getLength() {
-    let length = 0;
-    forEachLineSegmentCoordinates(this.coordinates, (ax, ay, bx, by) => {
-      length += getLength(ax, ay, bx, by);
-    });
+    let { length } = this;
+    if (length == null) {
+      this.length = length = calculateLength(this.coordinates);
+    }
     return length;
   }
   walkPath(pathWalker: PathWalker): void {
     walkPath(this.coordinates, pathWalker);
   }
   toWkt(numberFormatter: NumberFormatter = NUMBER_FORMATTER): string {
-    if (!this.coordinates.length) {
-      return "EMPTY";
-    }
     const result = ["LINESTRING"];
     coordinatesToWkt(this.coordinates, numberFormatter, result);
     return result.join("");
@@ -95,7 +83,7 @@ export class LineString extends AbstractGeometry {
   toGeoJson(): GeoJsonLineString {
     const coordinates = [];
     forEachCoordinate(this.coordinates, (x, y) => {
-      coordinates.push(x, y);
+      coordinates.push([x, y]);
     });
     return {
       type: "LineString",
@@ -104,10 +92,11 @@ export class LineString extends AbstractGeometry {
   }
   isValid(tolerance: Tolerance): boolean {
     if (this.getBounds().isCollapsible(tolerance)) {
-      return true;
+      return false;
     }
     return forEachLineSegmentCoordinates(this.coordinates, (ax, ay, bx, by) => {
-      !coordinateMatch(ax, ay, bx, by, tolerance);
+      const result = !coordinateMatch(ax, ay, bx, by, tolerance);
+      return result;
     });
   }
   isNormalized(): boolean {
@@ -176,16 +165,33 @@ export class LineString extends AbstractGeometry {
 
 export type LineStringConsumer = (lineString: LineString) => boolean | void;
 
-export function getCentroid(coordinates: ReadonlyArray<number>) {
-  let x = 0;
-  let y = 0;
-  const { length } = coordinates;
-  let offset = length;
-  while (offset) {
-    y += coordinates[--offset];
-    x += coordinates[--offset];
-  }
-  return Point.valueOf(x / length, y / length);
+export function calculateLength(coordinates: ReadonlyArray<number>) {
+  let length = 0;
+  forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
+    length += getLength(ax, ay, bx, by);
+  });
+  return length;
+}
+
+export function calculateCentroid(coordinates: ReadonlyArray<number>) {
+  let xSum = 0;
+  let ySum = 0;
+  let area = 0;
+  forEachLineSegmentCoordinates(
+    coordinates,
+    (ax, ay, bx, by) => {
+      const a = ax * by - bx * ay;
+      area += a;
+      xSum += (ax + bx) * a;
+      ySum += (ay + by) * a;
+    },
+    0,
+    coordinates.length >> 1,
+  );
+  area *= 0.5;
+  const cx = xSum / (6 * area);
+  const cy = ySum / (6 * area);
+  return Point.valueOf(cx, cy);
 }
 
 function partition(
@@ -209,8 +215,8 @@ function partition(
   while (index < endIndex) {
     const dist = Math.abs(
       perpendicularDistance(
-        coordinates[index++],
-        coordinates[index++],
+        coordinates[index],
+        coordinates[index + 1],
         ax,
         ay,
         bx,
@@ -221,6 +227,7 @@ function partition(
       maxDist = dist;
       maxIndex = index;
     }
+    index += 2;
   }
   if (maxDist <= tolerance) {
     target.push(ax, ay);

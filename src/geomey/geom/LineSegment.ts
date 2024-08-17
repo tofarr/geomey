@@ -228,6 +228,9 @@ export function perpendicularDistance(
   bx: number,
   by: number,
 ): number {
+  if (ax === bx && ay === by) {
+    return Math.sqrt((x - ax) ** 2 + (y - ay) ** 2);
+  }
   return Math.abs(signedPerpendicularDistance(x, y, ax, ay, bx, by));
 }
 

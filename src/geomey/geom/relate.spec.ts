@@ -241,7 +241,6 @@ export const relateSpec = () => {
     const b = new LinearRing([100, 0, 200, 0, 200, 100, 100, 100]);
     expect(a.relate(b, TOLERANCE)).to.equal(A_OUTSIDE_B | B_OUTSIDE_A | TOUCH);
     expect(b.relate(a, TOLERANCE)).to.equal(A_OUTSIDE_B | B_OUTSIDE_A | TOUCH);
-    const c = new LinearRing([100, 150, 200, 0, 200, 100]);
     expect(a.relate(b, TOLERANCE)).to.equal(A_OUTSIDE_B | B_OUTSIDE_A | TOUCH);
     expect(b.relate(a, TOLERANCE)).to.equal(A_OUTSIDE_B | B_OUTSIDE_A | TOUCH);
   });

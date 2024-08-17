@@ -3,7 +3,6 @@ import { Tolerance } from "../Tolerance";
 import { coordinateMatch, validateCoordinates } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { GeoJsonPoint } from "../geoJson";
-import { Mesh } from "../mesh/Mesh";
 import { PathWalker } from "../path/PathWalker";
 import { Transformer } from "../transformer/Transformer";
 import { Geometry, Rectangle } from "./";

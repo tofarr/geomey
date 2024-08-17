@@ -1,16 +1,17 @@
 import * as chai from "chai";
-import { intersectionLineSegment, LineSegment, LineString, Point, pointTouchesLineSegment, Rectangle } from "../geom";
+import {
+  intersectionLineSegment,
+  LineSegment,
+  LineString,
+  Point,
+  pointTouchesLineSegment,
+  Rectangle,
+} from "../geom";
 import { Tolerance } from "../Tolerance";
-import { forEachLineSegmentCoordinates, InvalidCoordinateError } from "../coordinate";
+import { InvalidCoordinateError } from "../coordinate";
 import { AffineTransformer } from "../transformer/AffineTransformer";
 import { Transformer } from "../transformer/Transformer";
-import {
-  A_OUTSIDE_B,
-  B_OUTSIDE_A,
-  DISJOINT,
-  OUTSIDE_TOUCH,
-  TOUCH,
-} from "../Relation";
+import { A_OUTSIDE_B, DISJOINT, OUTSIDE_TOUCH, TOUCH } from "../Relation";
 
 const expect = chai.expect;
 const TOLERANCE = new Tolerance(0.1);
@@ -37,7 +38,7 @@ export const lineSegmentSpec = () => {
   });
   it("Line segment attributes calculated as expected", () => {
     const lineSegment = new LineSegment(10, 30, 20, 50);
-    const centroid = lineSegment.getCentroid()
+    const centroid = lineSegment.getCentroid();
     expect(centroid.toWkt()).to.equal("POINT(15 40)");
     expect(lineSegment.getCentroid()).to.equal(centroid);
     expect(lineSegment.getInternalArea()).to.equal(null);
@@ -91,7 +92,7 @@ export const lineSegmentSpec = () => {
   });
   it("const transformer transforms to point", () => {
     class ConstTransformer implements Transformer {
-      transform(x: number, y: number): [number, number] {
+      transform(): [number, number] {
         return [1, 1];
       }
       transformAll(coordinates: ReadonlyArray<number>) {
@@ -214,38 +215,95 @@ export const lineSegmentSpec = () => {
       new LineSegment(4, 6, 8, 10)
         .xor(new LineSegment(4, 10, 8, 6), TOLERANCE)
         .toWkt(),
-    ).to.equal("MULTILINESTRING((4 6, 6 8),(4 10, 6 8),(6 8, 8 6),(6 8, 8 10))");
+    ).to.equal(
+      "MULTILINESTRING((4 6, 6 8),(4 10, 6 8),(6 8, 8 6),(6 8, 8 10))",
+    );
   });
   it("point touches line segment is expected", () => {
-    expect(pointTouchesLineSegment(0, 2, 0, 2, 6, 8, TOLERANCE)).to.equal(true)
-    expect(pointTouchesLineSegment(-0.01, 2, 0, 2, 6, 8, TOLERANCE)).to.equal(true)
-    expect(pointTouchesLineSegment(6, 8, 0, 2, 6, 8, TOLERANCE)).to.equal(true)
-    expect(pointTouchesLineSegment(0.01, 2, 0, 2, 6, 8, TOLERANCE)).to.equal(true)
-    expect(pointTouchesLineSegment(6, 8.01, 0, 2, 6, 8, TOLERANCE)).to.equal(true)
-    expect(pointTouchesLineSegment(0, 2, 0, 2, 6.01, 8, TOLERANCE)).to.equal(true)
-    expect(pointTouchesLineSegment(6, 8, 0, 2, 6, 8.01, TOLERANCE)).to.equal(true)
-    expect(pointTouchesLineSegment(3, 4, 0, 2, 6, 8, TOLERANCE)).to.equal(false)
-    expect(pointTouchesLineSegment(3, 4.01, 0, 2, 6, 8, TOLERANCE)).to.equal(false)
-    expect(pointTouchesLineSegment(4, 4, 0, 2, 6, 8, TOLERANCE)).to.equal(false)
-  })
+    expect(pointTouchesLineSegment(0, 2, 0, 2, 6, 8, TOLERANCE)).to.equal(true);
+    expect(pointTouchesLineSegment(-0.01, 2, 0, 2, 6, 8, TOLERANCE)).to.equal(
+      true,
+    );
+    expect(pointTouchesLineSegment(6, 8, 0, 2, 6, 8, TOLERANCE)).to.equal(true);
+    expect(pointTouchesLineSegment(0.01, 2, 0, 2, 6, 8, TOLERANCE)).to.equal(
+      true,
+    );
+    expect(pointTouchesLineSegment(6, 8.01, 0, 2, 6, 8, TOLERANCE)).to.equal(
+      true,
+    );
+    expect(pointTouchesLineSegment(0, 2, 0, 2, 6.01, 8, TOLERANCE)).to.equal(
+      true,
+    );
+    expect(pointTouchesLineSegment(6, 8, 0, 2, 6, 8.01, TOLERANCE)).to.equal(
+      true,
+    );
+    expect(pointTouchesLineSegment(3, 4, 0, 2, 6, 8, TOLERANCE)).to.equal(
+      false,
+    );
+    expect(pointTouchesLineSegment(3, 4.01, 0, 2, 6, 8, TOLERANCE)).to.equal(
+      false,
+    );
+    expect(pointTouchesLineSegment(4, 4, 0, 2, 6, 8, TOLERANCE)).to.equal(
+      false,
+    );
+  });
 
   it("intersections works at end of line segments", () => {
-    expect(intersectionLineSegment(0, 0, 2, 0, 0, 0, 0, 2, TOLERANCE).toWkt()).to.eql("POINT(0 0)")
-    expect(intersectionLineSegment(2, 0, 0, 0, 0, 2, 0, 0, TOLERANCE).toWkt()).to.eql("POINT(0 0)")
-    expect(intersectionLineSegment(0, 0, 2, 0, 2, 0, 2, 2, TOLERANCE).toWkt()).to.eql("POINT(2 0)")
-    expect(intersectionLineSegment(0, 2, 2, 2, 2, 0, 2, 2, TOLERANCE).toWkt()).to.eql("POINT(2 2)")
-    expect(intersectionLineSegment(0, 0, 2, 0, 1, 0, 1, 2, TOLERANCE).toWkt()).to.eql("POINT(1 0)")
-    expect(intersectionLineSegment(0, 2, 2, 2, 1, 0, 1, 2, TOLERANCE).toWkt()).to.eql("POINT(1 2)")
-    expect(intersectionLineSegment(0, 0, 2, 0, 0, -1, 0, 1, TOLERANCE).toWkt()).to.eql("POINT(0 0)")
-    expect(intersectionLineSegment(0, 0, 2, 0, 2, -1, 2, 1, TOLERANCE).toWkt()).to.eql("POINT(2 0)")
-    expect(intersectionLineSegment(0, 0, 2, 0, 2, -2, 2, 0, TOLERANCE).toWkt()).to.eql("POINT(2 0)")
+    expect(
+      intersectionLineSegment(0, 0, 2, 0, 0, 0, 0, 2, TOLERANCE).toWkt(),
+    ).to.eql("POINT(0 0)");
+    expect(
+      intersectionLineSegment(2, 0, 0, 0, 0, 2, 0, 0, TOLERANCE).toWkt(),
+    ).to.eql("POINT(0 0)");
+    expect(
+      intersectionLineSegment(0, 0, 2, 0, 2, 0, 2, 2, TOLERANCE).toWkt(),
+    ).to.eql("POINT(2 0)");
+    expect(
+      intersectionLineSegment(0, 2, 2, 2, 2, 0, 2, 2, TOLERANCE).toWkt(),
+    ).to.eql("POINT(2 2)");
+    expect(
+      intersectionLineSegment(0, 0, 2, 0, 1, 0, 1, 2, TOLERANCE).toWkt(),
+    ).to.eql("POINT(1 0)");
+    expect(
+      intersectionLineSegment(0, 2, 2, 2, 1, 0, 1, 2, TOLERANCE).toWkt(),
+    ).to.eql("POINT(1 2)");
+    expect(
+      intersectionLineSegment(0, 0, 2, 0, 0, -1, 0, 1, TOLERANCE).toWkt(),
+    ).to.eql("POINT(0 0)");
+    expect(
+      intersectionLineSegment(0, 0, 2, 0, 2, -1, 2, 1, TOLERANCE).toWkt(),
+    ).to.eql("POINT(2 0)");
+    expect(
+      intersectionLineSegment(0, 0, 2, 0, 2, -2, 2, 0, TOLERANCE).toWkt(),
+    ).to.eql("POINT(2 0)");
 
-    expect(intersectionLineSegment(0, 0, 2, 2, 0.01, -2, 0.02, 0, TOLERANCE).toWkt()).to.eql("POINT(0 0)")
-    expect(intersectionLineSegment(0, 0, 2, 0, 0, 0.01, 0, 2, TOLERANCE).toWkt()).to.eql("POINT(0 0)")
-    expect(intersectionLineSegment(0, 0, 2, 0, 0, -0.01, 0, -2, TOLERANCE).toWkt()).to.eql("POINT(0 -0.01)")
-    expect(intersectionLineSegment(0, 0, 2, 0, 0.01, -0.01, 0.01, -2, TOLERANCE).toWkt()).to.eql("POINT(0 0)")
-    expect(intersectionLineSegment(0, 0, 2, 0, 0.01, -2, 0.01, 1, TOLERANCE).toWkt()).to.eql("POINT(0 0)")
-    expect(intersectionLineSegment(0, 0, 2, 0, 0.01, -2, 0.01, -0.2, TOLERANCE)).to.equal(null)
-
-  })
+    expect(
+      intersectionLineSegment(0, 0, 2, 2, 0.01, -2, 0.02, 0, TOLERANCE).toWkt(),
+    ).to.eql("POINT(0 0)");
+    expect(
+      intersectionLineSegment(0, 0, 2, 0, 0, 0.01, 0, 2, TOLERANCE).toWkt(),
+    ).to.eql("POINT(0 0)");
+    expect(
+      intersectionLineSegment(0, 0, 2, 0, 0, -0.01, 0, -2, TOLERANCE).toWkt(),
+    ).to.eql("POINT(0 -0.01)");
+    expect(
+      intersectionLineSegment(
+        0,
+        0,
+        2,
+        0,
+        0.01,
+        -0.01,
+        0.01,
+        -2,
+        TOLERANCE,
+      ).toWkt(),
+    ).to.eql("POINT(0 0)");
+    expect(
+      intersectionLineSegment(0, 0, 2, 0, 0.01, -2, 0.01, 1, TOLERANCE).toWkt(),
+    ).to.eql("POINT(0 0)");
+    expect(
+      intersectionLineSegment(0, 0, 2, 0, 0.01, -2, 0.01, -0.2, TOLERANCE),
+    ).to.equal(null);
+  });
 };

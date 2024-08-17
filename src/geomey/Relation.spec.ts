@@ -1,5 +1,4 @@
 import * as chai from "chai";
-import { Tolerance } from "./Tolerance";
 import {
   A_INSIDE_B,
   A_OUTSIDE_B,

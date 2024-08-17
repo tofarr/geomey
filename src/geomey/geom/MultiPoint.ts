@@ -1,8 +1,8 @@
 import {
   AbstractGeometry,
+  calculateCentroid,
   coordinatesToWkt,
   Geometry,
-  getCentroid,
   Point,
   Rectangle,
 } from ".";
@@ -56,7 +56,7 @@ export class MultiPoint extends AbstractGeometry {
     return coordinates.length ? new MultiPoint(coordinates) : null;
   }
   protected calculateCentroid(): Point {
-    return getCentroid(this.coordinates);
+    return calculateCentroid(this.coordinates);
   }
   protected calculateBounds(): Rectangle {
     return Rectangle.valueOf(this.coordinates);

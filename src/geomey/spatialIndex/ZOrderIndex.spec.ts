@@ -194,7 +194,7 @@ export const zOrderIndexSpec = () => {
       index.add(new Rectangle(0, j, 1, j + 1), j);
     }
     expect(
-      index.findIntersecting(new Rectangle(1.05, 3.05, 2.05, 4.05), (value) => {
+      index.findIntersecting(new Rectangle(1.05, 3.05, 2.05, 4.05), () => {
         throw new Error("unexpected_state");
       }),
     );
