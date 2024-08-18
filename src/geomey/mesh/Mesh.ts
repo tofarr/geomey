@@ -1,5 +1,6 @@
 import {
   angle,
+  compareCoordinatesForSort,
   comparePointsForSort,
   CoordinateConsumer,
   coordinateEqual,
@@ -8,6 +9,7 @@ import {
   isNaNOrInfinite,
   LinearRingCoordinatesConsumer,
   LineStringCoordinatesConsumer,
+  reverse,
   sortCoordinates,
 } from "../coordinate";
 import {
@@ -67,9 +69,6 @@ export class Mesh {
     this.links.findIntersecting(new Rectangle(x, y, x, y), ({ a, b }) => {
       const { x: ax, y: ay } = a;
       const { x: bx, y: by } = b;
-      if ((x == ax && y == ay) || (x == bx && y == by)) {
-        return;
-      }
       if (pointTouchesLineSegment(x, y, ax, ay, bx, by, tolerance)) {
         this.removeLink(ax, ay, bx, by);
         this.addLinkInternal(ax, ay, x, y);
@@ -82,18 +81,6 @@ export class Mesh {
   getVertex(x: number, y: number): Vertex | null {
     const key = calculateKey(x, y, this.tolerance.tolerance);
     return this.vertices.get(key);
-  }
-  getOrigin(): Vertex | null {
-    let result = null;
-    for (const vertex of this.vertices.values()) {
-      if (
-        !result ||
-        comparePointsForSort(vertex.x, vertex.y, result.x, result.y) < 0
-      ) {
-        result = vertex;
-      }
-    }
-    return result;
   }
   /**
    * Add a link to the mesh. splitting may occur, so return the number of links actually added to the mesh.
@@ -446,6 +433,17 @@ export class Mesh {
   getLineStrings(): Coordinates[] {
     const results = [];
     this.forEachLineString((lineString) => {
+      const { length } = lineString;
+      if (
+        comparePointsForSort(
+          lineString[0],
+          lineString[1],
+          lineString[length - 2],
+          lineString[length - 1],
+        ) > 0
+      ) {
+        lineString = reverse(lineString);
+      }
       results.push(lineString);
     });
     results.sort(coordinateComparator);

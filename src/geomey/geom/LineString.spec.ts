@@ -97,12 +97,14 @@ export const lineStringSpec = () => {
     expect(lineString.generalize(new Tolerance(11)).toWkt()).to.equal(
       "POINT(4.3 5.5)",
     );
-    expect(lineString.generalize(new Tolerance(0.01))).to.equal(lineString)
+    expect(lineString.generalize(new Tolerance(0.01))).to.equal(lineString);
   });
 
   it("relates to line segments", () => {
     const lineString = new LineString([20, 0, 20, 40, 60, 20]);
-    const lineSegment = new LineSegment(0, 0, 80, 80)
-    expect(lineString.relate(lineSegment, TOLERANCE)).to.equal(A_OUTSIDE_B | B_OUTSIDE_A | TOUCH)
-  })
+    const lineSegment = new LineSegment(0, 0, 80, 80);
+    expect(lineString.relate(lineSegment, TOLERANCE)).to.equal(
+      A_OUTSIDE_B | B_OUTSIDE_A | TOUCH,
+    );
+  });
 };

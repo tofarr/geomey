@@ -14,6 +14,7 @@ import { rectangleSpec } from "./geomey/geom/Rectangle.spec";
 import { meshPathWalkerSpec } from "./geomey/mesh/MeshPathWalker.spec";
 import { lineSegmentSpec } from "./geomey/geom/LineSegment.spec";
 import { lineStringSpec } from "./geomey/geom/LineString.spec";
+import { svgPathWalkerSpec } from "./geomey/path/SVGPathWalker.spec";
 
 describe("Coordinate", coordinateSpec);
 describe("Tolerance", toleranceSpec);
@@ -22,6 +23,7 @@ describe("ZOrderIndex", zOrderIndexSpec);
 describe("RTree", rTreeSpec);
 describe("Mesh", meshSpec);
 describe("MeshPathWalker", meshPathWalkerSpec);
+describe("SVGPathWalker", svgPathWalkerSpec);
 describe("AffineTransformer", affineTransformerSpec);
 describe("Wkt", wktSpec);
 describe("Relate", relateSpec);

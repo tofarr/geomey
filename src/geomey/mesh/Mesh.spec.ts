@@ -2,7 +2,9 @@ import * as chai from "chai";
 import { Tolerance } from "../Tolerance";
 import { Mesh } from "./Mesh";
 import { Link } from "./Link";
-import { LineString, MultiLineString } from "../geom";
+import { LineString, MultiLineString, Rectangle } from "../geom";
+import { MeshError } from "./MeshError";
+import { MeshPathWalker } from "./MeshPathWalker";
 
 const expect = chai.expect;
 
@@ -104,7 +106,7 @@ export const meshSpec = () => {
       [30, 30, 45, 15],
     ]);
   });
-  it("getLineStrings gets all lineString", () => {
+  it("getLineStrings gets all lineStrings", () => {
     const mesh = new Mesh(new Tolerance(0.05));
     mesh.addLink(0, 0, 30, 30);
     mesh.addLink(30, 0, 0, 30);
@@ -173,6 +175,248 @@ export const meshSpec = () => {
     mesh.addLink(0, 0, 30, 30);
     mesh.addLink(10, 10, 20, 20);
     expect(mesh.getLineStrings()).to.eql([[0, 0, 10, 10, 20, 20, 30, 30]]);
+  });
+  it("adds a vertex", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    mesh.addLink(0, 0, 1, 1);
+    mesh.addLink(1, 0, 1, 1);
+    mesh.addLink(1, 1, 2, 1);
+    expect(mesh.getLineStrings()).to.eql([
+      [0, 0, 1, 1],
+      [1, 0, 1, 1],
+      [1, 1, 2, 1],
+    ]);
+  });
+  it("does not allow links with NaN or Infinite vertices", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    expect(() => {
+      mesh.addLink(Infinity, 0, 1, 1);
+    }).to.throw(MeshError);
+    expect(() => {
+      mesh.addLink(0, NaN, 1, 1);
+    }).to.throw(MeshError);
+    expect(() => {
+      mesh.addLink(0, 0, NaN, 1);
+    }).to.throw(MeshError);
+    expect(() => {
+      mesh.addLink(0, 0, 1, Infinity);
+    }).to.throw(MeshError);
+  });
+  it("does not allow links with NaN or Infinite vertices when getting intersections", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    expect(() => {
+      mesh.getIntersections(Infinity, 0, 1, 1);
+    }).to.throw(MeshError);
+    expect(() => {
+      mesh.getIntersections(0, NaN, 1, 1);
+    }).to.throw(MeshError);
+    expect(() => {
+      mesh.getIntersections(0, 0, NaN, 1);
+    }).to.throw(MeshError);
+    expect(() => {
+      mesh.getIntersections(0, 0, 1, Infinity);
+    }).to.throw(MeshError);
+  });
+  it("does not allow links to self", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    expect(mesh.getIntersections(1, 2, 1, 2)).to.eql([]);
+  });
+  it("remove vertex does not allow NaN or Infinite coordinates", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    mesh.addLink(0, 1, 2, 3);
+    expect(mesh.removeVertex(1, Infinity)).to.equal(false);
+    expect(mesh.removeVertex(NaN, 1)).to.equal(false);
+  });
+  it("remove vertex returns false if the vertex doesn't exist", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    mesh.addLink(0, 1, 2, 3);
+    expect(mesh.removeVertex(4, 5)).to.equal(false);
+  });
+  it("remove link to self returns false", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    mesh.addLink(0, 1, 2, 3);
+    expect(mesh.removeLink(0, 1, 0, 1)).to.equal(false);
+    expect(mesh.removeLink(2, 2, 2, 3)).to.equal(false);
+    expect(mesh.removeLink(0, 1, 2, 4)).to.equal(false);
+    expect(mesh.getLinks().length).to.equal(1);
+  });
+  it("iterates over vertices within a rectangle", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    for (let x = 0; x < 7; x++) {
+      for (let y = 0; y < 7; y++) {
+        mesh.addLink(x, y, x + 1, y + 1);
+      }
+    }
+    const results = [];
+    mesh.forEachVertex(
+      ({ x, y }) => {
+        results.push(`${x}:${y}`);
+      },
+      new Rectangle(2, 2, 4, 4),
+    );
+    results.sort();
+    expect(results).to.eql([
+      "2:2",
+      "2:3",
+      "2:4",
+      "3:2",
+      "3:3",
+      "3:4",
+      "4:2",
+      "4:3",
+      "4:4",
+    ]);
+  });
+  it("stops iteration", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    for (let x = 0; x < 7; x++) {
+      for (let y = 0; y < 7; y++) {
+        mesh.addLink(x, y, x + 1, y + 1);
+      }
+    }
+    const results = [];
+    expect(
+      mesh.forEachVertex(({ x }) => {
+        results.push(x);
+        return x < 2;
+      }),
+    ).to.equal(false);
+    results.sort();
+    expect(results[results.length - 1]).to.be.above(0);
+    for (const x of results.slice(0, results.length - 1)) {
+      expect(x).to.be.below(2);
+    }
+  });
+  it("stops iteration within bounding box", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    for (let x = 0; x < 7; x++) {
+      for (let y = 0; y < 7; y++) {
+        mesh.addLink(x, y, x + 1, y + 1);
+      }
+    }
+    const results = [];
+    expect(
+      mesh.forEachVertex(
+        ({ x }) => {
+          results.push(x);
+          return x < 2;
+        },
+        new Rectangle(1, 1, 4, 4),
+      ),
+    ).to.equal(false);
+    results.sort();
+    expect(results[results.length - 1]).to.be.above(1);
+    for (const x of results.slice(0, results.length - 1)) {
+      expect(x).to.be.above(0);
+      expect(x).to.be.below(2);
+    }
+  });
+  it("iterates over links within a rectangle", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    for (let x = 0; x < 7; x++) {
+      for (let y = 0; y < 7; y++) {
+        mesh.addLink(x, y, x + 1, y + 1);
+      }
+    }
+    const results = [];
+    expect(
+      mesh.forEachLink(
+        ({ a, b }) => {
+          results.push(`${a.x}:${a.y}:${b.x}:${b.y}`);
+        },
+        new Rectangle(3, 3, 4, 4),
+      ),
+    ).to.equal(true);
+    results.sort();
+    expect(results).to.eql([
+      "2:2:3:3",
+      "2:3:3:4",
+      "2:4:3:5",
+      "3:2:4:3",
+      "3:3:4:4",
+      "3:4:4:5",
+      "4:2:5:3",
+      "4:3:5:4",
+      "4:4:5:5",
+    ]);
+  });
+
+  it("stops iteration over centroids", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    for (let x = 0; x < 7; x++) {
+      for (let y = 0; y < 7; y++) {
+        mesh.addLink(x, y, x + 1, y + 1);
+      }
+    }
+    const results = [];
+    expect(
+      mesh.forEachVertexAndLinkCentroid((x) => {
+        results.push(x);
+        return false;
+      }),
+    ).to.equal(false);
+    expect(results.length).to.equal(1);
+  });
+
+  it("stops iteration over line strings", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    mesh.addLink(4, 0, 4, 4);
+    mesh.addLink(4, 4, 6, 4);
+    mesh.addLink(6, 4, 6, 0);
+    mesh.addLink(5, 0, 5, 5);
+    mesh.addLink(5, 5, 8, 5);
+    const results = [];
+    expect(
+      mesh.forEachLineString((ls) => {
+        results.push(ls);
+        return false;
+      }),
+    ).to.equal(false);
+    expect(results.length).to.equal(1);
+  });
+
+  it("stops iteration over line strings for rings", () => {
+    const walker = MeshPathWalker.valueOf(new Tolerance(0.05));
+    new LineString([0, 0, 10, 0, 10, 10, 0, 10, 0, 0]).walkPath(walker);
+    new LineString([20, 0, 30, 0, 30, 10, 20, 10, 20, 0]).walkPath(walker);
+    const [rings, linesAndPoints] = walker.getMeshes();
+    const results = [];
+    expect(
+      linesAndPoints.forEachLineString((ls) => {
+        results.push(ls);
+        return false;
+      }),
+    ).to.equal(false);
+    expect(results.length).to.equal(1);
+  });
+
+  it("sorts linestrings", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    for (let n = 0; n < 5; n++) {
+      mesh.addLink(n, 0, 2, 2);
+      mesh.addLink(n, 4, 2, 2);
+      mesh.addLink(0, n, 2, 2);
+      mesh.addLink(4, n, 2, 2);
+    }
+    const result = mesh.getLineStrings();
+    expect(result).to.eql([
+      [0, 0, 2, 2],
+      [0, 1, 2, 2],
+      [0, 2, 2, 2],
+      [0, 3, 2, 2],
+      [0, 4, 2, 2],
+      [1, 0, 2, 2],
+      [1, 4, 2, 2],
+      [2, 0, 2, 2],
+      [2, 2, 2, 4],
+      [2, 2, 3, 0],
+      [2, 2, 3, 4],
+      [2, 2, 4, 0],
+      [2, 2, 4, 1],
+      [2, 2, 4, 2],
+      [2, 2, 4, 3],
+      [2, 2, 4, 4],
+    ]);
   });
 };
 
