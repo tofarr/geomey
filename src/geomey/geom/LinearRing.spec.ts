@@ -3,7 +3,7 @@ import { Tolerance } from "../Tolerance";
 import { parseWkt } from "../parser/WktParser";
 import { Triangle } from "./Triangle";
 import { MultiPolygon } from "./MultiPolygon";
-import { LinearRing } from "./LinearRing";
+import { forEachRingCoordinate, forEachRingLineSegmentCoordinates, LinearRing } from "./LinearRing";
 import { InvalidCoordinateError } from "../coordinate";
 
 const expect = chai.expect;
@@ -99,4 +99,43 @@ export const linearRingSpec = () => {
     );
     expect(linearRing.generalize(new Tolerance(0.01))).to.equal(linearRing);
   })
+  it("stops iterating coordinates when a consumer returns false", () => {
+    const coordinates = [0, 0, 100, 0, 100, 100, 0, 100]
+    const results = []
+    expect(forEachRingCoordinate(coordinates, (x, y) => {
+      results.push(x, y)
+    })).to.equal(true)
+    expect(results).to.eql([0, 0, 100, 0, 100, 100, 0, 100, 0, 0])
+    results.length = 0
+    expect(forEachRingCoordinate(coordinates, (x, y) => {
+      results.push(x, y)
+      return false
+    }, true)).to.equal(false)
+    expect(results).to.eql([0, 0])
+    results.length = 0
+    expect(forEachRingCoordinate(coordinates, (x, y) => {
+      results.push(x, y)
+      return x !== 100 || y !== 100
+
+    }, true)).to.equal(false)
+    expect(results).to.eql([0, 0, 0, 100, 100, 100])
+  })
+  it("stops iterating linesegments when a consumer returns false", () => {
+    const coordinates = [0, 0, 100, 0, 100, 100, 0, 100]
+    const results = []
+    expect(forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
+      results.push([ax, ay, bx, by])
+      return ax !== 100 ||ay !== 100
+
+    }, true)).to.equal(false)
+    expect(results).to.eql([[0, 100, 0, 0], [100, 100, 0, 100]])
+  })
+  it("calculates polygon", () => {
+    const ring = new LinearRing([100, 100, 100, 0, 0, 0, 0, 100]);
+    const polygon = ring.getPolygon()
+    expect(polygon.toWkt()).to.equal(
+      "POLYGON((100 100, 100 0, 0 0, 0 100, 100 100))",
+    );
+    expect(ring.getPolygon()).to.equal(polygon)
+  });
 };

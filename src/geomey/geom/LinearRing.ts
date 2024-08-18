@@ -256,22 +256,6 @@ export function ringToWkt(
   result.push(")");
 }
 
-export function isPointInRing(
-  x: number,
-  y: number,
-  coordinates: ReadonlyArray<number>,
-): boolean {
-  let inside = false;
-  forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
-    const intersect =
-      ay > y !== by > y && x < ((bx - ax) * (y - ay)) / (by - ay) + ax;
-    if (intersect) {
-      inside = !inside;
-    }
-  });
-  return inside;
-}
-
 export function relateRingToPoint(
   coordinates: ReadonlyArray<number>,
   x: number,
