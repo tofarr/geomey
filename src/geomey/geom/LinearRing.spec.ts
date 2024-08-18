@@ -86,6 +86,17 @@ export const linearRingSpec = () => {
     expect(new LinearRing([0, 0, 100, 0, 0, 100, 100, 100]).isValid(new Tolerance(0.01))).to.equal(false);
   });
   it("generalizes as expected", () => {
-    expect("The generalization of linear rings is busted due to missing the closing line").to.equal(false)
+    const linearRing = new LinearRing([
+      0, 0, 5, 0.5, 10, 0, 10, 2, 5, 2.5, 2, 2, 2.5, 5, 2, 8, 5, 7.5, 10, 8, 10,
+      10, 5, 10.5, 0, 10, 0.5, 5,
+    ]);
+    const generalized = linearRing.generalize(new Tolerance(1));
+    expect(generalized.toWkt()).to.equal(
+      "POLYGON((0 0, 10 0, 10 2, 2 2, 2 8, 10 8, 10 10, 0 10, 0 0))",
+    );
+    expect(linearRing.generalize(new Tolerance(11)).toWkt()).to.equal(
+      "POINT(4.3 5.5)",
+    );
+    expect(linearRing.generalize(new Tolerance(0.01))).to.equal(linearRing);
   })
 };

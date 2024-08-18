@@ -177,11 +177,14 @@ export class LinearRing extends AbstractGeometry {
     if (this.getBounds().isCollapsible(tolerance)) {
       return this.getCentroid();
     }
-    const { coordinates } = this;
+    const coordinates = this.coordinates.slice();
+    coordinates.push(coordinates[0], coordinates[1])
     const generalized = douglasPeucker(coordinates, tolerance.tolerance);
     if (generalized.length === coordinates.length) {
       return this;
     }
+    generalized.pop()
+    generalized.pop()
     return new LinearRing(generalized);
   }
   relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
