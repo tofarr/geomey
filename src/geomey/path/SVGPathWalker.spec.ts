@@ -11,8 +11,6 @@ export const svgPathWalkerSpec = () => {
     walker.moveTo(0, 0);
     walker.bezierCurveTo(0, 1, 1, 0, 1, 1);
     const path = walker.toPath();
-    expect(path).to.equal(
-      "M0 0C0 1 1 0 1 1",
-    );
+    expect(path).to.equal("M0 0C0 1 1 0 1 1");
   });
 };

@@ -113,12 +113,14 @@ export class LinearRing extends AbstractGeometry {
   }
   isValid(tolerance: Tolerance): boolean {
     if (this.getBounds().isCollapsible(tolerance)) {
-      return true;
+      return false;
     }
     // A ring is valid if it does not self intersect.
     const { coordinates } = this;
+    const numPoints = coordinates.length >> 1;
     let startIndex = 2;
-    let numberOfLineSegments = coordinates.length >> 1;
+    let numberOfLineSegments = numPoints - 1;
+    const maxPoints = numPoints - 3
     return forEachLineSegmentCoordinates(coordinates, (iax, iay, ibx, iby) => {
       return forEachLineSegmentCoordinates(
         coordinates,
@@ -136,8 +138,8 @@ export class LinearRing extends AbstractGeometry {
           );
           return !intersection;
         },
-        startIndex++,
-        numberOfLineSegments--,
+        startIndex += 2,
+        Math.min(--numberOfLineSegments, maxPoints),
       );
     });
   }
@@ -306,11 +308,11 @@ export function forEachAngle(
   let ay = coordinates[length - 1];
   let bx = coordinates[0];
   let by = coordinates[1];
-  forEachCoordinate(
+  return forEachCoordinate(
     coordinates,
     (cx, cy) => {
       if (consumer(ax, ay, bx, by, cx, cy) === false) {
-        return;
+        return false;
       }
       ax = bx;
       ay = by;
@@ -323,8 +325,7 @@ export function forEachAngle(
 }
 
 export function isConvex(coordinates: ReadonlyArray<number>): boolean {
-  let result = true;
-  forEachAngle(
+  return forEachAngle(
     coordinates,
     (
       ax: number,
@@ -334,11 +335,9 @@ export function isConvex(coordinates: ReadonlyArray<number>): boolean {
       cx: number,
       cy: number,
     ) => {
-      result = crossProduct(ax, ay, bx, by, cx, cy) >= 0;
-      return result;
+      return crossProduct(ax, ay, bx, by, cx, cy) >= 0;
     },
   );
-  return result;
 }
 
 export function calculateArea(coordinates: ReadonlyArray<number>): number {

@@ -12,24 +12,24 @@ const TOLERANCE = new Tolerance(0.05);
 export const linearRingSpec = () => {
   it("throws an error when coordinates are invalid", () => {
     expect(() => {
-      new LinearRing([0, 0, 1, 1])
-    }).to.throw(InvalidCoordinateError)
+      new LinearRing([0, 0, 1, 1]);
+    }).to.throw(InvalidCoordinateError);
     expect(() => {
-      new LinearRing([0, 0, 1, 0, 1, 1, 0])
-    }).to.throw(InvalidCoordinateError)
+      new LinearRing([0, 0, 1, 0, 1, 1, 0]);
+    }).to.throw(InvalidCoordinateError);
     expect(() => {
-      new LinearRing([0, 0, 1, 0, 1, NaN])
-    }).to.throw(InvalidCoordinateError)
+      new LinearRing([0, 0, 1, 0, 1, NaN]);
+    }).to.throw(InvalidCoordinateError);
     expect(() => {
-      new LinearRing([0, 0, 1, 0, Infinity, 1])
-    }).to.throw(InvalidCoordinateError)
+      new LinearRing([0, 0, 1, 0, Infinity, 1]);
+    }).to.throw(InvalidCoordinateError);
   });
   it("calculates centroid", () => {
-    const linearRing = new LinearRing([0, 0, 10, 0, 10, 10, 0, 10])
-    const centroid = linearRing.getCentroid()
-    expect(centroid.x).to.equal(5)
-    expect(centroid.y).to.equal(5)
-    expect(linearRing.getCentroid()).to.equal(centroid)
+    const linearRing = new LinearRing([0, 0, 10, 0, 10, 10, 0, 10]);
+    const centroid = linearRing.getCentroid();
+    expect(centroid.x).to.equal(5);
+    expect(centroid.y).to.equal(5);
+    expect(linearRing.getCentroid()).to.equal(centroid);
   });
   it("isConvex returns true for convex rings", () => {
     const wkt =
@@ -44,10 +44,48 @@ export const linearRingSpec = () => {
     );
   });
   it("normalizes as expected", () => {
-    const ring = new LinearRing([100, 100, 100, 0, 0, 0, 0, 100])
-    expect(ring.isNormalized()).to.equal(false)
-    expect(ring.isNormalized()).to.equal(false)
-    const normalized = ring.normalize()
-    expect(normalized.isNormalized()).to.equal(true)
+    const ring = new LinearRing([100, 100, 100, 0, 0, 0, 0, 100]);
+    expect(ring.isNormalized()).to.equal(false);
+    expect(ring.isNormalized()).to.equal(false);
+    const normalized = ring.normalize();
+    expect(normalized.isNormalized()).to.equal(true);
+    expect(new LinearRing([100, 100, 0, 100, 0, 0, 100, 0]).isNormalized()).to.equal(false);
+  });
+  it("generates WKT", () => {
+    const ring = new LinearRing([100, 100, 100, 0, 0, 0, 0, 100]);
+    expect(ring.toWkt()).to.equal(
+      "POLYGON((100 100, 100 0, 0 0, 0 100, 100 100))",
+    );
+  });
+  it("generates GeoJson", () => {
+    const ring = new LinearRing([100, 100, 100, 0, 0, 0, 0, 100]);
+    expect(ring.toGeoJson()).to.eql({
+      type: "Polygon",
+      coordinates: [
+        [100, 100],
+        [100, 0],
+        [0, 0],
+        [0, 100],
+        [100, 100],
+      ],
+    });
+  });
+  it("determines if a ring is convex", () => {
+    expect(new LinearRing([0, 0, 100, 0, 100, 100]).isConvex()).to.equal(true);
+    expect(new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]).isConvex()).to.equal(true);
+    expect(new LinearRing([0, 0, 100, 0, 25, 25, 0, 100]).isConvex()).to.equal(false);
+    expect(new LinearRing([0, 0, 100, 0, 100, 100, 0, 100, 50, 50]).isConvex()).to.equal(false);
+  });
+  it("converts to polygon", () => {
+    expect(new LinearRing([0, 0, 100, 0, 100, 100]).getPolygon().toWkt()).to.equal("POLYGON((0 0, 100 0, 100 100, 0 0))");
+  });
+  it("validates as expected", () => {
+    expect(new LinearRing([0, 0, 100, 0, 100, 100]).isValid(new Tolerance(0.01))).to.equal(true);
+    expect(new LinearRing([0, 0, 1, 0, 1, 1]).isValid(new Tolerance(2))).to.equal(false);
+    expect(new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]).isValid(new Tolerance(0.01))).to.equal(true);
+    expect(new LinearRing([0, 0, 100, 0, 0, 100, 100, 100]).isValid(new Tolerance(0.01))).to.equal(false);
+  });
+  it("generalizes as expected", () => {
+    expect("The generalization of linear rings is busted due to missing the closing line").to.equal(false)
   })
 };
