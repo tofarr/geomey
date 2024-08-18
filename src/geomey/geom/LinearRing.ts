@@ -2,6 +2,7 @@ import {
   compareCoordinatesForSort,
   comparePointsForSort,
   CoordinateConsumer,
+  Coordinates,
   crossProduct,
   forEachCoordinate,
   forEachLineSegmentCoordinates,
@@ -50,7 +51,7 @@ export class LinearRing extends AbstractGeometry {
 
   constructor(coordinates: ReadonlyArray<number>) {
     super();
-    if (coordinates.length < 6) {
+    if (coordinates.length < 6 || coordinates.length & 1) {
       throw new InvalidCoordinateError(coordinates);
     }
     validateCoordinates(...coordinates);
@@ -110,23 +111,6 @@ export class LinearRing extends AbstractGeometry {
     }
     return polygon;
   }
-  private getMinIndex(): number {
-    const { coordinates } = this;
-    let minX = Infinity;
-    let minY = Infinity;
-    let minIndex = null;
-    let i = coordinates.length;
-    while (i) {
-      const y = coordinates[--i];
-      const x = coordinates[--i];
-      if (comparePointsForSort(x, y, minX, minY) < 0) {
-        minX = x;
-        minY = y;
-        minIndex = i;
-      }
-    }
-    return minIndex;
-  }
   isValid(tolerance: Tolerance): boolean {
     if (this.getBounds().isCollapsible(tolerance)) {
       return true;
@@ -161,22 +145,22 @@ export class LinearRing extends AbstractGeometry {
     if (this.getArea() <= 0) {
       return false;
     }
-    if (this.getMinIndex()) {
+    if (getMinIndex(this.coordinates)) {
       return false;
     }
     return true;
   }
   calculateNormalized(): LinearRing {
     let { coordinates } = this;
-    const minIndex = this.getMinIndex();
+    const area = this.getArea();
+    if (area <= 0) {
+      coordinates = reverse(coordinates);
+    }
+    const minIndex = getMinIndex(coordinates);
     if (minIndex) {
       const c = coordinates.slice(minIndex);
       c.push(...coordinates.slice(0, minIndex));
       coordinates = c;
-    }
-    const area = this.getArea();
-    if (area <= 0) {
-      coordinates = reverse(coordinates);
     }
     if (coordinates === this.coordinates) {
       return this;
@@ -382,4 +366,21 @@ export function walkPathReverse(
 
 export function compareLinearRingsForSort(a: LinearRing, b: LinearRing) {
   return compareCoordinatesForSort(a.coordinates, b.coordinates);
+}
+
+function getMinIndex(coordinates: Coordinates): number {
+  let minX = Infinity;
+  let minY = Infinity;
+  let minIndex = null;
+  let i = coordinates.length;
+  while (i) {
+    const y = coordinates[--i];
+    const x = coordinates[--i];
+    if (comparePointsForSort(x, y, minX, minY) < 0) {
+      minX = x;
+      minY = y;
+      minIndex = i;
+    }
+  }
+  return minIndex;
 }
