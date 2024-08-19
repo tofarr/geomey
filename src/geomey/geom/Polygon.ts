@@ -28,6 +28,8 @@ import {
   Rectangle,
   compareLinearRingsForSort,
   forEachRingLineSegmentCoordinates,
+  MultiLineString,
+  MultiPoint,
 } from "./";
 import { PolygonBuilder } from "./builder/PolygonBuilder";
 
@@ -130,35 +132,34 @@ export class Polygon extends AbstractGeometry {
   }
   isValid(tolerance: Tolerance): boolean {
     if (this.getBounds().isCollapsible(tolerance)) {
-      return true;
-    }
-    const { shell, holes } = this;
-    if (!shell.isValid(tolerance)) {
       return false;
     }
-    if (holes.find((hole) => !hole.isValid(tolerance))) {
+    const { shell, holes } = this;
+    if (!shell.isValid(tolerance) || shell.getArea() < 0) {
+      return false;
+    }
+    if (holes.find((hole) => !hole.isValid(tolerance) || hole.getArea() < 0)) {
       return false;
     }
     const mesh = this.calculateMesh(tolerance);
-    mesh.forEachVertexAndLinkCentroid((x, y) => {
+    return mesh.forEachVertexAndLinkCentroid((x, y) => {
       if (shell.relatePoint(x, y, tolerance) === DISJOINT) {
         return false;
       }
       if (
-        holes.find((hole) => hole.relatePoint(x, y, tolerance) | B_INSIDE_A)
+        holes.find((hole) => hole.relatePoint(x, y, tolerance) & B_INSIDE_A)
       ) {
         return false; // Inside implies that holes overlap
       }
       return true;
     });
-    return true;
   }
   isNormalized(): boolean {
     if (!this.shell.isNormalized()) {
       return false;
     }
     const { holes } = this;
-    if (!holes.find((hole) => !hole.isNormalized())) {
+    if (holes.find((hole) => !hole.isNormalized())) {
       return false;
     }
     if (holes.length) {
@@ -177,7 +178,9 @@ export class Polygon extends AbstractGeometry {
     const shell = this.shell.normalize() as LinearRing;
     const holes = this.holes.map((hole) => hole.normalize() as LinearRing);
     holes.sort(compareLinearRingsForSort);
-    return new Polygon(shell, holes);
+    const result = new Polygon(shell, holes);
+    result.normalized = result;
+    return result;
   }
   generalize(tolerance: Tolerance): Geometry {
     const shell: Geometry = this.shell;
@@ -217,7 +220,9 @@ export class Polygon extends AbstractGeometry {
       other instanceof Point ||
       other instanceof LineSegment ||
       other instanceof LineString ||
-      (other instanceof GeometryCollection && !other.polygons.polygons.length)
+      other instanceof MultiLineString ||
+      other instanceof MultiPoint ||
+      (other instanceof GeometryCollection && !other.polygons)
     ) {
       return this;
     }
@@ -250,15 +255,8 @@ function addRing(
     if (relation & A_INSIDE_B) {
       addRing(ring, tolerance, builder.children);
       return;
-    } else if (relation & B_INSIDE_A) {
-      const child = {
-        shell: builder.shell,
-        children: builder.children,
-      };
-      builder.shell = ring;
-      builder.children = [child];
-      return;
     }
+    // We don't need an else B inside A here because linear rings are always found from the outside in
   }
   builders.push({
     shell: ring,

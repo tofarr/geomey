@@ -14,14 +14,15 @@ export function generalize(mesh: Mesh, tolerance: Tolerance) {
     if (coordinates.length === generalized.length) {
       return;
     }
-    forEachCoordinate(
-      coordinates,
-      (x, y) => {
+    forEachLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
+      mesh.removeLink(ax, ay, bx, by);
+    });
+    forEachCoordinate(coordinates, (x, y) => {
+      const vertex = mesh.getVertex(x, y);
+      if (vertex && !vertex.links.length) {
         mesh.removeVertex(x, y);
-      },
-      2,
-      coordinates.length >> (1 - 1),
-    );
+      }
+    });
     forEachLineSegmentCoordinates(generalized, (ax, ay, bx, by) => {
       mesh.addLink(ax, ay, bx, by);
     });
