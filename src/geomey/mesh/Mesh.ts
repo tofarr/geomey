@@ -1,6 +1,5 @@
 import {
   angle,
-  compareCoordinatesForSort,
   comparePointsForSort,
   CoordinateConsumer,
   coordinateEqual,

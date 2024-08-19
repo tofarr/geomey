@@ -7,7 +7,6 @@ import {
 } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import {
-  appendChanged,
   compareCoordinatesForSort,
   comparePointsForSort,
   coordinateMatch,
@@ -15,7 +14,6 @@ import {
   forEachLineSegmentCoordinates,
   InvalidCoordinateError,
   reverse,
-  sortCoordinates,
   validateCoordinates,
 } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
@@ -26,7 +24,6 @@ import { AbstractGeometry } from "./AbstractGeometry";
 import {
   Geometry,
   getLength,
-  intersectionLineSegment,
   LineSegment,
   perpendicularDistance,
   Point,

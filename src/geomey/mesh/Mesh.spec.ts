@@ -379,10 +379,10 @@ export const meshSpec = () => {
     const walker = MeshPathWalker.valueOf(new Tolerance(0.05));
     new LineString([0, 0, 10, 0, 10, 10, 0, 10, 0, 0]).walkPath(walker);
     new LineString([20, 0, 30, 0, 30, 10, 20, 10, 20, 0]).walkPath(walker);
-    const [rings, linesAndPoints] = walker.getMeshes();
+    const meshes = walker.getMeshes();
     const results = [];
     expect(
-      linesAndPoints.forEachLineString((ls) => {
+      meshes[1].forEachLineString((ls) => {
         results.push(ls);
         return false;
       }),

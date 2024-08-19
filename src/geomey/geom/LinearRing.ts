@@ -120,7 +120,7 @@ export class LinearRing extends AbstractGeometry {
     const numPoints = coordinates.length >> 1;
     let startIndex = 2;
     let numberOfLineSegments = numPoints - 1;
-    const maxPoints = numPoints - 3
+    const maxPoints = numPoints - 3;
     return forEachLineSegmentCoordinates(coordinates, (iax, iay, ibx, iby) => {
       return forEachLineSegmentCoordinates(
         coordinates,
@@ -138,7 +138,7 @@ export class LinearRing extends AbstractGeometry {
           );
           return !intersection;
         },
-        startIndex += 2,
+        (startIndex += 2),
         Math.min(--numberOfLineSegments, maxPoints),
       );
     });
@@ -178,13 +178,13 @@ export class LinearRing extends AbstractGeometry {
       return this.getCentroid();
     }
     const coordinates = this.coordinates.slice();
-    coordinates.push(coordinates[0], coordinates[1])
+    coordinates.push(coordinates[0], coordinates[1]);
     const generalized = douglasPeucker(coordinates, tolerance.tolerance);
     if (generalized.length === coordinates.length) {
       return this;
     }
-    generalized.pop()
-    generalized.pop()
+    generalized.pop();
+    generalized.pop();
     return new LinearRing(generalized);
   }
   relatePoint(x: number, y: number, tolerance: Tolerance): Relation {

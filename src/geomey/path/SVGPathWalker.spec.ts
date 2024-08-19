@@ -1,6 +1,4 @@
 import * as chai from "chai";
-import { Tolerance } from "../Tolerance";
-import { LineString } from "../geom";
 import { SVGPathWalker } from "./SVGPathWalker";
 
 const expect = chai.expect;

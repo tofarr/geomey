@@ -3,7 +3,11 @@ import { Tolerance } from "../Tolerance";
 import { parseWkt } from "../parser/WktParser";
 import { Triangle } from "./Triangle";
 import { MultiPolygon } from "./MultiPolygon";
-import { forEachRingCoordinate, forEachRingLineSegmentCoordinates, LinearRing } from "./LinearRing";
+import {
+  forEachRingCoordinate,
+  forEachRingLineSegmentCoordinates,
+  LinearRing,
+} from "./LinearRing";
 import { InvalidCoordinateError } from "../coordinate";
 
 const expect = chai.expect;
@@ -49,7 +53,9 @@ export const linearRingSpec = () => {
     expect(ring.isNormalized()).to.equal(false);
     const normalized = ring.normalize();
     expect(normalized.isNormalized()).to.equal(true);
-    expect(new LinearRing([100, 100, 0, 100, 0, 0, 100, 0]).isNormalized()).to.equal(false);
+    expect(
+      new LinearRing([100, 100, 0, 100, 0, 0, 100, 0]).isNormalized(),
+    ).to.equal(false);
   });
   it("generates WKT", () => {
     const ring = new LinearRing([100, 100, 100, 0, 0, 0, 0, 100]);
@@ -72,18 +78,38 @@ export const linearRingSpec = () => {
   });
   it("determines if a ring is convex", () => {
     expect(new LinearRing([0, 0, 100, 0, 100, 100]).isConvex()).to.equal(true);
-    expect(new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]).isConvex()).to.equal(true);
-    expect(new LinearRing([0, 0, 100, 0, 25, 25, 0, 100]).isConvex()).to.equal(false);
-    expect(new LinearRing([0, 0, 100, 0, 100, 100, 0, 100, 50, 50]).isConvex()).to.equal(false);
+    expect(
+      new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]).isConvex(),
+    ).to.equal(true);
+    expect(new LinearRing([0, 0, 100, 0, 25, 25, 0, 100]).isConvex()).to.equal(
+      false,
+    );
+    expect(
+      new LinearRing([0, 0, 100, 0, 100, 100, 0, 100, 50, 50]).isConvex(),
+    ).to.equal(false);
   });
   it("converts to polygon", () => {
-    expect(new LinearRing([0, 0, 100, 0, 100, 100]).getPolygon().toWkt()).to.equal("POLYGON((0 0, 100 0, 100 100, 0 0))");
+    expect(
+      new LinearRing([0, 0, 100, 0, 100, 100]).getPolygon().toWkt(),
+    ).to.equal("POLYGON((0 0, 100 0, 100 100, 0 0))");
   });
   it("validates as expected", () => {
-    expect(new LinearRing([0, 0, 100, 0, 100, 100]).isValid(new Tolerance(0.01))).to.equal(true);
-    expect(new LinearRing([0, 0, 1, 0, 1, 1]).isValid(new Tolerance(2))).to.equal(false);
-    expect(new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]).isValid(new Tolerance(0.01))).to.equal(true);
-    expect(new LinearRing([0, 0, 100, 0, 0, 100, 100, 100]).isValid(new Tolerance(0.01))).to.equal(false);
+    expect(
+      new LinearRing([0, 0, 100, 0, 100, 100]).isValid(new Tolerance(0.01)),
+    ).to.equal(true);
+    expect(
+      new LinearRing([0, 0, 1, 0, 1, 1]).isValid(new Tolerance(2)),
+    ).to.equal(false);
+    expect(
+      new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]).isValid(
+        new Tolerance(0.01),
+      ),
+    ).to.equal(true);
+    expect(
+      new LinearRing([0, 0, 100, 0, 0, 100, 100, 100]).isValid(
+        new Tolerance(0.01),
+      ),
+    ).to.equal(false);
   });
   it("generalizes as expected", () => {
     const linearRing = new LinearRing([
@@ -98,44 +124,65 @@ export const linearRingSpec = () => {
       "POINT(4.3 5.5)",
     );
     expect(linearRing.generalize(new Tolerance(0.01))).to.equal(linearRing);
-  })
+  });
   it("stops iterating coordinates when a consumer returns false", () => {
-    const coordinates = [0, 0, 100, 0, 100, 100, 0, 100]
-    const results = []
-    expect(forEachRingCoordinate(coordinates, (x, y) => {
-      results.push(x, y)
-    })).to.equal(true)
-    expect(results).to.eql([0, 0, 100, 0, 100, 100, 0, 100, 0, 0])
-    results.length = 0
-    expect(forEachRingCoordinate(coordinates, (x, y) => {
-      results.push(x, y)
-      return false
-    }, true)).to.equal(false)
-    expect(results).to.eql([0, 0])
-    results.length = 0
-    expect(forEachRingCoordinate(coordinates, (x, y) => {
-      results.push(x, y)
-      return x !== 100 || y !== 100
-
-    }, true)).to.equal(false)
-    expect(results).to.eql([0, 0, 0, 100, 100, 100])
-  })
+    const coordinates = [0, 0, 100, 0, 100, 100, 0, 100];
+    const results = [];
+    expect(
+      forEachRingCoordinate(coordinates, (x, y) => {
+        results.push(x, y);
+      }),
+    ).to.equal(true);
+    expect(results).to.eql([0, 0, 100, 0, 100, 100, 0, 100, 0, 0]);
+    results.length = 0;
+    expect(
+      forEachRingCoordinate(
+        coordinates,
+        (x, y) => {
+          results.push(x, y);
+          return false;
+        },
+        true,
+      ),
+    ).to.equal(false);
+    expect(results).to.eql([0, 0]);
+    results.length = 0;
+    expect(
+      forEachRingCoordinate(
+        coordinates,
+        (x, y) => {
+          results.push(x, y);
+          return x !== 100 || y !== 100;
+        },
+        true,
+      ),
+    ).to.equal(false);
+    expect(results).to.eql([0, 0, 0, 100, 100, 100]);
+  });
   it("stops iterating linesegments when a consumer returns false", () => {
-    const coordinates = [0, 0, 100, 0, 100, 100, 0, 100]
-    const results = []
-    expect(forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
-      results.push([ax, ay, bx, by])
-      return ax !== 100 ||ay !== 100
-
-    }, true)).to.equal(false)
-    expect(results).to.eql([[0, 100, 0, 0], [100, 100, 0, 100]])
-  })
+    const coordinates = [0, 0, 100, 0, 100, 100, 0, 100];
+    const results = [];
+    expect(
+      forEachRingLineSegmentCoordinates(
+        coordinates,
+        (ax, ay, bx, by) => {
+          results.push([ax, ay, bx, by]);
+          return ax !== 100 || ay !== 100;
+        },
+        true,
+      ),
+    ).to.equal(false);
+    expect(results).to.eql([
+      [0, 100, 0, 0],
+      [100, 100, 0, 100],
+    ]);
+  });
   it("calculates polygon", () => {
     const ring = new LinearRing([100, 100, 100, 0, 0, 0, 0, 100]);
-    const polygon = ring.getPolygon()
+    const polygon = ring.getPolygon();
     expect(polygon.toWkt()).to.equal(
       "POLYGON((100 100, 100 0, 0 0, 0 100, 100 100))",
     );
-    expect(ring.getPolygon()).to.equal(polygon)
+    expect(ring.getPolygon()).to.equal(polygon);
   });
 };

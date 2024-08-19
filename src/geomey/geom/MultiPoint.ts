@@ -1,6 +1,5 @@
 import {
   AbstractGeometry,
-  calculateCentroid,
   coordinatesToWkt,
   Geometry,
   Point,
@@ -40,7 +39,7 @@ export class MultiPoint extends AbstractGeometry {
 
   constructor(coordinates: Coordinates) {
     super();
-    if (!coordinates.length) {
+    if (!coordinates.length || coordinates.length & 1) {
       throw new InvalidCoordinateError(coordinates);
     }
     validateCoordinates(...coordinates);
@@ -56,7 +55,7 @@ export class MultiPoint extends AbstractGeometry {
     return coordinates.length ? new MultiPoint(coordinates) : null;
   }
   protected calculateCentroid(): Point {
-    return calculateCentroid(this.coordinates);
+    return this.getBounds().getCentroid();
   }
   protected calculateBounds(): Rectangle {
     return Rectangle.valueOf(this.coordinates);
@@ -103,6 +102,9 @@ export class MultiPoint extends AbstractGeometry {
     return new MultiPoint(coordinates);
   }
   isValid(tolerance: Tolerance): boolean {
+    if (this.coordinates.length == 2) {
+      return true;
+    }
     const multiPoint = this.normalize() as MultiPoint;
     return forEachLineSegmentCoordinates(
       multiPoint.coordinates,
@@ -116,9 +118,12 @@ export class MultiPoint extends AbstractGeometry {
     return new MultiPoint(coordinates);
   }
   generalize(tolerance: Tolerance): MultiPoint | Point {
-    const multiPoint = this.normalize() as MultiPoint;
+    const multiPoint = this.normalize();
+    if (multiPoint instanceof Point) {
+      return multiPoint;
+    }
     const coordinates = [];
-    forEachCoordinate(multiPoint.coordinates, (x, y) => {
+    forEachCoordinate((multiPoint as MultiPoint).coordinates, (x, y) => {
       x = tolerance.normalize(x);
       y = tolerance.normalize(y);
       appendChanged(x, y, tolerance, coordinates);

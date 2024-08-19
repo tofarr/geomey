@@ -15,6 +15,7 @@ import { meshPathWalkerSpec } from "./geomey/mesh/MeshPathWalker.spec";
 import { lineSegmentSpec } from "./geomey/geom/LineSegment.spec";
 import { lineStringSpec } from "./geomey/geom/LineString.spec";
 import { svgPathWalkerSpec } from "./geomey/path/SVGPathWalker.spec";
+import { multiPointSpec } from "./geomey/geom/MultiPoint.spec";
 
 describe("Coordinate", coordinateSpec);
 describe("Tolerance", toleranceSpec);
@@ -33,3 +34,4 @@ describe("Point", pointSpec);
 describe("Rectangle", rectangleSpec);
 describe("LineSegment", lineSegmentSpec);
 describe("LineString", lineStringSpec);
+describe("MultiPoint", multiPointSpec);
