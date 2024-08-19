@@ -1,5 +1,5 @@
 import * as chai from "chai";
-import { LineSegment, LineString } from "../geom";
+import { LineSegment, LineString, Point, Rectangle } from "../geom";
 import { Tolerance } from "../Tolerance";
 import { InvalidCoordinateError } from "../coordinate";
 import { AffineTransformer } from "../transformer/AffineTransformer";
@@ -105,6 +105,117 @@ export const lineStringSpec = () => {
     const lineSegment = new LineSegment(0, 0, 80, 80);
     expect(lineString.relate(lineSegment, TOLERANCE)).to.equal(
       A_OUTSIDE_B | B_OUTSIDE_A | TOUCH,
+    );
+  });
+
+  it("unions successfully", () => {
+    expect(
+      new LineString([0, 0, 0, 100, 100, 100])
+        .union(new LineString([0, 100, 100, 100, 100, 0]), TOLERANCE)
+        .toWkt(),
+    ).to.equal("LINESTRING(0 0, 0 100, 100 100, 100 0)");
+    expect(
+      new LineString([0, 0, 0, 100, 100, 100])
+        .union(new Rectangle(0, 0, 100, 100), TOLERANCE)
+        .toWkt(),
+    ).to.equal(
+      "GEOMETRYCOLLECTION(POLYGON((0 0, 100 0, 100 100, 0 100, 0 0)),LINESTRING(0 0, 0 100, 100 100))",
+    );
+    expect(
+      new LineString([0, 0, 0, 100, 100, 100])
+        .union(new Rectangle(10, 10, 90, 90), TOLERANCE)
+        .toWkt(),
+    ).to.equal(
+      "GEOMETRYCOLLECTION(POLYGON((10 10, 90 10, 90 90, 10 90, 10 10)),LINESTRING(0 0, 0 100, 100 100))",
+    );
+  });
+  it("intersections successfully", () => {
+    expect(
+      new LineString([0, 0, 0, 100, 100, 100])
+        .intersection(new LineString([0, 100, 100, 100, 100, 0]), TOLERANCE)
+        .toWkt(),
+    ).to.equal("LINESTRING(0 100, 100 100)");
+    expect(
+      new LineString([0, 0, 0, 100, 100, 100])
+        .intersection(new Rectangle(0, 0, 100, 100), TOLERANCE)
+        .toWkt(),
+    ).to.equal("LINESTRING(0 0, 0 100, 100 100)");
+    expect(
+      new LineString([0, 0, 0, 100, 100, 100]).intersection(
+        new Rectangle(10, 10, 90, 90),
+        TOLERANCE,
+      ),
+    ).to.equal(null);
+    expect(
+      new LineString([0, 0, 0, 100, 100, 100]).intersection(
+        new Rectangle(110, 10, 190, 90),
+        TOLERANCE,
+      ),
+    ).to.equal(null);
+    expect(
+      new LineString([0, 0, 0, 100, 90, 100, 90, 0])
+        .intersection(new Rectangle(10, 10, 100, 110), TOLERANCE)
+        .toWkt(),
+    ).to.equal("LINESTRING(10 100, 90 100, 90 10)");
+    expect(
+      new LineString([0, 0, 0, 100, 100, 100])
+        .intersection(Point.valueOf(0, 50), TOLERANCE)
+        .toWkt(),
+    ).to.equal("POINT(0 50)");
+    expect(
+      new LineString([0, 0, 0, 100, 100, 100])
+        .intersection(Point.valueOf(0, 100), TOLERANCE)
+        .toWkt(),
+    ).to.equal("POINT(0 100)");
+    expect(
+      new LineString([0, 0, 0, 100, 90, 100, 90, 0])
+        .intersection(new Rectangle(10, 10, 100, 110), TOLERANCE)
+        .toWkt(),
+    ).to.equal("LINESTRING(10 100, 90 100, 90 10)");
+  });
+  it("less successfully", () => {
+    const lineString = new LineString([0, 0, 0, 100, 100, 100]);
+    expect(
+      lineString
+        .less(new LineString([0, 100, 100, 100, 100, 0]), TOLERANCE)
+        .toWkt(),
+    ).to.equal("LINESTRING(0 0, 0 100)");
+    expect(lineString.less(new Rectangle(0, 0, 100, 100), TOLERANCE)).to.equal(
+      null,
+    );
+    expect(
+      lineString.less(new Rectangle(10, 10, 90, 90), TOLERANCE).toWkt(),
+    ).to.equal("LINESTRING(0 0, 0 100, 100 100)");
+    expect(
+      lineString.less(new Rectangle(110, 10, 190, 90), TOLERANCE).toWkt(),
+    ).to.equal("LINESTRING(0 0, 0 100, 100 100)");
+    expect(
+      new LineString([0, 0, 0, 100, 90, 100, 90, 0])
+        .less(new Rectangle(10, 10, 100, 110), TOLERANCE)
+        .toWkt(),
+    ).to.equal("MULTILINESTRING((0 0, 0 100, 10 100),(90 0, 90 10))");
+  });
+  it("xor successfully", () => {
+    const lineString = new LineString([0, 0, 0, 100, 100, 100]);
+    expect(
+      lineString
+        .xor(new LineString([0, 100, 100, 100, 100, 0]), TOLERANCE)
+        .toWkt(),
+    ).to.equal("MULTILINESTRING((0 0, 0 100),(100 0, 100 100))");
+    expect(lineString.xor(new Rectangle(0, 0, 100, 100), TOLERANCE)).to.equal(
+      null,
+    );
+    expect(
+      lineString.xor(new Rectangle(10, 10, 90, 90), TOLERANCE).toWkt(),
+    ).to.equal(
+      "GEOMETRYCOLLECTION(POLYGON((10 10, 90 10, 90 90, 10 90, 10 10)),LINESTRING(0 0, 0 100, 100 100))",
+    );
+    expect(
+      new LineString([0, 0, 0, 100, 90, 100, 90, 0])
+        .xor(new Rectangle(10, 10, 100, 110), TOLERANCE)
+        .toWkt(),
+    ).to.equal(
+      "GEOMETRYCOLLECTION(POLYGON((10 10, 90 10, 100 10, 100 110, 10 110, 10 100, 10 10)),LINESTRING(0 0, 0 100, 10 100),LINESTRING(90 0, 90 10))",
     );
   });
 };

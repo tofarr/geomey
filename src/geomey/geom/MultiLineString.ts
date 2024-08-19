@@ -91,7 +91,7 @@ export class MultiLineString extends AbstractGeometry {
     const coordinates = this.lineStrings.map((lineString) => {
       const c = [];
       forEachCoordinate(lineString.coordinates, (x, y) => {
-        c.push(x, y);
+        c.push([x, y]);
       });
       return c;
     });
