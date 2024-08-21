@@ -190,6 +190,27 @@ export class LinearRing extends AbstractGeometry {
   relatePoint(x: number, y: number, tolerance: Tolerance): Relation {
     return relateRingToPoint(this.coordinates, x, y, tolerance);
   }
+  getConvexRings(): ReadonlyArray<LinearRing> {
+    let { convexRings } = this;
+    if (!convexRings) {
+      const results = []
+      let { coordinates } = this
+      if (this.getArea() < 0) {
+        coordinates = reverse(coordinates);
+      }
+      splitToConvex(coordinates, results);
+      if (results.length === 1) {
+        this.convexRings = convexRings = [this]
+      } else {
+        this.convexRings = convexRings = results.map(coordinates => {
+          const ring = new LinearRing(coordinates)
+          ring.convexRings = [ring]
+          return ring
+        })
+      }
+    }
+    return convexRings;
+  }
 }
 
 export function forEachRingCoordinate(
@@ -288,7 +309,9 @@ export function forEachAngle(
     by: number,
     cx: number,
     cy: number,
-  ) => boolean | void,
+  ) => any,
+  startIndexInclusive?: number,
+  numberOfPoints?: number,
 ) {
   const { length } = coordinates;
   let ax = coordinates[length - 2];
@@ -306,8 +329,8 @@ export function forEachAngle(
       bx = cx;
       by = cy;
     },
-    2,
-    length >> 1,
+    (startIndexInclusive == null) ? 2 : startIndexInclusive,
+    numberOfPoints,
   );
 }
 
@@ -369,4 +392,27 @@ function getMinIndex(coordinates: Coordinates): number {
     }
   }
   return minIndex;
+}
+
+export function splitToConvex(coordinates: Coordinates, results: Coordinates[]){
+  const a = []
+  const b = []
+  let current = a
+  forEachAngle(coordinates, (ax, ay, bx, by, cx, cy) => {
+    current.push(bx, by)
+    if ((current === a) && (crossProduct(ax, ay, bx, by, cx, cy) >= 0)) {
+      return
+    }
+    if (current === a) {
+      current = b
+      current.push(bx, by)
+    }
+  });
+  if(b.length) {
+    splitToConvex(a, results);
+    b.push(coordinates[0], coordinates[1]);
+    splitToConvex(b, results);
+  } else {
+    results.push(coordinates)
+  }
 }

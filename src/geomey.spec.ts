@@ -18,6 +18,7 @@ import { svgPathWalkerSpec } from "./geomey/path/SVGPathWalker.spec";
 import { multiPointSpec } from "./geomey/geom/MultiPoint.spec";
 import { multiLineStringSpec } from "./geomey/geom/MultiLineString.spec";
 import { polygonSpec } from "./geomey/geom/Polygon.spec";
+import { multiPolygonSpec } from "./geomey/geom/MultiPolygon.spec";
 
 describe("Coordinate", coordinateSpec);
 describe("Tolerance", toleranceSpec);
@@ -39,3 +40,4 @@ describe("LineString", lineStringSpec);
 describe("MultiPoint", multiPointSpec);
 describe("MultiLineString", multiLineStringSpec);
 describe("Polygon", polygonSpec);
+describe("MultiPolygon", multiPolygonSpec);

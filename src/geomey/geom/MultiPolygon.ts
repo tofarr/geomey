@@ -1,5 +1,6 @@
 import {
   AbstractGeometry,
+  calculateCentroid,
   comparePolygonsForSort,
   Geometry,
   GeometryCollection,
@@ -7,6 +8,7 @@ import {
   Polygon,
   Rectangle,
   ringToWkt,
+  splitToConvex,
 } from ".";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { GeoJsonMultiPolygon } from "../geoJson";
@@ -39,6 +41,9 @@ export class MultiPolygon extends AbstractGeometry {
   }
   isNormalized(): boolean {
     const { polygons } = this;
+    if (polygons.length === 1) {
+      return false;
+    }
     if (polygons.find((polygon) => !polygon.isNormalized())) {
       return false;
     }
@@ -57,6 +62,9 @@ export class MultiPolygon extends AbstractGeometry {
     return builder.build() as Rectangle;
   }
   protected calculateNormalized(): MultiPolygon | Polygon {
+    if (this.isNormalized()) {
+      return this;
+    }
     const polygons = this.polygons.map(
       (polygon) => polygon.normalize() as Polygon,
     );

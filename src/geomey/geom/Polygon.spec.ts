@@ -209,9 +209,12 @@ export const polygonSpec = () => {
         TOLERANCE,
       ),
     ).to.equal(polygon);
-    expect(polygon.less(new GeometryCollection(new MultiPoint([0, 0, 100, 100])), TOLERANCE)).to.equal(
-      polygon,
-    );
+    expect(
+      polygon.less(
+        new GeometryCollection(new MultiPoint([0, 0, 100, 100])),
+        TOLERANCE,
+      ),
+    ).to.equal(polygon);
   });
   it("build nested", () => {
     const polygon = new MultiPolygon([
@@ -235,8 +238,8 @@ export const polygonSpec = () => {
     const b = new Polygon(new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]), [
       new LinearRing([11, 10, 90, 10, 90, 90, 10, 90]),
     ]);
-    expect(comparePolygonsForSort(a, a)).to.equal(0)
-    expect(comparePolygonsForSort(a, b)).to.equal(-1)
-    expect(comparePolygonsForSort(b, a)).to.equal(1)
+    expect(comparePolygonsForSort(a, a)).to.equal(0);
+    expect(comparePolygonsForSort(a, b)).to.equal(-1);
+    expect(comparePolygonsForSort(b, a)).to.equal(1);
   });
 };
