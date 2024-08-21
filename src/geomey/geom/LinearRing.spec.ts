@@ -188,12 +188,16 @@ export const linearRingSpec = () => {
   });
   it("splits convex ring to self", () => {
     const ring = new LinearRing([100, 100, 100, 0, 0, 0, 0, 100]);
-    const rings = ring.getConvexRings()
-    expect(rings).to.eql([ring])
+    const rings = ring.getConvexRings();
+    expect(rings).to.eql([ring]);
   });
   it("splits non convex ring to self", () => {
     const ring = new LinearRing([100, 100, 50, 50, 100, 0, 0, 0, 0, 100]);
-    const multiPolygon = new MultiPolygon(ring.getConvexRings().map(ring => new Polygon(ring)))
-    expect(multiPolygon.toWkt()).to.equal("MULTIPOLYGON(((0 100, 0 0, 100 0, 50 50, 0 100)),((50 50, 100 100, 0 100, 50 50)))")
+    const multiPolygon = new MultiPolygon(
+      ring.getConvexRings().map((ring) => new Polygon(ring)),
+    );
+    expect(multiPolygon.toWkt()).to.equal(
+      "MULTIPOLYGON(((0 100, 0 0, 100 0, 50 50, 0 100)),((50 50, 100 100, 0 100, 50 50)))",
+    );
   });
 };

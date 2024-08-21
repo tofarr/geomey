@@ -48,16 +48,39 @@ export const multiPolygonSpec = () => {
     expect(multiPolygon.toGeoJson()).to.eql({
       type: "MultiPolygon",
       coordinates: [
-        [[[0, 0], [100, 0], [100, 100], [0, 100], [0, 0]]],
-        [[[150, 0], [250, 0], [250, 100], [150, 100], [150, 0]]]
+        [
+          [
+            [0, 0],
+            [100, 0],
+            [100, 100],
+            [0, 100],
+            [0, 0],
+          ],
+        ],
+        [
+          [
+            [150, 0],
+            [250, 0],
+            [250, 100],
+            [150, 100],
+            [150, 0],
+          ],
+        ],
       ],
     });
   });
   it("validates successfully", () => {
-    expect(new MultiPolygon([A, B]).isValid(TOLERANCE)).to.equal(true)
-    expect(new MultiPolygon([A, B]).isValid(new Tolerance(300))).to.equal(false)
-    expect(new MultiPolygon([B, A]).isValid(TOLERANCE)).to.equal(true)
-    expect(new MultiPolygon([A, new Polygon(new LinearRing([150, 0, 150, 100, 250, 0, 250, 100])),]).isValid(TOLERANCE)).to.equal(false)
-    expect(new MultiPolygon([A, A]).isValid(TOLERANCE)).to.equal(false)
+    expect(new MultiPolygon([A, B]).isValid(TOLERANCE)).to.equal(true);
+    expect(new MultiPolygon([A, B]).isValid(new Tolerance(300))).to.equal(
+      false,
+    );
+    expect(new MultiPolygon([B, A]).isValid(TOLERANCE)).to.equal(true);
+    expect(
+      new MultiPolygon([
+        A,
+        new Polygon(new LinearRing([150, 0, 150, 100, 250, 0, 250, 100])),
+      ]).isValid(TOLERANCE),
+    ).to.equal(false);
+    expect(new MultiPolygon([A, A]).isValid(TOLERANCE)).to.equal(false);
   });
 };

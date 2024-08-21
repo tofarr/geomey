@@ -193,20 +193,20 @@ export class LinearRing extends AbstractGeometry {
   getConvexRings(): ReadonlyArray<LinearRing> {
     let { convexRings } = this;
     if (!convexRings) {
-      const results = []
-      let { coordinates } = this
+      const results = [];
+      let { coordinates } = this;
       if (this.getArea() < 0) {
         coordinates = reverse(coordinates);
       }
       splitToConvex(coordinates, results);
       if (results.length === 1) {
-        this.convexRings = convexRings = [this]
+        this.convexRings = convexRings = [this];
       } else {
-        this.convexRings = convexRings = results.map(coordinates => {
-          const ring = new LinearRing(coordinates)
-          ring.convexRings = [ring]
-          return ring
-        })
+        this.convexRings = convexRings = results.map((coordinates) => {
+          const ring = new LinearRing(coordinates);
+          ring.convexRings = [ring];
+          return ring;
+        });
       }
     }
     return convexRings;
@@ -329,7 +329,7 @@ export function forEachAngle(
       bx = cx;
       by = cy;
     },
-    (startIndexInclusive == null) ? 2 : startIndexInclusive,
+    startIndexInclusive == null ? 2 : startIndexInclusive,
     numberOfPoints,
   );
 }
@@ -394,25 +394,28 @@ function getMinIndex(coordinates: Coordinates): number {
   return minIndex;
 }
 
-export function splitToConvex(coordinates: Coordinates, results: Coordinates[]){
-  const a = []
-  const b = []
-  let current = a
+export function splitToConvex(
+  coordinates: Coordinates,
+  results: Coordinates[],
+) {
+  const a = [];
+  const b = [];
+  let current = a;
   forEachAngle(coordinates, (ax, ay, bx, by, cx, cy) => {
-    current.push(bx, by)
-    if ((current === a) && (crossProduct(ax, ay, bx, by, cx, cy) >= 0)) {
-      return
+    current.push(bx, by);
+    if (current === a && crossProduct(ax, ay, bx, by, cx, cy) >= 0) {
+      return;
     }
     if (current === a) {
-      current = b
-      current.push(bx, by)
+      current = b;
+      current.push(bx, by);
     }
   });
-  if(b.length) {
+  if (b.length) {
     splitToConvex(a, results);
     b.push(coordinates[0], coordinates[1]);
     splitToConvex(b, results);
   } else {
-    results.push(coordinates)
+    results.push(coordinates);
   }
 }
