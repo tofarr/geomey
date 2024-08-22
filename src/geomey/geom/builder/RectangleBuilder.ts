@@ -50,7 +50,7 @@ export class RectangleBuilder {
     this.maxY = Math.max(this.maxY, rectangle.maxY);
     return this;
   }
-  instersectsPoint(x: number, y: number): boolean {
+  intersectsPoint(x: number, y: number): boolean {
     return this.minX <= x && this.minY <= y && this.maxX >= x && this.maxY >= y;
   }
   intersectsRectangle(rectangle: IRectangle): boolean {

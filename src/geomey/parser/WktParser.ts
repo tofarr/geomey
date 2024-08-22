@@ -79,6 +79,7 @@ export class WktParser {
   }
   parseMultiPolygon(input: string, position: number): [Geometry, number] {
     const nestedCoordinateLists = [];
+    position++;
     while (input[position] != ")") {
       const [coordinateLists, end] = parseCoordinateLists(input, position);
       nestedCoordinateLists.push(coordinateLists);

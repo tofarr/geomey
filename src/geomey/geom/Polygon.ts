@@ -142,16 +142,29 @@ export class Polygon extends AbstractGeometry {
       return false;
     }
     const mesh = this.calculateMesh(tolerance);
-    return mesh.forEachVertexAndLinkCentroid((x, y) => {
-      if (shell.relatePoint(x, y, tolerance) === DISJOINT) {
-        return false;
+    return mesh.forEachLink(({ a, b }) => {
+      const x = (a.x + b.x) / 2;
+      const y = (a.y + b.y) / 2;
+      let numTouches = 0;
+      const shellRelate = shell.relatePoint(x, y, tolerance);
+      if (shellRelate === DISJOINT) {
+        return false; // mesh contained a point outside the shell
       }
-      if (
-        holes.find((hole) => hole.relatePoint(x, y, tolerance) & B_INSIDE_A)
-      ) {
-        return false; // Inside implies that holes overlap
+      if (shellRelate & TOUCH) {
+        numTouches++;
       }
-      return true;
+      for (const hole of holes) {
+        const holeRelate = hole.relatePoint(x, y, tolerance);
+        if (holeRelate & B_INSIDE_A) {
+          return false; // Holes overlap
+        }
+        if (holeRelate & TOUCH) {
+          numTouches++;
+          if (numTouches > 1) {
+            return false;
+          }
+        }
+      }
     });
   }
   isNormalized(): boolean {

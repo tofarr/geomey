@@ -4,12 +4,12 @@ import { parseWkt } from "../parser/WktParser";
 import { Triangle } from "./Triangle";
 import { MultiPolygon } from "./MultiPolygon";
 import {
+  forEachAngle,
   forEachRingCoordinate,
   forEachRingLineSegmentCoordinates,
   LinearRing,
 } from "./LinearRing";
 import { InvalidCoordinateError } from "../coordinate";
-import { Polygon } from ".";
 
 const expect = chai.expect;
 const TOLERANCE = new Tolerance(0.05);
@@ -186,18 +186,20 @@ export const linearRingSpec = () => {
     );
     expect(ring.getPolygon()).to.equal(polygon);
   });
-  it("splits convex ring to self", () => {
-    const ring = new LinearRing([100, 100, 100, 0, 0, 0, 0, 100]);
-    const rings = ring.getConvexRings();
-    expect(rings).to.eql([ring]);
-  });
-  it("splits non convex ring to self", () => {
-    const ring = new LinearRing([100, 100, 50, 50, 100, 0, 0, 0, 0, 100]);
-    const multiPolygon = new MultiPolygon(
-      ring.getConvexRings().map((ring) => new Polygon(ring)),
+  it("gets all angles", () => {
+    const coordinates = [0, 0, 100, 0, 50, 50];
+    const angles = [];
+    forEachAngle(
+      coordinates,
+      (ax, ay, bx, by, cx, cy) => {
+        angles.push([ax, ay, bx, by, cx, cy]);
+      },
+      4,
+      2,
     );
-    expect(multiPolygon.toWkt()).to.equal(
-      "MULTIPOLYGON(((0 100, 0 0, 100 0, 50 50, 0 100)),((50 50, 100 100, 0 100, 50 50)))",
-    );
+    expect(angles).to.eql([
+      [100, 0, 50, 50, 0, 0],
+      [50, 50, 0, 0, 100, 0],
+    ]);
   });
 };

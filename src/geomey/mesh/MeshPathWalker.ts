@@ -9,14 +9,16 @@ export class MeshPathWalker implements PathWalker {
   private rings: Mesh;
   private linesAndPoints: Mesh;
   private coordinates: number[];
+  private xor: boolean;
 
-  constructor(rings: Mesh, linesAndPoints: Mesh) {
+  constructor(rings: Mesh, linesAndPoints: Mesh, xor: boolean) {
     this.rings = rings;
     this.linesAndPoints = linesAndPoints;
     this.coordinates = [];
+    this.xor = xor;
   }
-  static valueOf(tolerance: Tolerance): MeshPathWalker {
-    return new MeshPathWalker(new Mesh(tolerance), new Mesh(tolerance));
+  static valueOf(tolerance: Tolerance, xor: boolean = false): MeshPathWalker {
+    return new MeshPathWalker(new Mesh(tolerance), new Mesh(tolerance), xor);
   }
   moveTo(x: number, y: number): void {
     this.flushLineSegments();
@@ -79,10 +81,14 @@ export class MeshPathWalker implements PathWalker {
     this.bezierCurveTo(bcdx, bcdy, cdx, cdy, dx, dy);
   }
   closePath(): void {
-    const { coordinates } = this;
+    const { coordinates, xor } = this;
     coordinates.push(coordinates[0], coordinates[1]);
     forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
-      this.rings.addLink(ax, ay, bx, by);
+      if (xor) {
+        this.rings.xorLink(ax, ay, bx, by);
+      } else {
+        this.rings.addLink(ax, ay, bx, by);
+      }
     });
     coordinates.length = 0;
   }

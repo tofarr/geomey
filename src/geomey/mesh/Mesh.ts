@@ -209,6 +209,28 @@ export class Mesh {
     );
     this.links.add(Rectangle.valueOf([ax, ay, bx, by]), { a, b });
   }
+  hasLink(ax: number, ay: number, bx: number, by: number): boolean {
+    const { tolerance } = this;
+    ax = tolerance.normalize(ax);
+    ay = tolerance.normalize(ay);
+    bx = tolerance.normalize(bx);
+    by = tolerance.normalize(by);
+    const a = this.getVertex(ax, ay);
+    if (!a) {
+      return false;
+    }
+    return !!a.links.find((b) => b.x === bx && b.y === by);
+  }
+  /**
+   * Xor a link to the mesh. splitting may occur, so return the number of links actually added to the mesh.
+   */
+  xorLink(ax: number, ay: number, bx: number, by: number): boolean {
+    if (this.addLink(ax, ay, bx, by)) {
+      return true;
+    }
+    this.removeLink(ax, ay, bx, by);
+    return false;
+  }
   getIntersections(ax: number, ay: number, bx: number, by: number): number[] {
     const { tolerance } = this;
 

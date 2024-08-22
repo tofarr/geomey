@@ -11,6 +11,17 @@ import {
 import { Geometry, Point } from "../geom";
 import { GeometryFactory } from "../geom/factory";
 import { DefaultGeometryFactory } from "../geom/factory/DefaultGeometryFactory";
+import { SanitizingGeometryFactory } from "../geom/factory/SanitizingGeometryFactory";
+import { Tolerance } from "../Tolerance";
+
+export function parseGeoJson(input: GeoJsonGeometry, tolerance?: Tolerance) {
+  const parser = new GeoJsonParser(
+    tolerance
+      ? new SanitizingGeometryFactory(tolerance)
+      : new DefaultGeometryFactory(),
+  );
+  return parser.parse(input);
+}
 
 export class GeoJsonParser {
   private factory: GeometryFactory;
@@ -20,7 +31,7 @@ export class GeoJsonParser {
   }
 
   parse(input: GeoJsonGeometry): Geometry {
-    const parsed = this[`parse${input.type}`](input);
+    const parsed = this[`parse${input.type}`](input as unknown as any);
     return parsed;
   }
 
@@ -31,27 +42,27 @@ export class GeoJsonParser {
   parseMultiPoint(input: GeoJsonMultiPoint): Geometry {
     return this.factory.createMultiPoint(input.coordinates.flat(1));
   }
-  LineString(input: GeoJsonLineString): Geometry {
+  parseLineString(input: GeoJsonLineString): Geometry {
     return this.factory.createLineString(input.coordinates.flat(1));
   }
-  MultiLineString(input: GeoJsonMultiLineString): Geometry {
+  parseMultiLineString(input: GeoJsonMultiLineString): Geometry {
     return this.factory.createMultiLineString(
       input.coordinates.map((coordinates) => coordinates.flat(1)),
     );
   }
-  Polygon(input: GeoJsonPolygon): Geometry {
+  parsePolygon(input: GeoJsonPolygon): Geometry {
     const coordinates = input.coordinates.map((coordinates) =>
       coordinates.flat(1),
     );
     return this.factory.createPolygon(coordinates[0], coordinates.slice(1));
   }
-  MultiPolygon(input: GeoJsonMultiPolygon): Geometry {
+  parseMultiPolygon(input: GeoJsonMultiPolygon): Geometry {
     const polygons = input.coordinates.map((polygon) =>
       polygon.map((ring) => ring.flat(1)),
     );
     return this.factory.createMultiPolygon(polygons);
   }
-  GeometryCollection(input: GeoJsonGeometryCollection): Geometry {
+  parseGeometryCollection(input: GeoJsonGeometryCollection): Geometry {
     const points = [];
     const lineStrings = [];
     const polygons = [];
@@ -64,7 +75,7 @@ export class GeoJsonParser {
           points.push(...geometry.coordinates.flat(1));
           break;
         case "LineString":
-          points.push(geometry.coordinates.flat(1));
+          lineStrings.push(geometry.coordinates.flat(1));
           break;
         case "MultiLineString":
           lineStrings.push(

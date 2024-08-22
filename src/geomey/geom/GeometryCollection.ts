@@ -106,19 +106,18 @@ export class GeometryCollection extends AbstractGeometry {
   }
   toGeoJson(): GeoJsonGeometryCollection {
     const geometries = [];
-    forEachCoordinate(this.points.coordinates, (x, y) => {
-      geometries.push({
-        type: "Point",
-        x,
-        y,
-      });
-    });
-    for (const lineString of this.lineStrings.lineStrings) {
-      geometries.push(lineString.toGeoJson());
-    }
     for (const polygon of this.polygons.polygons) {
       geometries.push(polygon.toGeoJson());
     }
+    for (const lineString of this.lineStrings.lineStrings) {
+      geometries.push(lineString.toGeoJson());
+    }
+    forEachCoordinate(this.points.coordinates, (x, y) => {
+      geometries.push({
+        type: "Point",
+        coordinates: [x, y],
+      });
+    });
     return {
       type: "GeometryCollection",
       geometries,

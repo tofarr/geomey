@@ -12,8 +12,6 @@ import {
   Polygon,
 } from "../geom";
 import { Tolerance } from "../Tolerance";
-import { AffineTransformer } from "../transformer/AffineTransformer";
-import { EmptyError } from "./EmptyError";
 import { WktParser } from "../parser/WktParser";
 
 const expect = chai.expect;
@@ -106,19 +104,32 @@ export const polygonSpec = () => {
       ]).isValid(TOLERANCE),
     ).to.equal(false);
   });
-  it("validates that holes do not overlap", () => {
+  it("validates that holes links do not touch edge links", () => {
     expect(
-      new Polygon(new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]), [
-        new LinearRing([10, 50, 50, 10, 50, 90]),
-        new LinearRing([50, 10, 90, 50, 50, 90]),
-      ]).isValid(TOLERANCE),
-    ).to.equal(true);
-    expect(
-      new Polygon(new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]), [
-        new LinearRing([10, 10, 80, 50, 10, 90]),
-        new LinearRing([20, 50, 90, 10, 90, 90]),
+      new Polygon(new LinearRing([10, 0, 100, 0, 100, 100, 10, 100]), [
+        new LinearRing([10, 20, 30, 20, 30, 80, 10, 80]),
       ]).isValid(TOLERANCE),
     ).to.equal(false);
+  });
+  it("validates that holes do not touch on edge", () => {
+    const polygon = new Polygon(
+      new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]),
+      [
+        new LinearRing([10, 50, 50, 10, 50, 90]),
+        new LinearRing([50, 10, 90, 50, 50, 90]),
+      ],
+    );
+    expect(polygon.isValid(TOLERANCE)).to.equal(false);
+  });
+  it("validates that holes do not overlap", () => {
+    const polygon = new Polygon(
+      new LinearRing([0, 0, 100, 0, 100, 100, 0, 100]),
+      [
+        new LinearRing([10, 10, 80, 50, 10, 90]),
+        new LinearRing([20, 50, 90, 10, 90, 90]),
+      ],
+    );
+    expect(polygon.isValid(TOLERANCE)).to.equal(false);
   });
   it("normalizes the shell", () => {
     const polygon = new Polygon(

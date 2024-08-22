@@ -1,6 +1,5 @@
 import {
   AbstractGeometry,
-  calculateCentroid,
   comparePolygonsForSort,
   Geometry,
   GeometryCollection,
@@ -8,7 +7,6 @@ import {
   Polygon,
   Rectangle,
   ringToWkt,
-  splitToConvex,
 } from ".";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
 import { GeoJsonMultiPolygon } from "../geoJson";
@@ -16,7 +14,7 @@ import { Mesh } from "../mesh/Mesh";
 import { MeshPathWalker } from "../mesh/MeshPathWalker";
 import { generalize } from "../mesh/op/generalize";
 import { PathWalker } from "../path/PathWalker";
-import { B_INSIDE_A, DISJOINT, Relation } from "../Relation";
+import { B_INSIDE_A, DISJOINT, Relation, TOUCH } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { Transformer } from "../transformer/Transformer";
 import { RectangleBuilder } from "./builder/RectangleBuilder";
@@ -112,13 +110,23 @@ export class MultiPolygon extends AbstractGeometry {
     const walker = MeshPathWalker.valueOf(tolerance);
     this.walkPath(walker);
     const [mesh] = walker.getMeshes();
-    return mesh.forEachVertexAndLinkCentroid((x, y) => {
+
+    return mesh.forEachLink(({ a, b }) => {
+      const x = (a.x + b.x) / 2;
+      const y = (a.y + b.y) / 2;
+      let numTouches = 0;
       for (const polygon of polygons) {
-        if (polygon.relatePoint(x, y, tolerance) === B_INSIDE_A) {
+        const polygonRelate = polygon.relatePoint(x, y, tolerance);
+        if (polygonRelate & B_INSIDE_A) {
           return false;
         }
+        if (polygonRelate & TOUCH) {
+          numTouches++;
+          if (numTouches > 1) {
+            return false;
+          }
+        }
       }
-      return true;
     });
   }
   transform(transformer: Transformer): MultiPolygon {

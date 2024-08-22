@@ -1,9 +1,7 @@
 import * as chai from "chai";
-import { LinearRing, MultiPoint, MultiPolygon, Point, Polygon } from "../geom";
+import { LinearRing, MultiPolygon, Polygon } from "../geom";
 import { Tolerance } from "../Tolerance";
-import { InvalidCoordinateError } from "../coordinate";
 import { AffineTransformer } from "../transformer/AffineTransformer";
-import { A_OUTSIDE_B, B_OUTSIDE_A, DISJOINT, TOUCH } from "../Relation";
 import { EmptyError } from "./EmptyError";
 
 const expect = chai.expect;
@@ -82,5 +80,39 @@ export const multiPolygonSpec = () => {
       ]).isValid(TOLERANCE),
     ).to.equal(false);
     expect(new MultiPolygon([A, A]).isValid(TOLERANCE)).to.equal(false);
+  });
+  it("validates overlapping polygons", () => {
+    const multiPolygon = new MultiPolygon([
+      new Polygon(new LinearRing([0, 0, 90, 50, 0, 100])),
+      new Polygon(new LinearRing([10, 50, 100, 0, 100, 100])),
+    ]);
+    expect(multiPolygon.isValid(TOLERANCE)).to.equal(false);
+  });
+  it("validates touching polygons", () => {
+    expect(
+      new MultiPolygon([
+        new Polygon(new LinearRing([0, 0, 50, 50, 0, 100])),
+        new Polygon(new LinearRing([50, 50, 100, 0, 100, 100])),
+      ]).isValid(TOLERANCE),
+    ).to.equal(true);
+    expect(
+      new MultiPolygon([
+        new Polygon(new LinearRing([0, 50, 50, 0, 50, 100])),
+        new Polygon(new LinearRing([50, 0, 100, 50, 50, 100])),
+      ]).isValid(TOLERANCE),
+    ).to.equal(false);
+  });
+  it("generalizes as expected", () => {
+    let multiPolygon = new MultiPolygon([A, B]);
+    expect(multiPolygon.generalize(new Tolerance(250))).to.equal(
+      multiPolygon.getCentroid(),
+    );
+    multiPolygon = new MultiPolygon([
+      new Polygon(new LinearRing([0, 0, 50, 50, 0, 100, 0.01, 50])),
+      new Polygon(new LinearRing([50, 50, 100, 0, 100.01, 50, 100, 100])),
+    ]);
+    expect(multiPolygon.generalize(TOLERANCE).toWkt()).to.equal(
+      "MULTIPOLYGON(((0 0, 50 50, 0 100, 0 0)),((50 50, 100 0, 100 100, 50 50)))",
+    );
   });
 };
