@@ -3,6 +3,7 @@ import {
   angle,
   appendChanged,
   compareCoordinatesForSort,
+  coordinateEqual,
   coordinatesMatch,
   crossProduct,
   forEachCoordinate,
@@ -86,4 +87,11 @@ export const coordinateSpec = () => {
     expect(compareCoordinatesForSort([2, 2], [1, 2])).to.be.above(0);
     expect(compareCoordinatesForSort([1, 2, 1, 2], [1, 2])).to.be.above(0);
   });
+
+  it("Coordinate equal works", () => {
+    expect(coordinateEqual(2, 3, 2, 3)).to.equal(true);
+    expect(coordinateEqual(2, 3, 2, 7)).to.equal(false);
+    expect(coordinateEqual(2, 3, 5, 3)).to.equal(false);
+    expect(coordinateEqual(2, 3, 5, 7)).to.equal(false);
+  })
 };

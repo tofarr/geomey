@@ -3,7 +3,6 @@ import {
   comparePointsForSort,
   CoordinateConsumer,
   Coordinates,
-  InvalidCoordinateError,
   isNaNOrInfinite,
   LinearRingCoordinatesConsumer,
   LineStringCoordinatesConsumer,
@@ -16,7 +15,6 @@ import {
   getMinIndex,
   intersectionLineSegment,
   pointTouchesLineSegment,
-  projectProgress,
   Rectangle,
   signedPerpendicularDistance,
 } from "../geom";

@@ -229,6 +229,21 @@ export const meshSpec = () => {
     expect(mesh.removeLink(0, 1, 2, 4)).to.equal(false);
     expect(mesh.getEdges().length).to.equal(1);
   });
+  it("remove missing link returns false", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    mesh.addPoint(2, 3)
+    mesh.addPoint(5, 7)
+    expect(mesh.removeLink(2, 3, 5, 7)).to.equal(false);
+  })
+  it("xor link xors links", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    mesh.xorLink(2, 3, 5, 7)
+    expect(mesh.hasLink(2, 3, 5, 7)).to.equal(true)
+    mesh.xorLink(2, 3, 5, 7)
+    expect(mesh.hasLink(2, 3, 5, 7)).to.equal(false)
+    mesh.xorLink(5, 7, 2, 3)
+    expect(mesh.hasLink(2, 3, 5, 7)).to.equal(true)
+  })
   it("iterates over vertices within a rectangle", () => {
     const mesh = new Mesh(new Tolerance(0.05));
     for (let x = 0; x < 7; x++) {
