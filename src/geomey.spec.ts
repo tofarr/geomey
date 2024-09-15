@@ -20,12 +20,14 @@ import { polygonSpec } from "./geomey/geom/Polygon.spec";
 import { multiPolygonSpec } from "./geomey/geom/MultiPolygon.spec";
 import { rectangleBuilderSpec } from "./geomey/geom/builder/RectangleBuilder.spec";
 import { geoJsonSpec } from "./geomey/parser/geoJson.spec";
+import { edgeSpec } from "./geomey/mesh/Edge.spec";
 
 describe("Coordinate", coordinateSpec);
 describe("Tolerance", toleranceSpec);
 describe("Relation", relationSpec);
 describe("ZOrderIndex", zOrderIndexSpec);
 describe("RTree", rTreeSpec);
+describe("Edge", edgeSpec);
 describe("Mesh", meshSpec);
 describe("MeshPathWalker", meshPathWalkerSpec);
 describe("SVGPathWalker", svgPathWalkerSpec);

@@ -340,10 +340,10 @@ export class Mesh {
   private xorEdge(edge: Edge, results: Edge[]) {
     if (edge.a.links.includes(edge.b)) {
       this.removeEdge(edge);
-    } else {
-      this.addEdge(edge);
-      results.push(edge);
+      return
     }
+    this.addEdge(edge);
+    results.push(edge);
   }
 
   forEachVertex(
