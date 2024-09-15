@@ -24,7 +24,7 @@ export function addExplicitPointsOfIntersectionToA(a: Mesh, b: Mesh) {
         px = vx;
         py = vy;
       }
-      a.addLink(px, px, jx, jy)
+      a.addLink(px, py, jx, jy)
     }
   }
 }
