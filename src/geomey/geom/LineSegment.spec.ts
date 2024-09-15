@@ -268,6 +268,12 @@ export const lineSegmentSpec = () => {
       intersectionLineSegment(0, 2, 2, 2, 1, 0, 1, 2, TOLERANCE).toWkt(),
     ).to.eql("POINT(1 2)");
     expect(
+      intersectionLineSegment(0, 0, 0, 50, 0, 100, 50, 50, TOLERANCE)
+    ).to.eql(null);
+    expect(
+      intersectionLineSegment(0, 50, 40, 50, 0, 100, 50, 50, TOLERANCE),
+    ).to.eql(null);
+    expect(
       intersectionLineSegment(0, 0, 2, 0, 0, -1, 0, 1, TOLERANCE).toWkt(),
     ).to.eql("POINT(0 0)");
     expect(
