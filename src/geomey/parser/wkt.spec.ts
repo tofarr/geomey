@@ -71,7 +71,7 @@ export const wktSpec = () => {
     );
   });
 
-  it("parses and renders a sanitized self intersecting polygon", () => {
+  it("parses and renders a sanitized polygon with a touching hole", () => {
     // Self intersecting polygon is broken into 3 polygons
     const wkt = "POLYGON((0 0, 200 0, 100 100),(100 0, 50 50, 150 50))";
     const parsed = parseWkt(wkt, new Tolerance(0.05));

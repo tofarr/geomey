@@ -2,9 +2,8 @@ import {
   angle,
   comparePointsForSort,
   CoordinateConsumer,
-  coordinateEqual,
-  coordinateMatch,
   Coordinates,
+  InvalidCoordinateError,
   isNaNOrInfinite,
   LinearRingCoordinatesConsumer,
   LineStringCoordinatesConsumer,
@@ -14,136 +13,267 @@ import {
 import {
   calculateArea,
   forEachRingLineSegmentCoordinates,
+  getMinIndex,
   intersectionLineSegment,
   pointTouchesLineSegment,
+  projectProgress,
   Rectangle,
   signedPerpendicularDistance,
 } from "../geom";
-import { Tolerance } from "../Tolerance";
-import { Link } from "./Link";
-import { MeshError } from "./MeshError";
-import { Vertex } from "./Vertex";
 import { DISJOINT } from "../Relation";
 import { SpatialConsumer } from "../spatialIndex";
 import { RTree } from "../spatialIndex/RTree";
+import { Tolerance } from "../Tolerance";
+import { Edge } from "./Edge";
+import { Intersection } from "./Intersection";
+import { MeshError } from "./MeshError";
+import { Vertex } from "./Vertex";
 
-/**
- * Class describing a network of Vertices and Links, which may be used to build geometries.
- * Vertexes in a mesh are unique and rounded to the nearest tolerance, and links may not cross
- * each other outside of a vertex. (If they do, a vertex is added.)
- *
- * Internally, Z order indexes are used to maintain performance.
- */
 export class Mesh {
   readonly tolerance: Tolerance;
   private vertices: Map<string, Vertex>;
-  private links: RTree<Link>;
+  private edges: RTree<Edge>;
 
   constructor(tolerance: Tolerance) {
     this.tolerance = tolerance;
     this.vertices = new Map();
-    this.links = new RTree();
+    this.edges = new RTree();
   }
 
-  addVertex(x: number, y: number): Vertex {
-    const { tolerance } = this;
-
-    // Normalize point...
-    if (isNaNOrInfinite(x, y)) {
-      throw new MeshError(`Invalid Vertex: ${x} ${y}`);
+  addPoint(x: number, y: number): Vertex {
+    try {
+      return this.addVertex(new Vertex(x, y, this.tolerance));
+    } catch (e) {
+      throw new MeshError(e);
     }
-    x = tolerance.normalize(x);
-    y = tolerance.normalize(y);
-
-    // Add vertex
-    const key = calculateKey(x, y, tolerance.tolerance);
-    let vertex = this.vertices.get(key);
-    if (vertex) {
-      return vertex; // already exists
-    }
-    vertex = new Vertex(x, y, key);
-    this.vertices.set(key, vertex);
-
-    // If the vertex lies on an existing link, break the link and add the vertex in the middle
-    this.links.findIntersecting(new Rectangle(x, y, x, y), ({ a, b }) => {
-      const { x: ax, y: ay } = a;
-      const { x: bx, y: by } = b;
-      if (pointTouchesLineSegment(x, y, ax, ay, bx, by, tolerance)) {
-        this.removeLink(ax, ay, bx, by);
-        this.addLinkInternal(ax, ay, x, y);
-        this.addLinkInternal(bx, by, x, y);
-        return false;
-      }
-    });
-    return vertex;
   }
-  getVertex(x: number, y: number): Vertex | null {
+
+  removePoint(x: number, y: number): boolean {
     const key = calculateKey(x, y, this.tolerance.tolerance);
-    return this.vertices.get(key);
-  }
-  /**
-   * Add a link to the mesh. splitting may occur, so return the number of links actually added to the mesh.
-   */
-  addLink(ax: number, ay: number, bx: number, by: number): number {
-    const { tolerance } = this;
-
-    // Normalize link...
-    if (isNaNOrInfinite(ax, ay, bx, by)) {
-      throw new MeshError(`Invalid Link: ${ax} ${ay} ${bx} ${by}`);
-    }
-    ax = tolerance.normalize(ax);
-    ay = tolerance.normalize(ay);
-    bx = tolerance.normalize(bx);
-    by = tolerance.normalize(by);
-    const compare = comparePointsForSort(ax, ay, bx, by);
-    if (compare == 0) {
-      return 0; // Can't link to self!
-    } else if (compare > 0) {
-      [bx, by, ax, ay] = [ax, ay, bx, by];
-    }
-
-    // Check if link already exists
-    const key = calculateKey(ax, ay, tolerance.tolerance);
     const vertex = this.vertices.get(key);
     if (vertex) {
-      if (vertex.links.find((v) => v.x === bx && v.y === by)) {
-        return 0;
-      }
+      this.removeVertex(vertex);
+      return true;
     }
+    return false;
+  }
 
-    // check if the link intersects any existing links
-    const toRemove = [];
-    const toAdd = [];
-    const intersections = [ax, ay];
-    this.links.findIntersecting(Rectangle.valueOf([ax, ay, bx, by]), (link) => {
-      const { x: jax, y: jay } = link.a;
-      const { x: jbx, y: jby } = link.b;
+  getVertex(x: number, y: number): Vertex {
+    const key = calculateKey(x, y, this.tolerance.tolerance);
+    const vertex = this.vertices.get(key);
+    return vertex;
+  }
 
-      function addIntersection(ix: number, iy: number) {
-        if (
-          !(
-            coordinateEqual(jax, jay, ix, iy) ||
-            coordinateEqual(jbx, jby, ix, iy)
-          )
-        ) {
-          toRemove.push(jax, jay, jbx, jby);
-          toAdd.push(jax, jay, ix, iy, ix, iy, jbx, jby);
-        }
-        intersections.push(ix, iy);
+  addLink(ax: number, ay: number, bx: number, by: number): Edge[] {
+    const a = this.addPoint(ax, ay);
+    const b = this.addPoint(bx, by);
+    return this.addVertexLink(a, b);
+  }
+
+  hasLink(ax: number, ay: number, bx: number, by: number): boolean {
+    const a = this.getVertex(ax, ay);
+    if (!a) {
+      return false;
+    }
+    const b = this.getVertex(bx, by);
+    if (!b) {
+      return false;
+    }
+    return a.links.includes(b);
+  }
+
+  removeLink(ax: number, ay: number, bx: number, by: number): boolean {
+    const a = this.getVertex(ax, ay);
+    if (!a) {
+      return false;
+    }
+    const b = this.getVertex(bx, by);
+    if (!b) {
+      return false;
+    }
+    return this.removeVertexLink(a, b);
+  }
+
+  xorLink(ax: number, ay: number, bx: number, by: number): Edge[] {
+    const a = this.addPoint(ax, ay);
+    const b = this.addPoint(bx, by);
+    return this.xorVertexLink(a, b);
+  }
+
+  public getIntersections(
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+  ): Intersection[] {
+    const { tolerance } = this;
+    const a = new Vertex(ax, ay, tolerance);
+    const b = new Vertex(bx, by, tolerance);
+    const edge = new Edge(a, b);
+    const intersections = this.findEdgesIntersectingEdge(edge);
+    return intersections;
+  }
+
+  private addVertex(vertex: Vertex): Vertex {
+    const existing = this.vertices.get(vertex.key);
+    if (existing) {
+      return existing; // already exists
+    }
+    this.vertices.set(vertex.key, vertex);
+
+    // If the vertex lies on an existing link, break the link and add the vertex in the middle
+    const intersections = this.findEdgesIntersectingVertex(vertex);
+    for (const intersection of intersections) {
+      const { edge } = intersection;
+      this.removeEdge(edge);
+      this.addEdge(new Edge(edge.a, vertex));
+      this.addEdge(new Edge(edge.b, vertex));
+    }
+    return vertex;
+  }
+
+  private findEdgesIntersectingVertex(vertex: Vertex): Intersection[] {
+    const intersections = [];
+    const { x, y } = vertex;
+    this.edges.findIntersecting(new Rectangle(x, y, x, y), (edge) => {
+      const { a, b } = edge;
+      const { x: ax, y: ay } = a;
+      const { x: bx, y: by } = b;
+      if (pointTouchesLineSegment(x, y, ax, ay, bx, by, this.tolerance)) {
+        intersections.push({ edge, vertex });
+      }
+    });
+    return intersections;
+  }
+
+  private removeVertex(vertex: Vertex) {
+    const { links } = vertex;
+    for (let i = links.length; i-- > 0; ) {
+      const otherVertex = links[i];
+      this.removeVertexLink(vertex, otherVertex);
+    }
+    this.vertices.delete(vertex.key);
+  }
+
+  private addVertexLink(a: Vertex, b: Vertex): Edge[] {
+    if (a == b) {
+      return [];
+    }
+    if (a.links.includes(b)) {
+      return [];
+    }
+    const edge = new Edge(a, b);
+    const intersections = this.findEdgesIntersectingEdge(edge);
+    const results = [];
+    let prev = edge.a;
+    for (const intersection of intersections) {
+      let { vertex } = intersection;
+      const existing = this.vertices.get(vertex.key);
+      if (existing) {
+        vertex = existing;
+      } else {
+        this.vertices.set(vertex.key, vertex);
       }
 
+      const ie = intersection.edge;
+      const { a: iea, b: ieb } = ie;
+      if (iea !== vertex && ieb !== vertex) {
+        this.removeEdge(ie);
+        this.addEdge(new Edge(ie.a, vertex));
+        this.addEdge(new Edge(ie.b, vertex));
+      }
+      if (vertex != prev) {
+        results.push(this.addEdge(new Edge(prev, vertex)));
+      }
+      prev = vertex;
+    }
+    if (prev != edge.b) {
+      results.push(this.addEdge(new Edge(prev, edge.b)));
+    }
+    return results;
+  }
+
+  private addEdge(edge: Edge): Edge {
+    const { a, b, rectangle } = edge;
+    const aLinks = a.links as Vertex[];
+
+    if (aLinks.includes(b)) {
+      // This means that different edge objects may be returned each time...
+      return edge;
+    }
+    aLinks.push(b);
+    aLinks.sort(
+      (u, v) => angle(a.x, a.y, u.x, u.y) - angle(a.x, a.y, v.x, v.y),
+    );
+    const bLinks = b.links as Vertex[];
+    bLinks.push(a);
+    bLinks.sort(
+      (u, v) => angle(b.x, b.y, u.x, u.y) - angle(b.x, b.y, v.x, v.y),
+    );
+    this.edges.add(rectangle, edge);
+    return edge;
+  }
+
+  private removeVertexLink(a: Vertex, b: Vertex): boolean {
+    if (a == b) {
+      return false;
+    }
+    const { x: ax, y: ay } = a
+    const { x: bx, y: by } = b
+    if (comparePointsForSort(ax, ay, bx, by) > 0){
+      [a, b] = [b, a]
+    }
+    const { edges } = this;
+    const rectangle = Rectangle.valueOf([ax, ay, bx, by]);
+    if (!edges.remove(rectangle, (v) => v.a === a && v.b === b)) {
+      return false;
+    }
+    const aLinks = a.links as Vertex[];
+    aLinks.splice(aLinks.indexOf(b), 1);
+    const bLinks = b.links as Vertex[];
+    bLinks.splice(bLinks.indexOf(a), 1);
+    return true;
+  }
+
+  private removeEdge(edge: Edge) {
+    const { a, b } = edge;
+    const { edges } = this;
+    edges.remove(edge.rectangle, (e) => e === edge);
+    const aLinks = a.links as Vertex[];
+    aLinks.splice(aLinks.indexOf(b), 1);
+    const bLinks = b.links as Vertex[];
+    bLinks.splice(bLinks.indexOf(a), 1);
+  }
+
+  private findEdgesIntersectingEdge(e: Edge): Intersection[] {
+    const { a, b } = e;
+    const { x: ax, y: ay } = a;
+    const { x: bx, y: by } = b;
+    const { tolerance } = this;
+    const intersections = [];
+    this.edges.findIntersecting(e.rectangle, (edge) => {
+      const { x: jax, y: jay } = edge.a;
+      const { x: jbx, y: jby } = edge.b;
       const containsJA = tolerance.within(
         signedPerpendicularDistance(jax, jay, ax, ay, bx, by),
       );
       const containsJB = tolerance.within(
         signedPerpendicularDistance(jbx, jby, ax, ay, bx, by),
       );
-      if (containsJA || containsJB) {
-        if (containsJA) {
-          addIntersection(jax, jay);
-        }
-        if (containsJB) {
-          addIntersection(jbx, jby);
+      if (containsJA && containsJB) {
+        // Special case - lines are colinear...
+        for (const vertex of [edge.a, edge.b]) {
+          const { x, y } = vertex;
+          let progress = (x - ax) / (bx - ax);
+          if (isNaNOrInfinite(progress)) {
+            progress = (y - ay) / (by - ay);
+          }
+          if (
+            progress >= -tolerance.tolerance &&
+            progress <= 1 + tolerance.tolerance
+          ) {
+            intersections.push({ vertex, edge });
+          }
         }
       } else {
         const intersection = intersectionLineSegment(
@@ -158,186 +288,66 @@ export class Mesh {
           tolerance,
         );
         if (intersection) {
-          addIntersection(intersection.x, intersection.y);
+          intersections.push({
+            edge,
+            vertex: new Vertex(intersection.x, intersection.y, tolerance),
+          });
         }
       }
     });
-    intersections.push(bx, by);
-    let i = 0;
-    while (i < toRemove.length) {
-      this.removeLink(
-        toRemove[i++],
-        toRemove[i++],
-        toRemove[i++],
-        toRemove[i++],
-      );
-    }
-    i = 0;
-    while (i < toAdd.length) {
-      this.addLinkInternal(toAdd[i++], toAdd[i++], toAdd[i++], toAdd[i++]);
-    }
-    sortCoordinates(intersections);
-    let iax = intersections[0];
-    let iay = intersections[1];
-    i = 2;
-    while (i < intersections.length) {
-      const ibx = intersections[i++];
-      const iby = intersections[i++];
-      if (!coordinateMatch(iax, iay, ibx, iby, tolerance)) {
-        this.addLinkInternal(iax, iay, ibx, iby);
-        iax = ibx;
-        iay = iby;
-      }
-    }
-    return (intersections.length >> 1) - 1;
-  }
-  private addLinkInternal(ax: number, ay: number, bx: number, by: number) {
-    const a = this.addVertex(ax, ay);
-    const b = this.addVertex(bx, by);
-    const aLinks = a.links as Vertex[];
-    if (aLinks.find((v) => !comparePointsForSort(v.x, v.y, bx, by))) {
-      return;
-    }
-    aLinks.push(b);
-    aLinks.sort(
-      (u, v) => angle(a.x, a.y, u.x, u.y) - angle(a.x, a.y, v.x, v.y),
+    intersections.sort((a, b) =>
+      comparePointsForSort(a.vertex.x, a.vertex.y, b.vertex.x, b.vertex.y),
     );
-    const bLinks = b.links as Vertex[];
-    bLinks.push(a);
-    bLinks.sort(
-      (u, v) => angle(b.x, b.y, u.x, u.y) - angle(b.x, b.y, v.x, v.y),
-    );
-    this.links.add(Rectangle.valueOf([ax, ay, bx, by]), { a, b });
-  }
-  hasLink(ax: number, ay: number, bx: number, by: number): boolean {
-    const { tolerance } = this;
-    ax = tolerance.normalize(ax);
-    ay = tolerance.normalize(ay);
-    bx = tolerance.normalize(bx);
-    by = tolerance.normalize(by);
-    const a = this.getVertex(ax, ay);
-    if (!a) {
-      return false;
-    }
-    return !!a.links.find((b) => b.x === bx && b.y === by);
-  }
-  /**
-   * Xor a link to the mesh. splitting may occur, so return the number of links actually added to the mesh.
-   */
-  xorLink(ax: number, ay: number, bx: number, by: number): boolean {
-    if (this.addLink(ax, ay, bx, by)) {
-      return true;
-    }
-    this.removeLink(ax, ay, bx, by);
-    return false;
-  }
-  getIntersections(ax: number, ay: number, bx: number, by: number): number[] {
-    const { tolerance } = this;
-
-    if (isNaNOrInfinite(ax, ay, bx, by)) {
-      throw new MeshError(`Invalid Link: ${ax} ${ay} ${bx} ${by}`);
-    }
-    const mx = ax;
-    const my = ay;
-    ax = tolerance.normalize(ax);
-    ay = tolerance.normalize(ay);
-    bx = tolerance.normalize(bx);
-    by = tolerance.normalize(by);
-    const compare = comparePointsForSort(ax, ay, bx, by);
-    if (compare == 0) {
-      return []; // Can't link to self!
-    } else if (compare > 0) {
-      [bx, by, ax, ay] = [ax, ay, bx, by];
-    }
-
-    const intersections = [];
-    const rectangle = Rectangle.valueOf([ax, ay, bx, by]);
-    this.links.findIntersecting(rectangle, (link) => {
-      const { x: jax, y: jay } = link.a;
-      const { x: jbx, y: jby } = link.b;
-      const intersection = intersectionLineSegment(
-        ax,
-        ay,
-        bx,
-        by,
-        jax,
-        jay,
-        jbx,
-        jby,
-        tolerance,
-      );
-      if (intersection) {
-        const x = tolerance.normalize(intersection.x);
-        const y = tolerance.normalize(intersection.y);
-        if ((x === ax && y === ay) || (x === bx && y === by)) {
-          return;
-        }
-        intersections.push(x, y);
-      }
-    });
-    sortCoordinates(intersections, (ix, iy, jx, jy) => {
-      const distI = (ix - mx) ** 2 + (iy - my) ** 2;
-      const distJ = (jx - mx) ** 2 + (jy - my) ** 2;
-      return distI - distJ;
-    });
     return intersections;
   }
-  removeVertex(x: number, y: number): boolean {
-    const tolerance = this.tolerance.tolerance;
 
-    if (isNaNOrInfinite(x, y)) {
-      return false; // Invalid point can't be removed
+  private xorVertexLink(a: Vertex, b: Vertex) {
+    if (a == b) {
+      return;
     }
-    x = Math.round(x / tolerance) * tolerance;
-    y = Math.round(y / tolerance) * tolerance;
-
-    const key = calculateKey(x, y, tolerance);
-    const vertex = this.vertices.get(key);
-    if (!vertex) {
-      return false;
+    if (a.links.includes(b)) {
+      this.removeVertexLink(a, b);
+      return;
     }
-    const { links } = vertex;
-    for (let i = links.length; i-- > 0; ) {
-      const otherVertex = links[i];
-      this.removeLink(x, y, otherVertex.x, otherVertex.y);
+    const edge = new Edge(a, b);
+    const intersections = this.findEdgesIntersectingEdge(edge);
+    const results = [];
+    let prev = edge.a;
+    for (const intersection of intersections) {
+      let { vertex } = intersection;
+      const existing = this.vertices.get(vertex.key);
+      if (existing) {
+        vertex = existing;
+      } else {
+        this.vertices.set(vertex.key, vertex);
+      }
+      const ie = intersection.edge;
+      const { a: iea, b: ieb } = ie;
+      if (iea !== vertex && ieb !== vertex) {
+        this.removeEdge(ie);
+        this.addEdge(new Edge(ie.a, vertex));
+        this.addEdge(new Edge(ie.b, vertex));
+      }
+      if (vertex != prev) {
+        this.xorEdge(new Edge(prev, vertex), results);
+      }
+      prev = vertex;
     }
-    this.vertices.delete(key);
-    return true;
+    if (prev != edge.b) {
+      this.xorEdge(new Edge(prev, edge.b), results);
+    }
+    return results;
   }
-  removeLink(ax: number, ay: number, bx: number, by: number): boolean {
-    const compare = comparePointsForSort(ax, ay, bx, by);
-    if (compare == 0) {
-      return false; // Can't link to self!
-    } else if (compare > 0) {
-      [bx, by, ax, ay] = [ax, ay, bx, by];
-    }
-    const { tolerance } = this;
-    const { tolerance: t } = tolerance;
 
-    ax = Math.round(ax / t) * t;
-    ay = Math.round(ay / t) * t;
-    bx = Math.round(bx / t) * t;
-    by = Math.round(by / t) * t;
-
-    const key = calculateKey(ax, ay, t);
-    const a = this.vertices.get(key);
-    if (!a) {
-      return false;
+  private xorEdge(edge: Edge, results: Edge[]) {
+    if (edge.a.links.includes(edge.b)) {
+      this.removeEdge(edge);
+    } else {
+      this.addEdge(edge);
+      results.push(edge);
     }
-    const b = a.links.find((v) => v.x == bx && v.y == by);
-    if (!b) {
-      return false;
-    }
-
-    const rectangle = Rectangle.valueOf([ax, ay, bx, by]);
-    const { links } = this;
-    links.remove(rectangle, (v) => v.a === a && v.b === b);
-    const aLinks = a.links as Vertex[];
-    aLinks.splice(aLinks.indexOf(b), 1);
-    const bLinks = b.links as Vertex[];
-    bLinks.splice(bLinks.indexOf(a), 1);
-    return true;
   }
+
   forEachVertex(
     consumer: (vertex: Vertex) => boolean | void,
     rectangle?: Rectangle,
@@ -362,11 +372,13 @@ export class Mesh {
     }
     return true;
   }
+
   getVertices() {
     const results = Array.from(this.vertices.values());
     results.sort((a, b) => comparePointsForSort(a.x, a.y, b.x, b.y));
     return results;
   }
+
   getCoordinates(): number[] {
     const results = [];
     this.forEachVertex(({ x, y }) => {
@@ -375,17 +387,19 @@ export class Mesh {
     sortCoordinates(results);
     return results;
   }
-  forEachLink(consumer: SpatialConsumer<Link>, rectangle?: Rectangle): boolean {
+
+  forEachEdge(consumer: SpatialConsumer<Edge>, rectangle?: Rectangle): boolean {
     if (rectangle) {
-      return this.links.findIntersecting(rectangle, consumer);
+      return this.edges.findIntersecting(rectangle, consumer);
     } else {
-      return this.links.findAll(consumer);
+      return this.edges.findAll(consumer);
     }
   }
-  getLinks(): Link[] {
-    const results: Link[] = [];
-    this.forEachLink((link) => {
-      results.push(link);
+
+  getEdges(): Edge[] {
+    const results: Edge[] = [];
+    this.forEachEdge((edge) => {
+      results.push(edge);
     });
     results.sort((i, j) => {
       return (
@@ -395,25 +409,28 @@ export class Mesh {
     });
     return results;
   }
-  getLinkCoordinates(): [number, number, number, number][] {
-    return this.getLinks().map((link) => [
+
+  getEdgeCoordinates(): [number, number, number, number][] {
+    return this.getEdges().map((link) => [
       link.a.x,
       link.a.y,
       link.b.x,
       link.b.y,
     ]);
   }
-  forEachVertexAndLinkCentroid(consumer: CoordinateConsumer): boolean {
+
+  forEachVertexAndEdgeCentroid(consumer: CoordinateConsumer): boolean {
     if (!this.forEachVertex(({ x, y }) => consumer(x, y))) {
       return false;
     }
     const { tolerance } = this;
-    return this.forEachLink(({ a, b }) => {
+    return this.forEachEdge(({ a, b }) => {
       const x = tolerance.normalize((a.x + b.x) / 2);
       const y = tolerance.normalize((a.y + b.y) / 2);
       return consumer(x, y);
     });
   }
+
   forEachLineString(consumer: LineStringCoordinatesConsumer): boolean {
     const tolerance = this.tolerance.tolerance;
     const processed = new Set<string>();
@@ -423,7 +440,7 @@ export class Mesh {
         continue;
       }
       for (const b of a.links) {
-        const key = calculateLinkKey(a, b, tolerance);
+        const key = calculateEdgeKey(a, b, tolerance);
         if (processed.has(key)) {
           continue;
         }
@@ -435,14 +452,14 @@ export class Mesh {
     }
     for (const a of vertices) {
       for (const b of a.links) {
-        const key = calculateLinkKey(a, b, tolerance);
+        const key = calculateEdgeKey(a, b, tolerance);
         if (processed.has(key)) {
           continue;
         }
         const coordinates = followLinearRing(a, b);
         coordinates.push(a.x, a.y);
         forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
-          processed.add(calculateCoordinateLinkKey(ax, ay, bx, by, tolerance));
+          processed.add(calculateCoordinateEdgeKey(ax, ay, bx, by, tolerance));
         });
         if (consumer(coordinates) === false) {
           return false;
@@ -451,6 +468,7 @@ export class Mesh {
     }
     return true;
   }
+
   getLineStrings(): Coordinates[] {
     const results = [];
     this.forEachLineString((lineString) => {
@@ -470,6 +488,7 @@ export class Mesh {
     results.sort(coordinateComparator);
     return results;
   }
+
   /**
    * Note: The rings produced by this will not allow for XOR style functionality.
    * Common lines are duplicated! For example.
@@ -486,7 +505,7 @@ export class Mesh {
     for (const a of vertices) {
       if (a.links.length == 1) {
         const b = a.links[0];
-        const key = calculateLinkKey(a, b, tolerance);
+        const key = calculateEdgeKey(a, b, tolerance);
         if (!processed.has(key)) {
           followLineString(a, b, tolerance, processed);
         }
@@ -496,7 +515,7 @@ export class Mesh {
     // Anything remaining which is unprocessed is part of a ring!
     for (const a of vertices) {
       for (const b of a.links) {
-        const key = calculateLinkKey(a, b, tolerance);
+        const key = calculateEdgeKey(a, b, tolerance);
         if (processed.has(key)) {
           continue;
         }
@@ -506,7 +525,7 @@ export class Mesh {
           coordinates = followLinearRing(b, a);
         }
         forEachRingLineSegmentCoordinates(coordinates, (ax, ay, bx, by) => {
-          processed.add(calculateCoordinateLinkKey(ax, ay, bx, by, tolerance));
+          processed.add(calculateCoordinateEdgeKey(ax, ay, bx, by, tolerance));
         });
         if (consumer(coordinates) === false) {
           return false;
@@ -515,74 +534,68 @@ export class Mesh {
     }
     return true;
   }
+
   getLinearRings(): number[][] {
     const results = [];
-    this.forEachLinearRing((lineString) => {
-      results.push(lineString);
+    this.forEachLinearRing((ring) => {
+      const minIndex = getMinIndex(ring);
+      if (minIndex) {
+        const c = ring.slice(minIndex);
+        c.push(...ring.slice(0, minIndex));
+        ring = c;
+      }
+      results.push(ring);
     });
     results.sort(coordinateComparator);
     return results;
   }
+
   clone() {
     const result = new Mesh(this.tolerance);
     this.vertices.forEach((vertex) => {
       result.vertices.set(
         vertex.key,
-        new Vertex(vertex.x, vertex.y, vertex.key),
+        new Vertex(vertex.x, vertex.y, this.tolerance, vertex.key),
       );
     });
-    this.links.findAll(({ a, b }, rectangle) => {
-      a = result.vertices.get(a.key);
-      b = result.vertices.get(b.key);
-      const aLinks = a.links as Vertex[];
-      const bLinks = b.links as Vertex[];
-      aLinks.push(b);
-      bLinks.push(a);
-      result.links.add(rectangle, { a, b });
-    });
-    this.vertices.forEach((vertex) => result.addVertex(vertex.x, vertex.y));
-    this.links.findAll(({ a, b }) => {
+    this.edges.findAll(({ a, b }) => {
       result.addLink(a.x, a.y, b.x, b.y);
     });
     return result;
   }
+
   cull(match: (x: number, y: number) => boolean) {
-    this.cullLinks(match);
+    this.cullEdges(match);
     this.cullVertices(match);
   }
-  cullLinks(match: (x: number, y: number) => boolean) {
+
+  cullEdges(match: (x: number, y: number) => boolean) {
     const toRemove = [];
-    this.forEachLink(({ a, b }) => {
+    this.forEachEdge((edge) => {
+      const { a, b } = edge;
       const { x: ax, y: ay } = a;
       const { x: bx, y: by } = b;
       const x = (ax + bx) / 2;
       const y = (ay + by) / 2;
       if (match(x, y)) {
-        toRemove.push(ax, ay, bx, by);
+        toRemove.push(edge);
       }
     });
-    const { length } = toRemove;
-    let i = 0;
-    while (i < length) {
-      this.removeLink(
-        toRemove[i++],
-        toRemove[i++],
-        toRemove[i++],
-        toRemove[i++],
-      );
+    for (const edge of toRemove) {
+      this.removeEdge(edge);
     }
   }
+
   cullVertices(match: (x: number, y: number, links: Vertex[]) => boolean) {
     const toRemove = [];
-    this.forEachVertex(({ x, y, links }) => {
+    this.forEachVertex((vertex) => {
+      const { x, y, links } = vertex;
       if (match(x, y, links as Vertex[])) {
-        toRemove.push(x, y);
+        toRemove.push(vertex);
       }
     });
-    const { length } = toRemove;
-    let i = 0;
-    while (i < length) {
-      this.removeVertex(toRemove[i++], toRemove[i++]);
+    for (const vertex of toRemove) {
+      this.removeVertex(vertex);
     }
   }
 }
@@ -597,7 +610,7 @@ function followLineString(
   const coordinates = [a.x, a.y];
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const key = calculateLinkKey(a, b, tolerance);
+    const key = calculateEdgeKey(a, b, tolerance);
     processed.add(key);
     coordinates.push(b.x, b.y);
     const { links } = b;
@@ -630,11 +643,11 @@ function followLinearRing(a: Vertex, b: Vertex): number[] {
   }
 }
 
-function calculateLinkKey(a: Vertex, b: Vertex, tolerance: number) {
-  return calculateCoordinateLinkKey(a.x, a.y, b.x, b.y, tolerance);
+function calculateEdgeKey(a: Vertex, b: Vertex, tolerance: number) {
+  return calculateCoordinateEdgeKey(a.x, a.y, b.x, b.y, tolerance);
 }
 
-function calculateCoordinateLinkKey(
+function calculateCoordinateEdgeKey(
   ax: number,
   ay: number,
   bx: number,

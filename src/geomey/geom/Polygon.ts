@@ -142,7 +142,7 @@ export class Polygon extends AbstractGeometry {
       return false;
     }
     const mesh = this.calculateMesh(tolerance);
-    return mesh.forEachLink(({ a, b }) => {
+    return mesh.forEachEdge(({ a, b }) => {
       const x = (a.x + b.x) / 2;
       const y = (a.y + b.y) / 2;
       let numTouches = 0;

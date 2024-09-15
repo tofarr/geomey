@@ -119,7 +119,7 @@ export const lineStringSpec = () => {
         .union(new Rectangle(0, 0, 100, 100), TOLERANCE)
         .toWkt(),
     ).to.equal(
-      "GEOMETRYCOLLECTION(POLYGON((0 0, 100 0, 100 100, 0 100, 0 0)),LINESTRING(0 0, 0 100, 100 100))",
+      "POLYGON((0 0, 100 0, 100 100, 0 100, 0 0))",
     );
     expect(
       new LineString([0, 0, 0, 100, 100, 100])

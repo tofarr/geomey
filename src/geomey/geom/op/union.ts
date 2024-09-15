@@ -20,5 +20,25 @@ export function union(
   }
   rings.cull(isInside);
   linesAndPoints.cull(isInside);
+
+  const toRemove = []
+  linesAndPoints.forEachEdge(edge => {
+    const {a, b} = edge
+    if(rings.hasLink(a.x, a.y, b.x, b.y)) {
+      toRemove.push(edge)
+    }
+  })
+  for (const edge of toRemove) {
+    const {a, b} = edge
+    linesAndPoints.removeLink(a.x, a.y, b.x, b.y)
+  }
+
+  linesAndPoints.cullVertices((x, y, links) => {
+    if (links.length) {
+      return false
+    }
+    return rings.getVertex(x, y) != null
+  })
+
   return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
 }

@@ -11,14 +11,14 @@ export function xor(
 ): Geometry | null {
   const [rings, linesAndPoints] = createMeshes(tolerance, a, b);
   addExplicitPointsOfIntersection(rings, linesAndPoints);
-  rings.cullLinks((x, y) => {
+  rings.cullEdges((x, y) => {
     return !!(
       a.relatePoint(x, y, tolerance) & TOUCH &&
       b.relatePoint(x, y, tolerance) & TOUCH
     );
   });
 
-  linesAndPoints.cullLinks((x, y) => {
+  linesAndPoints.cullEdges((x, y) => {
     return (
       a.relatePoint(x, y, tolerance) !== DISJOINT &&
       b.relatePoint(x, y, tolerance) !== DISJOINT

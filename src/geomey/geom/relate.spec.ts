@@ -19,6 +19,7 @@ import { LinearRing } from "./LinearRing";
 import { Polygon } from "./Polygon";
 import { MultiPolygon } from "./MultiPolygon";
 import { AffineTransformer } from "../transformer/AffineTransformer";
+import { relate } from "./op/relate";
 
 const expect = chai.expect;
 const TOLERANCE = new Tolerance(0.05);
@@ -319,5 +320,19 @@ export const relateSpec = () => {
     const b = a.transform(AffineTransformer.IDENTITY.translate(50, 50));
     expect(a.relate(b, TOLERANCE)).to.equal(ALL);
     expect(b.relate(a, TOLERANCE)).to.equal(ALL);
+  });
+
+  it("Relates disjoint geoemtries", () => {
+    expect(
+      relate(Point.valueOf(1, 2), Point.valueOf(3, 4), TOLERANCE),
+    ).to.equal(DISJOINT);
+  });
+
+  it("Less touching geometries", () => {
+    const a = new Polygon(new LinearRing([0, 50, 20, 0, 70, 0, 50, 50]));
+    const b = a.transform(AffineTransformer.IDENTITY.translate(50, 0));
+    expect(a.less(b, TOLERANCE).toWkt()).to.equal(
+      "POLYGON((0 50, 20 0, 70 0, 50 50, 0 50))",
+    );
   });
 };

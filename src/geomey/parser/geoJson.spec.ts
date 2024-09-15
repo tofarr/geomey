@@ -407,12 +407,68 @@ export const geoJsonSpec = () => {
   it("throws an exception when a geometry collection has an unknown component", () => {
     const geoJson = {
       type: "GeometryCollection",
-      geometries: [
-        { type: "Unknown", coordinates: [100, 100] },
-      ],
+      geometries: [{ type: "Unknown", coordinates: [100, 100] }],
     };
     expect(() => {
       parseGeoJson(geoJson as GeoJsonGeometryCollection);
     }).to.throw(Error);
+  });
+
+  it("parses sanitized multi polygons", () => {
+    const geoJson: GeoJsonMultiPolygon = {
+      type: "MultiPolygon",
+      coordinates: [
+        [
+          [
+            [0, 50],
+            [20, 0],
+            [70, 0],
+            [50, 50],
+            [0, 50],
+          ],
+        ],
+        [
+          [
+            [50, 50],
+            [70, 0],
+            [120, 0],
+            [100, 50],
+            [50, 50],
+          ],
+        ],
+      ],
+    };
+    const geometry = parseGeoJson(geoJson, new Tolerance(0.01));
+    const wkt = geometry.toWkt();
+    expect(wkt).to.equal(
+      "POLYGON((0 50, 20 0, 70 0, 120 0, 100 50, 50 50, 0 50))",
+    );
+  });
+
+  it("parses sanitized polygons", () => {
+    const geoJson: GeoJsonPolygon = {
+      type: "Polygon",
+      coordinates: [
+        [
+          [0, 0],
+          [100, 0],
+          [100, 100],
+          [0, 100],
+          [0, 0],
+        ],
+        [
+          [0, 0],
+          [50, 0],
+          [50, 50],
+          [0, 50],
+          [0, 0],
+        ],
+      ],
+    };
+    const geometry = parseGeoJson(geoJson, new Tolerance(0.01));
+    const wkt = geometry.toWkt();
+    expect(wkt).to.equal(
+      "POLYGON((0 50, 50 50, 50 0, 100 0, 100 100, 0 100, 0 50))",
+    );
   });
 };

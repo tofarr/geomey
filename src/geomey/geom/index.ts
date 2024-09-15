@@ -9,7 +9,6 @@ export * from "./AbstractGeometry";
 export * from "./MultiPoint";
 export * from "./LineString";
 export * from "./LinearRing";
-export * from "./Triangle";
 export * from "./MultiLineString";
 export * from "./Polygon";
 export * from "./MultiPolygon";

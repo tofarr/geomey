@@ -63,7 +63,7 @@ export function createSnapVertex(
     x += vertex.x;
     y += vertex.y;
   }
-  return mesh.addVertex(x / length, y / length);
+  return mesh.addPoint(x / length, y / length);
 }
 
 export function snapVertex(vertex: Vertex, toVertex: Vertex, mesh: Mesh) {
@@ -73,5 +73,5 @@ export function snapVertex(vertex: Vertex, toVertex: Vertex, mesh: Mesh) {
   for (const link of vertex.links) {
     mesh.addLink(link.x, link.y, toVertex.x, toVertex.y);
   }
-  mesh.removeVertex(vertex.x, vertex.y);
+  mesh.removePoint(vertex.x, vertex.y);
 }

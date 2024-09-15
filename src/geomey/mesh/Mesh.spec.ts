@@ -11,56 +11,64 @@ const expect = chai.expect;
 export const meshSpec = () => {
   it("adds vertices successfully", () => {
     const mesh = new Mesh(new Tolerance(0.05));
-    const vertex = mesh.addVertex(3.01, 3.99);
+    const vertex = mesh.addPoint(3.01, 3.99);
     expect(vertex.x).to.eql(3);
     expect(vertex.y).to.eql(4);
-    const vertex2 = mesh.addVertex(2.99, 4.01);
+    const vertex2 = mesh.addPoint(2.99, 4.01);
     expect(vertex2).to.equal(vertex);
   });
   it("creates links successfully between existing vertices", () => {
     const mesh = new Mesh(new Tolerance(0.05));
-    const a = mesh.addVertex(10, 20);
-    const b = mesh.addVertex(30, 40);
-    expect(mesh.addLink(10.01, 20.01, 30.01, 40.01)).to.equal(1);
+    const a = mesh.addPoint(10, 20);
+    const b = mesh.addPoint(30, 40);
+    const result = mesh.addLink(10.01, 20.01, 30.01, 40.01);
+    expect(result.length).to.equal(1);
+    expect(result[0].a).to.equal(a);
+    expect(result[0].b).to.equal(b);
     expect(a.links).to.eql([b]);
     expect(b.links).to.eql([a]);
-    const links = mesh.getLinks();
-    expect(links.length).to.equal(1);
-    expect(links[0].a).to.equal(a);
-    expect(links[0].b).to.equal(b);
+    const edges = mesh.getEdges();
+    expect(edges.length).to.equal(1);
+    expect(edges[0].a).to.equal(a);
+    expect(edges[0].b).to.equal(b);
   });
   it("creates links successfully between new vertices", () => {
     const mesh = new Mesh(new Tolerance(0.05));
-    expect(mesh.addLink(10.01, 20.01, 30.01, 40.01)).to.equal(1);
-    const links = mesh.getLinks();
-    expect(links.length).to.equal(1);
-    expectLink(links[0], 10, 20, 30, 40);
+    const result = mesh.addLink(10.01, 20.01, 30.01, 40.01);
+    expect(result.length).to.equal(1);
+    expect(result[0].a.x).to.equal(10);
+    expect(result[0].a.y).to.equal(20);
+    expect(result[0].b.x).to.equal(30);
+    expect(result[0].b.y).to.equal(40);
+    const edges = mesh.getEdges();
+    expect(edges.length).to.equal(1);
+    expectLink(edges[0], 10, 20, 30, 40);
   });
   it("creates an explicit point of intersection when a line crosses another", () => {
     const mesh = new Mesh(new Tolerance(0.05));
-    expect(mesh.addLink(0, 0, 30, 30)).to.equal(1);
-    expect(mesh.addLink(30, 0, 0, 30)).to.equal(2);
-    const links = mesh.getLinks();
-    expect(links.length).to.equal(4);
-    expectLink(links[0], 0, 0, 15, 15);
-    expectLink(links[1], 0, 30, 15, 15);
-    expectLink(links[2], 15, 15, 30, 0);
-    expectLink(links[3], 15, 15, 30, 30);
+    expect(mesh.addLink(0, 0, 30, 30).length).to.equal(1);
+    expect(mesh.addLink(30, 0, 0, 30).length).to.equal(2);
+    const edges = mesh.getEdges();
+    expect(edges.length).to.equal(4);
+    expectLink(edges[0], 0, 0, 15, 15);
+    expectLink(edges[1], 0, 30, 15, 15);
+    expectLink(edges[2], 15, 15, 30, 0);
+    expectLink(edges[3], 15, 15, 30, 30);
   });
-  it("creates an multiple explicit points of intersection when a line crosses others", () => {
+  it("creates multiple explicit points of intersection when a line crosses others", () => {
     const mesh = new Mesh(new Tolerance(0.05));
-    expect(mesh.addLink(10, 0, 0, 10)).to.equal(1);
-    expect(mesh.addLink(20, 0, 0, 20)).to.equal(1);
-    expect(mesh.addLink(0, 0, 30, 30)).to.equal(3);
-    const links = mesh.getLinks();
-    expect(links.length).to.equal(7);
-    expectLink(links[0], 0, 0, 5, 5);
-    expectLink(links[1], 0, 10, 5, 5);
-    expectLink(links[2], 0, 20, 10, 10);
-    expectLink(links[3], 5, 5, 10, 0);
-    expectLink(links[4], 5, 5, 10, 10);
-    expectLink(links[5], 10, 10, 20, 0);
-    expectLink(links[6], 10, 10, 30, 30);
+    expect(mesh.addLink(10, 0, 0, 10).length).to.equal(1);
+    expect(mesh.addLink(20, 0, 0, 20).length).to.equal(1);
+    expect(mesh.addLink(0, 0, 30, 30).length).to.equal(3);
+    const edges = mesh.getEdges();
+    expect(edges.length).to.equal(7);
+    expectLink(edges[0], 0, 0, 5, 5);
+    expectLink(edges[1], 0, 10, 5, 5);
+    expectLink(edges[2], 0, 20, 10, 10);
+    expectLink(edges[3], 5, 5, 10, 0);
+    expectLink(edges[4], 5, 5, 10, 10);
+    expectLink(edges[5], 10, 10, 20, 0);
+    expectLink(edges[6], 10, 10, 30, 30);
   });
   it("clones deeply", () => {
     const mesh = new Mesh(new Tolerance(0.05));
@@ -68,7 +76,7 @@ export const meshSpec = () => {
     mesh.addLink(30, 0, 0, 30);
     const otherMesh = mesh.clone();
     expect(mesh.getVertex(15, 15)).not.to.equal(otherMesh.getVertex(15, 15));
-    mesh.removeVertex(0, 0);
+    mesh.removePoint(0, 0);
     expect(mesh.getVertex(0, 0)).to.be.undefined;
     expect(otherMesh.getVertex(15, 15).links.length).to.equal(4);
   });
@@ -90,13 +98,13 @@ export const meshSpec = () => {
       mesh.getVertex(40, 30),
     ]);
   });
-  it("getLinkCoordinates gets all links", () => {
+  it("getEdgeCoordinates gets all links", () => {
     const mesh = new Mesh(new Tolerance(0.05));
     mesh.addLink(0, 0, 30, 30);
     mesh.addLink(30, 0, 0, 30);
     mesh.addLink(30, 30, 45, 15);
     mesh.addLink(45, 15, 30, 0);
-    const links = mesh.getLinkCoordinates();
+    const links = mesh.getEdgeCoordinates();
     expect(links).to.eql([
       [0, 0, 15, 15],
       [0, 30, 15, 15],
@@ -146,14 +154,14 @@ export const meshSpec = () => {
       [70, 0, 80, 0, 80, 10, 70, 10],
     ]);
   });
-  it("cullLinks removes links", () => {
+  it("cullEdges removes links", () => {
     const mesh = new Mesh(new Tolerance(0.05));
     mesh.addLink(0, 0, 30, 30);
     mesh.addLink(30, 0, 0, 30);
     mesh.addLink(30, 0, 30, 30);
-    mesh.cullLinks(() => true);
+    mesh.cullEdges(() => true);
     expect(mesh.getVertices().length).to.eql(5);
-    expect(mesh.getLinkCoordinates()).to.eql([]);
+    expect(mesh.getEdgeCoordinates()).to.eql([]);
   });
   it("cullVertices removes vertices and attached links", () => {
     const mesh = new Mesh(new Tolerance(0.05));
@@ -162,7 +170,7 @@ export const meshSpec = () => {
     mesh.addLink(30, 0, 30, 30);
     mesh.cullVertices((x, y) => x == 15 && y == 15);
     expect(mesh.getVertices().length).to.eql(4);
-    expect(mesh.getLinkCoordinates()).to.eql([[30, 0, 30, 30]]);
+    expect(mesh.getEdgeCoordinates()).to.eql([[30, 0, 30, 30]]);
   });
   it("handles overlapping colinear segments correctly", () => {
     const mesh = new Mesh(new Tolerance(0.05));
@@ -202,35 +210,16 @@ export const meshSpec = () => {
       mesh.addLink(0, 0, 1, Infinity);
     }).to.throw(MeshError);
   });
-  it("does not allow links with NaN or Infinite vertices when getting intersections", () => {
-    const mesh = new Mesh(new Tolerance(0.05));
-    expect(() => {
-      mesh.getIntersections(Infinity, 0, 1, 1);
-    }).to.throw(MeshError);
-    expect(() => {
-      mesh.getIntersections(0, NaN, 1, 1);
-    }).to.throw(MeshError);
-    expect(() => {
-      mesh.getIntersections(0, 0, NaN, 1);
-    }).to.throw(MeshError);
-    expect(() => {
-      mesh.getIntersections(0, 0, 1, Infinity);
-    }).to.throw(MeshError);
-  });
-  it("does not allow links to self", () => {
-    const mesh = new Mesh(new Tolerance(0.05));
-    expect(mesh.getIntersections(1, 2, 1, 2)).to.eql([]);
-  });
   it("remove vertex does not allow NaN or Infinite coordinates", () => {
     const mesh = new Mesh(new Tolerance(0.05));
     mesh.addLink(0, 1, 2, 3);
-    expect(mesh.removeVertex(1, Infinity)).to.equal(false);
-    expect(mesh.removeVertex(NaN, 1)).to.equal(false);
+    expect(mesh.removePoint(1, Infinity)).to.equal(false);
+    expect(mesh.removePoint(NaN, 1)).to.equal(false);
   });
   it("remove vertex returns false if the vertex doesn't exist", () => {
     const mesh = new Mesh(new Tolerance(0.05));
     mesh.addLink(0, 1, 2, 3);
-    expect(mesh.removeVertex(4, 5)).to.equal(false);
+    expect(mesh.removePoint(4, 5)).to.equal(false);
   });
   it("remove link to self returns false", () => {
     const mesh = new Mesh(new Tolerance(0.05));
@@ -238,7 +227,7 @@ export const meshSpec = () => {
     expect(mesh.removeLink(0, 1, 0, 1)).to.equal(false);
     expect(mesh.removeLink(2, 2, 2, 3)).to.equal(false);
     expect(mesh.removeLink(0, 1, 2, 4)).to.equal(false);
-    expect(mesh.getLinks().length).to.equal(1);
+    expect(mesh.getEdges().length).to.equal(1);
   });
   it("iterates over vertices within a rectangle", () => {
     const mesh = new Mesh(new Tolerance(0.05));
@@ -320,7 +309,7 @@ export const meshSpec = () => {
     }
     const results = [];
     expect(
-      mesh.forEachLink(
+      mesh.forEachEdge(
         ({ a, b }) => {
           results.push(`${a.x}:${a.y}:${b.x}:${b.y}`);
         },
@@ -350,7 +339,7 @@ export const meshSpec = () => {
     }
     const results = [];
     expect(
-      mesh.forEachVertexAndLinkCentroid((x) => {
+      mesh.forEachVertexAndEdgeCentroid((x) => {
         results.push(x);
         return false;
       }),
@@ -416,6 +405,39 @@ export const meshSpec = () => {
       [2, 2, 4, 2],
       [2, 2, 4, 3],
       [2, 2, 4, 4],
+    ]);
+  });
+  it("creates an explicit point of intersection when a line crosses another", () => {
+    const mesh = new Mesh(new Tolerance(0.05));
+    expect(mesh.addLink(0, 0, 30, 30).length).to.equal(1);
+    expect(mesh.hasLink(0, 0, 30, 30)).to.equal(true);
+    expect(mesh.hasLink(0, 0, 30, 31)).to.equal(false);
+    expect(mesh.hasLink(0, 1, 30, 30)).to.equal(false);
+  });
+  it("gets linear rings when there is touching segments", () => {
+    const mesh = new Mesh(new Tolerance(0.1));
+    mesh.addLink(0, 0, 100, 0);
+    mesh.addLink(100, 0, 100, 100);
+    mesh.addLink(100, 100, 0, 100);
+    mesh.addLink(0, 0, 0, 100);
+
+    mesh.addLink(20, 20, 80, 20);
+    mesh.addLink(80, 20, 80, 80);
+    mesh.addLink(80, 80, 20, 80);
+    mesh.addLink(20, 20, 20, 80);
+
+    mesh.addLink(0, 0, 20, 20);
+    mesh.addLink(0, 100, 20, 80);
+    mesh.addLink(80, 20, 100, 0);
+    mesh.addLink(80, 80, 100, 100);
+
+    const rings = mesh.getLinearRings();
+    expect(rings).to.eql([
+      [0, 0, 20, 20, 20, 80, 0, 100],
+      [0, 0, 100, 0, 80, 20, 20, 20],
+      [0, 100, 20, 80, 80, 80, 100, 100],
+      [20, 20, 80, 20, 80, 80, 20, 80],
+      [80, 20, 100, 0, 100, 100, 80, 80],
     ]);
   });
 };

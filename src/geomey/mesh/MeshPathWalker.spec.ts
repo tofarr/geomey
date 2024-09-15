@@ -33,4 +33,19 @@ export const meshPathWalkerSpec = () => {
       "LINESTRING(0 0, 0 0.3, 0.2 0.4, 0.5 0.5, 0.7 0.5, 0.8 0.6, 1 0.7, 1 1)",
     );
   });
+
+  it("xors links", () => {
+    const walker = MeshPathWalker.valueOf(new Tolerance(0.05), true);
+    for (let i = 0; i < 2; i++) {
+      walker.moveTo(1, 2);
+      walker.lineTo(5, 2);
+      walker.lineTo(5, 4);
+      walker.lineTo(1, 4);
+      walker.closePath();
+    }
+    const [rings, linesAndPoints] = walker.getMeshes();
+    expect(rings.getVertices().length).to.equal(4);
+    expect(rings.getEdges().length).to.equal(0);
+    expect(linesAndPoints.getEdges().length).to.equal(0);
+  });
 };

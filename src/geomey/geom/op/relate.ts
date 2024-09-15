@@ -27,7 +27,7 @@ export function relate(
   let result = UNKNOWN;
   const meshes = createMeshes(tolerance, a, b);
   for (const mesh of meshes) {
-    mesh.forEachVertexAndLinkCentroid((x, y) => {
+    mesh.forEachVertexAndEdgeCentroid((x, y) => {
       result |= relatePoint(x, y, a, b, tolerance);
       return !!(result & ALL);
     });

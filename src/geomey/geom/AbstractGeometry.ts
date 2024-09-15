@@ -35,9 +35,7 @@ export abstract class AbstractGeometry implements Geometry {
     return bounds;
   }
   protected abstract calculateBounds(): Rectangle;
-  isNormalized(): boolean {
-    return this.normalize() === this;
-  }
+  abstract isNormalized(): boolean;
   normalize(): Geometry {
     let { normalized } = this;
     if (!normalized) {

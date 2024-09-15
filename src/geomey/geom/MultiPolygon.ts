@@ -111,7 +111,7 @@ export class MultiPolygon extends AbstractGeometry {
     this.walkPath(walker);
     const [mesh] = walker.getMeshes();
 
-    return mesh.forEachLink(({ a, b }) => {
+    return mesh.forEachEdge(({ a, b }) => {
       const x = (a.x + b.x) / 2;
       const y = (a.y + b.y) / 2;
       let numTouches = 0;

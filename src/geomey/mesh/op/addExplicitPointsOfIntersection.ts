@@ -7,18 +7,24 @@ export function addExplicitPointsOfIntersection(a: Mesh, b: Mesh) {
 }
 
 export function addExplicitPointsOfIntersectionToA(a: Mesh, b: Mesh) {
-  for (const linkA of a.getLinks()) {
-    const { a: i, b: j } = linkA;
+  for (const edgeA of a.getEdges()) {
+    const { a: i, b: j } = edgeA;
     const { x: ix, y: iy } = i;
     const { x: jx, y: jy } = j;
     const intersections = b.getIntersections(ix, iy, jx, jy);
     if (intersections.length) {
-      intersections.splice(0, 0, ix, iy);
-      intersections.push(jx, jy);
       a.removeLink(ix, iy, jx, jy);
-      forEachLineSegmentCoordinates(intersections, (ax, ay, bx, by) => {
-        a.addLink(ax, ay, bx, by);
-      });
+      let px = ix;
+      let py = iy;
+      for (const intersection of intersections) {
+        const { vertex } = intersection;
+        let vx = vertex.x;
+        let vy = vertex.y;
+        a.addLink(px, py, vx, vy);
+        px = vx;
+        py = vy;
+      }
+      a.addLink(px, px, jx, jy)
     }
   }
 }

@@ -17,7 +17,7 @@ export function less(
 
   const touchBoth = new Mesh(tolerance);
   const toRemove = [];
-  rings.forEachLink(({ a: i, b: j }) => {
+  rings.forEachEdge(({ a: i, b: j }) => {
     const { x: ix, y: iy } = i;
     const { x: jx, y: jy } = j;
     const x = (ix + jx) / 2;
@@ -51,11 +51,11 @@ export function less(
 
   rings.forEachVertex(({ x, y, links }) => {
     if (!links.length) {
-      rings.removeVertex(x, y);
+      rings.removePoint(x, y);
     }
   });
 
-  linesAndPoints.cullLinks((x, y) => {
+  linesAndPoints.cullEdges((x, y) => {
     return b.relatePoint(x, y, tolerance) !== DISJOINT;
   });
   linesAndPoints.cullVertices((x, y, links) => {

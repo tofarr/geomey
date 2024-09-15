@@ -362,7 +362,7 @@ export function compareLinearRingsForSort(a: LinearRing, b: LinearRing) {
   return compareCoordinatesForSort(a.coordinates, b.coordinates);
 }
 
-function getMinIndex(coordinates: Coordinates): number {
+export function getMinIndex(coordinates: Coordinates): number {
   let minX = Infinity;
   let minY = Infinity;
   let minIndex = null;

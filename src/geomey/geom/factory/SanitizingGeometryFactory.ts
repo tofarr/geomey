@@ -32,7 +32,7 @@ export class SanitizingGeometryFactory implements GeometryFactory {
   createMultiPoint(points: Coordinates): Geometry {
     const mesh = new Mesh(this.tolerance);
     forEachCoordinate(points, (x, y) => {
-      mesh.addVertex(x, y);
+      mesh.addPoint(x, y);
     });
     const coordinates = mesh.getCoordinates();
     return new MultiPoint(coordinates).normalize();
@@ -80,7 +80,7 @@ export class SanitizingGeometryFactory implements GeometryFactory {
   }
 
   sanitize(unsanitized: Geometry): Geometry {
-    const pathWalker = MeshPathWalker.valueOf(this.tolerance);
+    const pathWalker = MeshPathWalker.valueOf(this.tolerance, true);
     unsanitized.walkPath(pathWalker);
     const [rings, linesAndPoints] = pathWalker.getMeshes();
     return GeometryCollection.fromMeshes(rings, linesAndPoints).normalize();
