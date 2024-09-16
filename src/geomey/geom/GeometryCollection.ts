@@ -1,4 +1,4 @@
-import { DISJOINT, Relation, UNKNOWN } from "../Relation";
+import { DISJOINT, Relation } from "../Relation";
 import { Tolerance } from "../Tolerance";
 import { forEachCoordinate } from "../coordinate";
 import { NUMBER_FORMATTER, NumberFormatter } from "../formatter";
@@ -125,14 +125,25 @@ export class GeometryCollection extends AbstractGeometry {
   }
   isNormalized(): boolean {
     const { points, lineStrings, polygons } = this;
-    if (points && !points.isNormalized()) {
+    if ((points ? 1 : 0) + (lineStrings ? 1 : 0) + (polygons ? 1 : 0) === 1) {
       return false;
     }
-    if (lineStrings && !lineStrings.isNormalized()) {
+    if (points && points.coordinates.length > 2 && !points.isNormalized()) {
       return false;
     }
-    if (polygons && !polygons.isNormalized()) {
-      return false;
+    if (lineStrings) {
+      for (const lineString of lineStrings.lineStrings) {
+        if (!lineString.isNormalized()) {
+          return false;
+        }
+      }
+    }
+    if (polygons) {
+      for (const polygon of polygons.polygons) {
+        if (!polygon.isNormalized()) {
+          return false;
+        }
+      }
     }
     return true;
   }
@@ -144,11 +155,29 @@ export class GeometryCollection extends AbstractGeometry {
     if (points && points.coordinates.length > 2) {
       points = points.normalize() as MultiPoint;
     }
-    if (lineStrings && lineStrings.lineStrings.length > 2) {
-      lineStrings = lineStrings.normalize() as MultiLineString;
+    if (lineStrings) {
+      let updated = false;
+      const normalizedLineStrings = [];
+      for (const lineString of lineStrings.lineStrings) {
+        const normalizedLineString = lineString.normalize();
+        updated ||= normalizedLineString != lineString;
+        normalizedLineStrings.push(normalizedLineString);
+      }
+      if (updated) {
+        lineStrings = new MultiLineString(normalizedLineStrings);
+      }
     }
-    if (polygons && polygons.polygons.length > 2) {
-      polygons = polygons.normalize() as MultiPolygon;
+    if (polygons) {
+      let updated = false;
+      const normalizedPolygons = [];
+      for (const polygon of polygons.polygons) {
+        const normalizedPolygon = polygon.normalize();
+        updated ||= normalizedPolygon != polygon;
+        normalizedPolygons.push(normalizedPolygon);
+      }
+      if (updated) {
+        polygons = new MultiPolygon(normalizedPolygons);
+      }
     }
     if (
       points == this.points &&
@@ -198,16 +227,12 @@ export class GeometryCollection extends AbstractGeometry {
       return DISJOINT;
     }
     const { points, lineStrings, polygons } = this;
-    let relation = UNKNOWN;
-    if (points) {
-      relation = points.relatePoint(x, y, tolerance);
+    for (const geom of [points, lineStrings, polygons]) {
+      const relation = geom.relatePoint(x, y, tolerance);
+      if (relation != DISJOINT) {
+        return relation;
+      }
     }
-    if (lineStrings) {
-      relation |= lineStrings.relatePoint(x, y, tolerance);
-    }
-    if (polygons) {
-      relation |= polygons.relatePoint(x, y, tolerance);
-    }
-    return relation;
+    return DISJOINT;
   }
 }

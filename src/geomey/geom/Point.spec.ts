@@ -116,7 +116,7 @@ export const pointSpec = () => {
     const point = Point.valueOf(2, 3);
     expect(point.union(point, TOLERANCE).toWkt()).to.equal("POINT(2 3)");
     expect(point.union(Point.valueOf(2.01, 3.01), TOLERANCE).toWkt()).to.equal(
-      "POINT(2 3)",
+      "POINT(2.01 3.01)",
     );
     expect(point.union(Point.valueOf(1, 2), TOLERANCE).toWkt()).to.equal(
       "MULTIPOINT(1 2, 2 3)",

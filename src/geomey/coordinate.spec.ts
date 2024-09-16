@@ -93,5 +93,5 @@ export const coordinateSpec = () => {
     expect(coordinateEqual(2, 3, 2, 7)).to.equal(false);
     expect(coordinateEqual(2, 3, 5, 3)).to.equal(false);
     expect(coordinateEqual(2, 3, 5, 7)).to.equal(false);
-  })
+  });
 };

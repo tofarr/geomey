@@ -1,4 +1,3 @@
-import { forEachLineSegmentCoordinates } from "../../coordinate";
 import { Mesh } from "../Mesh";
 
 export function addExplicitPointsOfIntersection(a: Mesh, b: Mesh) {
@@ -18,13 +17,13 @@ export function addExplicitPointsOfIntersectionToA(a: Mesh, b: Mesh) {
       let py = iy;
       for (const intersection of intersections) {
         const { vertex } = intersection;
-        let vx = vertex.x;
-        let vy = vertex.y;
+        const vx = vertex.x;
+        const vy = vertex.y;
         a.addLink(px, py, vx, vy);
         px = vx;
         py = vy;
       }
-      a.addLink(px, py, jx, jy)
+      a.addLink(px, py, jx, jy);
     }
   }
 }

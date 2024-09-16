@@ -31,6 +31,7 @@ export class GeoJsonParser {
   }
 
   parse(input: GeoJsonGeometry): Geometry {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parsed = this[`parse${input.type}`](input as unknown as any);
     return parsed;
   }

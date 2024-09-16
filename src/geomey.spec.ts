@@ -21,6 +21,7 @@ import { multiPolygonSpec } from "./geomey/geom/MultiPolygon.spec";
 import { rectangleBuilderSpec } from "./geomey/geom/builder/RectangleBuilder.spec";
 import { geoJsonSpec } from "./geomey/parser/geoJson.spec";
 import { edgeSpec } from "./geomey/mesh/Edge.spec";
+import { geometryCollectionSpec } from "./geomey/geom/GeometryCollection.spec";
 
 describe("Coordinate", coordinateSpec);
 describe("Tolerance", toleranceSpec);
@@ -36,6 +37,7 @@ describe("Wkt", wktSpec);
 describe("GeoJson", geoJsonSpec);
 describe("Relate", relateSpec);
 describe("LinearRing", linearRingSpec);
+describe("GeometryCollection", geometryCollectionSpec);
 describe("Point", pointSpec);
 describe("Rectangle", rectangleSpec);
 describe("RectangleBuilder", rectangleBuilderSpec);

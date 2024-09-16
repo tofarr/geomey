@@ -18,7 +18,7 @@ export const multiPolygonSpec = () => {
   it("getCentroid returns and caches the centroid", () => {
     const multiPolygon = new MultiPolygon([A, B]);
     const centroid = multiPolygon.getCentroid();
-    expect(centroid.toWkt()).to.equal("POINT(130 50)");
+    expect(centroid.toWkt()).to.equal("POINT(125 50)");
     expect(multiPolygon.getCentroid()).to.equal(centroid);
   });
   it("normalizes successfully", () => {

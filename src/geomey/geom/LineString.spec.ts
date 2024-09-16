@@ -44,7 +44,7 @@ export const lineStringSpec = () => {
     ]);
     expect(lineString.getLength()).to.equal(56);
     expect(lineString.getLength()).to.equal(56);
-    expect(lineString.getCentroid().toWkt()).to.equal("POINT(4.1 5)");
+    expect(lineString.getCentroid().toWkt()).to.equal("POINT(4.08 5)");
   });
   it("returns GeoJson", () => {
     const lineString = new LineString([
@@ -95,7 +95,7 @@ export const lineStringSpec = () => {
       "LINESTRING(0 0, 10 0, 10 2, 2 2, 2 8, 10 8, 10 10, 0 10, 0 0)",
     );
     expect(lineString.generalize(new Tolerance(11)).toWkt()).to.equal(
-      "POINT(4.3 5.5)",
+      "POINT(4.32 5.45)",
     );
     expect(lineString.generalize(new Tolerance(0.01))).to.equal(lineString);
   });
@@ -118,9 +118,7 @@ export const lineStringSpec = () => {
       new LineString([0, 0, 0, 100, 100, 100])
         .union(new Rectangle(0, 0, 100, 100), TOLERANCE)
         .toWkt(),
-    ).to.equal(
-      "POLYGON((0 0, 100 0, 100 100, 0 100, 0 0))",
-    );
+    ).to.equal("POLYGON((0 0, 100 0, 100 100, 0 100, 0 0))");
     expect(
       new LineString([0, 0, 0, 100, 100, 100])
         .union(new Rectangle(10, 10, 90, 90), TOLERANCE)

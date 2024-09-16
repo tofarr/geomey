@@ -1,10 +1,8 @@
 import * as chai from "chai";
-import { Tolerance } from "../../Tolerance";
 import { RectangleBuilder } from "./RectangleBuilder";
 import { Rectangle } from "..";
 
 const expect = chai.expect;
-const TOLERANCE = new Tolerance(0.05);
 
 export const rectangleBuilderSpec = () => {
   it("unions coordinates as expected", () => {

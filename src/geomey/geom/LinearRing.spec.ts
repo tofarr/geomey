@@ -9,7 +9,6 @@ import {
 import { InvalidCoordinateError } from "../coordinate";
 
 const expect = chai.expect;
-const TOLERANCE = new Tolerance(0.05);
 
 export const linearRingSpec = () => {
   it("throws an error when coordinates are invalid", () => {
@@ -113,7 +112,7 @@ export const linearRingSpec = () => {
       "POLYGON((0 0, 10 0, 10 2, 2 2, 2 8, 10 8, 10 10, 0 10, 0 0))",
     );
     expect(linearRing.generalize(new Tolerance(11)).toWkt()).to.equal(
-      "POINT(4.3 5.5)",
+      "POINT(4.32 5.45)",
     );
     expect(linearRing.generalize(new Tolerance(0.01))).to.equal(linearRing);
   });

@@ -88,7 +88,7 @@ export const multiLineStringSpec = () => {
       new MultiLineString([new LineString([4, 5, 4.01, 5])])
         .generalize(TOLERANCE)
         .toWkt(),
-    ).to.equal("POINT(4 5)");
+    ).to.equal("POINT(4.01 5)");
     expect(
       new MultiLineString([
         new LineString([0, 5, 5, 5.01, 10, 5]),

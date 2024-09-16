@@ -216,10 +216,10 @@ export class Mesh {
     if (a == b) {
       return false;
     }
-    const { x: ax, y: ay } = a
-    const { x: bx, y: by } = b
-    if (comparePointsForSort(ax, ay, bx, by) > 0){
-      [a, b] = [b, a]
+    const { x: ax, y: ay } = a;
+    const { x: bx, y: by } = b;
+    if (comparePointsForSort(ax, ay, bx, by) > 0) {
+      [a, b] = [b, a];
     }
     const { edges } = this;
     const rectangle = Rectangle.valueOf([ax, ay, bx, by]);
@@ -340,7 +340,7 @@ export class Mesh {
   private xorEdge(edge: Edge, results: Edge[]) {
     if (edge.a.links.includes(edge.b)) {
       this.removeEdge(edge);
-      return
+      return;
     }
     this.addEdge(edge);
     results.push(edge);

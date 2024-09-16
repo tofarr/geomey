@@ -231,28 +231,28 @@ export const meshSpec = () => {
   });
   it("remove missing link returns false", () => {
     const mesh = new Mesh(new Tolerance(0.05));
-    mesh.addPoint(2, 3)
-    mesh.addPoint(5, 7)
+    mesh.addPoint(2, 3);
+    mesh.addPoint(5, 7);
     expect(mesh.removeLink(2, 3, 5, 7)).to.equal(false);
-  })
+  });
   it("xor link xors links", () => {
     const mesh = new Mesh(new Tolerance(0.05));
-    mesh.xorLink(2, 3, 5, 7)
-    expect(mesh.hasLink(2, 3, 5, 7)).to.equal(true)
-    mesh.xorLink(2, 3, 5, 7)
-    expect(mesh.hasLink(2, 3, 5, 7)).to.equal(false)
-    mesh.xorLink(5, 7, 2, 3)
-    expect(mesh.hasLink(2, 3, 5, 7)).to.equal(true)
-  })
+    mesh.xorLink(2, 3, 5, 7);
+    expect(mesh.hasLink(2, 3, 5, 7)).to.equal(true);
+    mesh.xorLink(2, 3, 5, 7);
+    expect(mesh.hasLink(2, 3, 5, 7)).to.equal(false);
+    mesh.xorLink(5, 7, 2, 3);
+    expect(mesh.hasLink(2, 3, 5, 7)).to.equal(true);
+  });
   it("xor link xors intersected links", () => {
     const mesh = new Mesh(new Tolerance(0.05));
-    mesh.addLink(0, 0, 20, 20)
-    mesh.addLink(40, 40, 60, 60)
-    mesh.xorLink(0, 0, 60, 60)
-    expect(mesh.hasLink(0, 0, 20, 20)).to.equal(false)
-    expect(mesh.hasLink(20, 20, 40, 40)).to.equal(true)
-    expect(mesh.hasLink(40, 40, 60, 60)).to.equal(false)
-  })
+    mesh.addLink(0, 0, 20, 20);
+    mesh.addLink(40, 40, 60, 60);
+    mesh.xorLink(0, 0, 60, 60);
+    expect(mesh.hasLink(0, 0, 20, 20)).to.equal(false);
+    expect(mesh.hasLink(20, 20, 40, 40)).to.equal(true);
+    expect(mesh.hasLink(40, 40, 60, 60)).to.equal(false);
+  });
   it("iterates over vertices within a rectangle", () => {
     const mesh = new Mesh(new Tolerance(0.05));
     for (let x = 0; x < 7; x++) {
