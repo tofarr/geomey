@@ -52,20 +52,21 @@ export const geometryCollectionSpec = () => {
     expect(centroid.y).to.equal(62.5);
   });
   it("calculates bounds", () => {
-    expect(new GeometryCollection(
-      null,
-      MULTI_LINE_STRING,
-      MULTI_POLYGON,
-    ).getBounds().toJson()).to.eql([3, 5, 110, 120]);
-    expect(new GeometryCollection(
-      MULTI_POINT,
-      null,
-      MULTI_POLYGON,
-    ).getBounds().toJson()).to.eql([20, 30, 110, 120]);
-    expect(new GeometryCollection(
-      MULTI_POINT,
-      MULTI_LINE_STRING,
-    ).getBounds().toJson()).to.eql([3, 5, 103, 104]);
+    expect(
+      new GeometryCollection(null, MULTI_LINE_STRING, MULTI_POLYGON)
+        .getBounds()
+        .toJson(),
+    ).to.eql([3, 5, 110, 120]);
+    expect(
+      new GeometryCollection(MULTI_POINT, null, MULTI_POLYGON)
+        .getBounds()
+        .toJson(),
+    ).to.eql([20, 30, 110, 120]);
+    expect(
+      new GeometryCollection(MULTI_POINT, MULTI_LINE_STRING)
+        .getBounds()
+        .toJson(),
+    ).to.eql([3, 5, 103, 104]);
   });
   it("determines if normalized", () => {
     expect(
@@ -92,10 +93,7 @@ export const geometryCollectionSpec = () => {
       ).isNormalized(),
     ).to.equal(false);
     expect(
-      new GeometryCollection(
-        MULTI_POINT,
-        MULTI_LINE_STRING
-      ).isNormalized(),
+      new GeometryCollection(MULTI_POINT, MULTI_LINE_STRING).isNormalized(),
     ).to.equal(true);
     expect(
       new GeometryCollection(
@@ -222,10 +220,7 @@ export const geometryCollectionSpec = () => {
     const transformed = geometryCollection.transform(transformer);
     const wkt = transformed.toWkt();
     expect(wkt).to.equal(
-      "GEOMETRYCOLLECTION(" +
-        "POINT(102 104)," +
-        "POINT(104 106)" +
-        ")",
+      "GEOMETRYCOLLECTION(" + "POINT(102 104)," + "POINT(104 106)" + ")",
     );
   });
   it("generalizes as expected", () => {
@@ -262,33 +257,30 @@ export const geometryCollectionSpec = () => {
     expect(relate).to.equal(DISJOINT);
   });
   it("converts SVG when there are no points", () => {
-    const walker = new SVGPathWalker()
-    new GeometryCollection(
-      null,
-      MULTI_LINE_STRING,
-      MULTI_POLYGON,
-    ).walkPath(walker)
-    const path = walker.toPath()
-    expect(path).to.equal("M20 30L50 30 50 70 20 70ZM80 90L110 90 110 120 80 120ZM3 5L7 11 13 17M23 29L31 37")
+    const walker = new SVGPathWalker();
+    new GeometryCollection(null, MULTI_LINE_STRING, MULTI_POLYGON).walkPath(
+      walker,
+    );
+    const path = walker.toPath();
+    expect(path).to.equal(
+      "M20 30L50 30 50 70 20 70ZM80 90L110 90 110 120 80 120ZM3 5L7 11 13 17M23 29L31 37",
+    );
   });
 
   it("converts SVG when there are no linestrings", () => {
-    const walker = new SVGPathWalker()
-    new GeometryCollection(
-      MULTI_POINT,
-      null,
-      MULTI_POLYGON,
-    ).walkPath(walker)
-    const path = walker.toPath()
-    expect(path).to.equal("M20 30L50 30 50 70 20 70ZM80 90L110 90 110 120 80 120ZM101 102L101 102M103 104L103 104")
+    const walker = new SVGPathWalker();
+    new GeometryCollection(MULTI_POINT, null, MULTI_POLYGON).walkPath(walker);
+    const path = walker.toPath();
+    expect(path).to.equal(
+      "M20 30L50 30 50 70 20 70ZM80 90L110 90 110 120 80 120ZM101 102L101 102M103 104L103 104",
+    );
   });
   it("converts SVG when there are no polygons", () => {
-    const walker = new SVGPathWalker()
-    new GeometryCollection(
-      MULTI_POINT,
-      MULTI_LINE_STRING
-    ).walkPath(walker)
-    const path = walker.toPath()
-    expect(path).to.equal("M3 5L7 11 13 17M23 29L31 37M101 102L101 102M103 104L103 104")
+    const walker = new SVGPathWalker();
+    new GeometryCollection(MULTI_POINT, MULTI_LINE_STRING).walkPath(walker);
+    const path = walker.toPath();
+    expect(path).to.equal(
+      "M3 5L7 11 13 17M23 29L31 37M101 102L101 102M103 104L103 104",
+    );
   });
 };
