@@ -106,6 +106,10 @@ export class Rectangle implements Geometry {
   toGeoJson() {
     return this.getPolygon().toGeoJson();
   }
+  toJson() {
+    const { minX, minY, maxX, maxY } = this;
+    return [minX, minY, maxX, maxY];
+  }
   toCoordinates(): number[] {
     const { minX, minY, maxX, maxY } = this;
     return [minX, minY, maxX, minY, maxX, maxY, minX, maxY];

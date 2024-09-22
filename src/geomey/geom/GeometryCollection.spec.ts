@@ -13,6 +13,7 @@ import { Tolerance } from "../Tolerance";
 import { EmptyError } from "./EmptyError";
 import { AffineTransformer } from "../transformer/AffineTransformer";
 import { A_OUTSIDE_B, DISJOINT, TOUCH } from "../Relation";
+import { SVGPathWalker } from "../path/SVGPathWalker";
 
 const expect = chai.expect;
 const TOLERANCE = new Tolerance(0.1);
@@ -50,6 +51,22 @@ export const geometryCollectionSpec = () => {
     expect(centroid.x).to.equal(56.5);
     expect(centroid.y).to.equal(62.5);
   });
+  it("calculates bounds", () => {
+    expect(new GeometryCollection(
+      null,
+      MULTI_LINE_STRING,
+      MULTI_POLYGON,
+    ).getBounds().toJson()).to.eql([3, 5, 110, 120]);
+    expect(new GeometryCollection(
+      MULTI_POINT,
+      null,
+      MULTI_POLYGON,
+    ).getBounds().toJson()).to.eql([20, 30, 110, 120]);
+    expect(new GeometryCollection(
+      MULTI_POINT,
+      MULTI_LINE_STRING,
+    ).getBounds().toJson()).to.eql([3, 5, 103, 104]);
+  });
   it("determines if normalized", () => {
     expect(
       new GeometryCollection(
@@ -67,6 +84,19 @@ export const geometryCollectionSpec = () => {
         NON_NORMALIZED_MULTI_LINE_STRING,
       ).isNormalized(),
     ).to.equal(false);
+    expect(
+      new GeometryCollection(
+        MULTI_POINT,
+        null,
+        NON_NORMALIZED_MULTI_POLYGON,
+      ).isNormalized(),
+    ).to.equal(false);
+    expect(
+      new GeometryCollection(
+        MULTI_POINT,
+        MULTI_LINE_STRING
+      ).isNormalized(),
+    ).to.equal(true);
     expect(
       new GeometryCollection(
         null,
@@ -168,6 +198,37 @@ export const geometryCollectionSpec = () => {
         ")",
     );
   });
+  it("transforms as expected when there are no points", () => {
+    const geometryCollection = new GeometryCollection(
+      null,
+      MULTI_LINE_STRING,
+      MULTI_POLYGON,
+    );
+    const transformer = AffineTransformer.IDENTITY.translate(1, 2);
+    const transformed = geometryCollection.transform(transformer);
+    const wkt = transformed.toWkt();
+    expect(wkt).to.equal(
+      "GEOMETRYCOLLECTION(" +
+        "POLYGON((21 32, 51 32, 51 72, 21 72, 21 32))," +
+        "POLYGON((81 92, 111 92, 111 122, 81 122, 81 92))," +
+        "LINESTRING(4 7, 8 13, 14 19)," +
+        "LINESTRING(24 31, 32 39)" +
+        ")",
+    );
+  });
+  it("transforms as expected when there are only points", () => {
+    const geometryCollection = new GeometryCollection(MULTI_POINT);
+    const transformer = AffineTransformer.IDENTITY.translate(1, 2);
+    const transformed = geometryCollection.transform(transformer);
+    const wkt = transformed.toWkt();
+    expect(wkt).to.equal(
+      "GEOMETRYCOLLECTION(" +
+        "POINT(102 104)," +
+        "POINT(104 106)" +
+        ")",
+    );
+  });
+
   it("generalizes as expected", () => {
     const geometryCollection = new GeometryCollection(
       MULTI_POINT,
@@ -200,5 +261,35 @@ export const geometryCollectionSpec = () => {
     expect(relate).to.equal(DISJOINT);
     relate = geometryCollection.relatePoint(18, 32, TOLERANCE);
     expect(relate).to.equal(DISJOINT);
+  });
+  it("converts SVG when there are no points", () => {
+    const walker = new SVGPathWalker()
+    new GeometryCollection(
+      null,
+      MULTI_LINE_STRING,
+      MULTI_POLYGON,
+    ).walkPath(walker)
+    const path = walker.toPath()
+    expect(path).to.equal("M20 30L50 30 50 70 20 70ZM80 90L110 90 110 120 80 120ZM3 5L7 11 13 17M23 29L31 37")
+  });
+
+  it("converts SVG when there are no linestrings", () => {
+    const walker = new SVGPathWalker()
+    new GeometryCollection(
+      MULTI_POINT,
+      null,
+      MULTI_POLYGON,
+    ).walkPath(walker)
+    const path = walker.toPath()
+    expect(path).to.equal("M20 30L50 30 50 70 20 70ZM80 90L110 90 110 120 80 120ZM101 102L101 102M103 104L103 104")
+  });
+  it("converts SVG when there are no polygons", () => {
+    const walker = new SVGPathWalker()
+    new GeometryCollection(
+      MULTI_POINT,
+      MULTI_LINE_STRING
+    ).walkPath(walker)
+    const path = walker.toPath()
+    expect(path).to.equal("M3 5L7 11 13 17M23 29L31 37M101 102L101 102M103 104L103 104")
   });
 };

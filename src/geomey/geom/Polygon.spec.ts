@@ -253,4 +253,11 @@ export const polygonSpec = () => {
     expect(comparePolygonsForSort(a, b)).to.equal(-1);
     expect(comparePolygonsForSort(b, a)).to.equal(1);
   });
+  it("intersects points as expected", () => {
+    const polygon = new Polygon(new LinearRing([0, 0, 100, 0, 50, 100]));
+    const a = Point.valueOf(10, 80);
+    const b = Point.valueOf(50, 80);
+    expect(polygon.intersection(a, TOLERANCE)).to.equal(null);
+    expect(polygon.intersection(b, TOLERANCE)).to.equal(b);
+  });
 };
