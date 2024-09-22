@@ -22,6 +22,7 @@ import { rectangleBuilderSpec } from "./geomey/geom/builder/RectangleBuilder.spe
 import { geoJsonSpec } from "./geomey/parser/geoJson.spec";
 import { edgeSpec } from "./geomey/mesh/Edge.spec";
 import { geometryCollectionSpec } from "./geomey/geom/GeometryCollection.spec";
+import { generalizeAgainstSpec } from "./geomey/geom/op/generalizeAgainst.spec";
 
 describe("Coordinate", coordinateSpec);
 describe("Tolerance", toleranceSpec);
@@ -47,3 +48,4 @@ describe("MultiPoint", multiPointSpec);
 describe("MultiLineString", multiLineStringSpec);
 describe("Polygon", polygonSpec);
 describe("MultiPolygon", multiPolygonSpec);
+describe("GeneralizeAgainst", generalizeAgainstSpec);

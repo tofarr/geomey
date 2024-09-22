@@ -228,7 +228,6 @@ export const geometryCollectionSpec = () => {
         ")",
     );
   });
-
   it("generalizes as expected", () => {
     const geometryCollection = new GeometryCollection(
       MULTI_POINT,
